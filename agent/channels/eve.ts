@@ -1,5 +1,28 @@
 import { eveChannel } from "eve/channels/eve";
-import { localDev, none, vercelOidc } from "eve/channels/auth";
+import { localDev, vercelOidc, type AuthFn } from "eve/channels/auth";
+
+/**
+ * Accept anonymous browser traffic ONLY on preview deployments.
+ *
+ * Preview URLs sit behind Vercel Authentication (team login) at the platform
+ * layer, so "anonymous" there still means "someone who passed Vercel SSO".
+ * On the public production alias this returns null, so the walk falls through
+ * and eve fails closed (401) — nobody can burn model credits anonymously.
+ *
+ * Before a real public launch, replace this with genuine user auth
+ * (e.g. Auth.js/Clerk session -> SessionAuthContext).
+ */
+function previewOnlyAnonymous(): AuthFn<Request> {
+  return async () => {
+    if (process.env.VERCEL_ENV !== "preview") return null;
+    return {
+      authenticator: "preview-anonymous",
+      principalId: "preview-visitor",
+      principalType: "user",
+      attributes: {},
+    };
+  };
+}
 
 export default eveChannel({
   auth: [
@@ -7,10 +30,7 @@ export default eveChannel({
     vercelOidc(),
     // Open on localhost for `eve dev`; ignored everywhere else.
     localDev(),
-    // Accept browser traffic. SAFE FOR PREVIEW DEPLOYS ONLY: previews sit behind
-    // Vercel Authentication (team login), so this is not publicly reachable.
-    // Before promoting to an unprotected production URL, replace with real user
-    // auth (e.g. Auth.js/Clerk session -> AuthFn) or enable platform protection.
-    none(),
+    // Browser access for the SSO-gated preview demo only.
+    previewOnlyAnonymous(),
   ],
 });
