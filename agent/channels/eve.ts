@@ -1,23 +1,70 @@
+import { createHash, timingSafeEqual } from "node:crypto";
 import { eveChannel } from "eve/channels/eve";
 import { localDev, vercelOidc, type AuthFn } from "eve/channels/auth";
 
 /**
- * Accept anonymous browser traffic ONLY on preview deployments.
+ * Access-code auth: the app is public at the production URL for anyone who
+ * has the shared code (set once on the unlock page, carried as an httpOnly
+ * cookie the browser attaches to every same-origin request).
  *
- * Preview URLs sit behind Vercel Authentication (team login) at the platform
- * layer, so "anonymous" there still means "someone who passed Vercel SSO".
- * On the public production alias this returns null, so the walk falls through
- * and eve fails closed (401) — nobody can burn model credits anonymously.
- *
- * Before a real public launch, replace this with genuine user auth
- * (e.g. Auth.js/Clerk session -> SessionAuthContext).
+ * - The cookie value is compared to ACCESS_CODE server-side, constant-time
+ *   (sha256 both sides so lengths always match).
+ * - Rotating the code = changing one env var; every device must re-unlock.
+ * - A generous KV-backed daily request counter caps runaway/scripted use;
+ *   it fails OPEN if the store is unreachable (availability over strictness
+ *   for a demo product — the code is the actual gate).
+ * - The inbound-email webhook channel is untouched: custom channels own
+ *   their auth (svix signature), this walk guards only the chat routes.
  */
-function previewOnlyAnonymous(): AuthFn<Request> {
-  return async () => {
-    if (process.env.VERCEL_ENV !== "preview") return null;
+
+const DAILY_REQUEST_CAP = 2000;
+
+function readCookie(header: string | null, name: string): string | null {
+  if (!header) return null;
+  for (const part of header.split(";")) {
+    const [k, ...rest] = part.trim().split("=");
+    if (k === name) return decodeURIComponent(rest.join("="));
+  }
+  return null;
+}
+
+function codesMatch(candidate: string, expected: string): boolean {
+  const a = createHash("sha256").update(candidate).digest();
+  const b = createHash("sha256").update(expected).digest();
+  return timingSafeEqual(a, b);
+}
+
+async function underDailyRequestCap(): Promise<boolean> {
+  const url = process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_API_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.KV_REST_API_TOKEN;
+  if (!url || !token) return true; // fail open — the code is the gate
+  try {
+    const key = `access:daily:${new Date().toISOString().slice(0, 10)}`;
+    const res = await fetch(`${url}/pipeline`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: JSON.stringify([
+        ["INCR", key],
+        ["EXPIRE", key, "172800"],
+      ]),
+    });
+    const json = (await res.json()) as Array<{ result?: number }>;
+    return (json?.[0]?.result ?? 0) <= DAILY_REQUEST_CAP;
+  } catch {
+    return true;
+  }
+}
+
+function accessCode(): AuthFn<Request> {
+  return async (request) => {
+    const expected = process.env.ACCESS_CODE;
+    if (!expected) return null; // not configured -> walk falls through (fail closed)
+    const candidate = readCookie(request.headers.get("cookie"), "vs_code");
+    if (!candidate || !codesMatch(candidate, expected)) return null;
+    if (!(await underDailyRequestCap())) return null; // cap exhausted -> 401
     return {
-      authenticator: "preview-anonymous",
-      principalId: "preview-visitor",
+      authenticator: "access-code",
+      principalId: "couple",
       principalType: "user",
       attributes: {},
     };
@@ -26,11 +73,11 @@ function previewOnlyAnonymous(): AuthFn<Request> {
 
 export default eveChannel({
   auth: [
-    // Lets the eve TUI, Vercel runtime callers, and Vercel-to-Vercel reach the agent.
+    // Vercel runtime callers, the eve TUI, and scripted OIDC drivers.
     vercelOidc(),
     // Open on localhost for `eve dev`; ignored everywhere else.
     localDev(),
-    // Browser access for the SSO-gated preview demo only.
-    previewOnlyAnonymous(),
+    // The shared access code — the public front door.
+    accessCode(),
   ],
 });
