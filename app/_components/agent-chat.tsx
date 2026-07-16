@@ -3,7 +3,7 @@
 import type { UserContent } from "ai";
 import { useEveAgent } from "eve/react";
 import { AlertCircleIcon } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Conversation,
   ConversationContent,
@@ -207,6 +207,18 @@ export function AgentChat() {
   const isBusy = agent.status === "submitted" || agent.status === "streaming";
   const isEmpty = agent.data.messages.length === 0;
 
+  // No broken image boxes, ever: any venue photo that fails to load vanishes.
+  useEffect(() => {
+    const hideBroken = (e: Event) => {
+      const t = e.target as HTMLElement | null;
+      if (t?.tagName === "IMG" && t.closest("[data-venus-chat]")) {
+        t.style.display = "none";
+      }
+    };
+    document.addEventListener("error", hideBroken, true);
+    return () => document.removeEventListener("error", hideBroken, true);
+  }, []);
+
   const begin = (budget: number, firstName: string) => {
     if (isBusy || !isEmpty) return; // no double-taps, no duplicate openings
     void agent.send({
@@ -274,7 +286,7 @@ export function AgentChat() {
       ) : null}
 
       {isEmpty ? null : (
-        <Conversation className="min-h-0 flex-1">
+        <Conversation className="min-h-0 flex-1" data-venus-chat="">
           <ConversationContent className="mx-auto w-full max-w-3xl gap-6 px-4 py-6 sm:px-6">
             {agent.data.messages.map((message, index) => (
               <AgentMessage

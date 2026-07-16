@@ -230,6 +230,29 @@ tr:last-child td {
   }
 }
 
+/* Venue imagery in chat: a lone image reads as a hero; several images in one
+   paragraph read as a gallery row. Broken images are hidden by a client-side
+   error handler — no empty boxes, ever. */
+[data-venus-chat] img {
+  border-radius: 16px;
+  width: 100%;
+  max-height: 340px;
+  object-fit: cover;
+  display: block;
+  margin: 0.35rem 0;
+  box-shadow: 0 10px 30px -18px rgba(60, 47, 47, 0.5);
+}
+[data-venus-chat] p:has(img + img) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.5rem;
+}
+[data-venus-chat] p:has(img + img) img {
+  height: 130px;
+  max-height: 130px;
+  margin: 0;
+}
+
 /* The budget slider: visible rose-ringed thumb on every engine, 22px touch target. */
 input[type="range"].venus-slider::-webkit-slider-thumb {
   -webkit-appearance: none;

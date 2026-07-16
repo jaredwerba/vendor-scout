@@ -54,7 +54,11 @@ export interface OutreachRecord {
 
 export const MAX_NUDGES = 2;
 export const MAX_EMAILS_PER_VENDOR = 3;
-export const DAILY_SEND_CAP = Number(process.env.OUTREACH_DAILY_CAP ?? 10);
+// Owner directive: the daily throttle must never block real planning (a single
+// wedding can legitimately need dozens of sends in a day). 200 is a
+// runaway-loop backstop, not a product limit. Per-vendor caps stay — they
+// protect the couple's reputation with vendors.
+export const DAILY_SEND_CAP = Number(process.env.OUTREACH_DAILY_CAP ?? 200);
 const FOLLOWUP_SPACING_DAYS = 3;
 const LEASE_TTL_SECONDS = 3600;
 

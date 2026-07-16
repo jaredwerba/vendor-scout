@@ -33,8 +33,14 @@ export default defineTool({
       .max(10)
       .optional()
       .describe("How many results to return (default 6)."),
+    include_images: z
+      .boolean()
+      .optional()
+      .describe(
+        "Also return image URLs related to the query. Use for venue photo hunts, e.g. query '<venue name> wedding venue'.",
+      ),
   }),
-  async execute({ query, max_results }) {
+  async execute({ query, max_results, include_images }) {
     if (!TAVILY_KEY) {
       return {
         status: "not_configured",
@@ -56,6 +62,7 @@ export default defineTool({
         max_results: max_results ?? 6,
         search_depth: "basic",
         include_answer: false,
+        include_images: include_images ?? false,
       }),
     });
 
@@ -68,7 +75,14 @@ export default defineTool({
       };
     }
 
-    const json = (await res.json()) as { results?: TavilyResult[] };
+    const json = (await res.json()) as {
+      results?: TavilyResult[];
+      images?: (string | { url?: string })[];
+    };
+    const images = (json.images ?? [])
+      .map((i) => (typeof i === "string" ? i : (i.url ?? "")))
+      .filter((u) => u.startsWith("https://"))
+      .slice(0, 8);
     return {
       status: "ok",
       query,
@@ -77,6 +91,7 @@ export default defineTool({
         url: r.url ?? "",
         snippet: (r.content ?? "").slice(0, 600),
       })),
+      ...(images.length ? { images } : {}),
     };
   },
 });
