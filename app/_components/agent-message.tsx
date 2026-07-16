@@ -224,8 +224,25 @@ const CATEGORY_HINTS: readonly (readonly [RegExp, string, string])[] = [
 ];
 
 function delegationInfo(message: string): { name: string; phase: string } {
+  // Preferred: the briefing declares its category on the first line.
+  const declared = /^\s*CATEGORY:\s*(.+)$/im.exec(message)?.[1]?.toLowerCase();
+  if (declared) {
+    for (const [re, name, doing] of CATEGORY_HINTS) {
+      if (re.test(declared)) return { name, phase: doing };
+    }
+    const clean = declared.replace(/[^a-z& ]/g, "").trim();
+    if (clean) {
+      return {
+        name: `${clean[0].toUpperCase()}${clean.slice(1)} agent`,
+        phase: "digging in for you",
+      };
+    }
+  }
+  // Fallback: sniff only the OPENING of the briefing — the full brief mentions
+  // every category, so scanning it all mislabels (three "Venue agents").
+  const head = message.slice(0, 160);
   for (const [re, name, doing] of CATEGORY_HINTS) {
-    if (re.test(message)) return { name, phase: doing };
+    if (re.test(head)) return { name, phase: doing };
   }
   return { name: "Research agent", phase: "digging in for you" };
 }
