@@ -1,32 +1,38 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Great_Vibes, Inter, Playfair_Display } from "next/font/google";
 import type { ReactNode } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import "./globals.css";
 
-const sans = Geist({
-  variable: "--font-sans",
+const body = Inter({
+  variable: "--font-body",
   subsets: ["latin"],
-  weight: "variable",
   display: "swap",
 });
 
-const mono = Geist_Mono({
-  variable: "--font-mono",
+const serif = Playfair_Display({
+  variable: "--font-serif",
   subsets: ["latin"],
-  weight: "variable",
+  display: "swap",
+});
+
+const cursive = Great_Vibes({
+  variable: "--font-cursive",
+  subsets: ["latin"],
+  weight: "400",
   display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "wedding",
-  description: "A Next.js starter for eve agents with AI Elements.",
+  title: "Venus — your wedding, planned",
+  description:
+    "Venus is a full-service AI wedding planner: real research, real vendors, real outreach — three beautiful visions of your day from one conversation.",
 };
 
 export default function RootLayout({ children }: { readonly children: ReactNode }) {
   return (
-    <html className={cn(sans.variable, mono.variable)} lang="en">
+    <html className={cn(body.variable, serif.variable, cursive.variable)} lang="en">
       <body>
         <TooltipProvider>{children}</TooltipProvider>
       </body>

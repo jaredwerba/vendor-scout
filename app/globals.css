@@ -20,59 +20,71 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-gold: var(--gold);
+  --color-sage: var(--sage);
+  --color-rose: var(--rose);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", monospace;
+  --font-display: var(--font-serif), Georgia, serif;
+  --font-script: var(--font-cursive), cursive;
 }
 
+/* ————— Blush & Bloom: soft ivory, deep rose, sage, warm gold ————— */
 :root {
   color-scheme: light;
-  /* Soft neutral page with white elevated surfaces so cards/composer pop. */
-  --background: oklch(0.971 0 0);
-  --foreground: oklch(0.16 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.16 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.16 0 0);
-  --primary: oklch(0.19 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.94 0 0);
-  --secondary-foreground: oklch(0.19 0 0);
-  --muted: oklch(0.94 0 0);
-  --muted-foreground: oklch(0.6 0 0);
-  --accent: oklch(0.94 0 0);
-  --accent-foreground: oklch(0.19 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.916 0 0);
-  --input: oklch(0.916 0 0);
-  --ring: oklch(0.708 0 0);
-  --radius: 0.625rem;
+  --background: #fdf8f5;
+  --foreground: #3c2f2f;
+  --card: #ffffff;
+  --card-foreground: #3c2f2f;
+  --popover: #ffffff;
+  --popover-foreground: #3c2f2f;
+  --primary: #c97b84;
+  --primary-foreground: #fff9f7;
+  --secondary: #eef2ec;
+  --secondary-foreground: #4c5f4a;
+  --muted: #f7edea;
+  --muted-foreground: #8a7370;
+  --accent: #f3e0de;
+  --accent-foreground: #9c4a56;
+  --destructive: #b3423e;
+  --border: #efe2dc;
+  --input: #eadcd5;
+  --ring: #c97b84;
+  --gold: #d4af37;
+  --sage: #8ba888;
+  --rose: #c97b84;
+  --radius: 1rem;
 }
 
+/* Evening Bloom — the dark variant keeps the warmth, never goes corporate. */
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
+    --background: #211917;
+    --foreground: #f5e9e4;
+    --card: #2b211f;
+    --card-foreground: #f5e9e4;
+    --popover: #2b211f;
+    --popover-foreground: #f5e9e4;
+    --primary: #d98e97;
+    --primary-foreground: #2b1418;
+    --secondary: #2c332b;
+    --secondary-foreground: #b7cbb3;
+    --muted: #322724;
+    --muted-foreground: #b39a93;
+    --accent: #3a2c2d;
+    --accent-foreground: #ecc6cb;
+    --destructive: #e07a75;
+    --border: #3e302c;
+    --input: #443430;
+    --ring: #d98e97;
+    --gold: #d9bc5e;
+    --sage: #97b294;
+    --rose: #d98e97;
   }
 }
 
@@ -88,11 +100,133 @@ body {
   min-height: 100%;
   margin: 0;
   background: var(--background);
+  color: var(--foreground);
   font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
 }
 
 button,
 input,
 textarea {
   font: inherit;
+}
+
+/* Display serif for every heading, including markdown Venus writes. */
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+/* Venus speaks in script when she quotes something from the heart. */
+blockquote {
+  font-family: var(--font-script);
+  font-size: 1.45em;
+  line-height: 1.5;
+  color: var(--accent-foreground);
+  border-left: 2px solid var(--gold);
+  padding-left: 0.9em;
+  font-style: normal;
+}
+
+/* Luxury-invoice tables for plans, breakdowns, and the value summary. */
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+th {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 0.8em;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted-foreground);
+  border-bottom: 1px solid var(--gold);
+  padding: 0.6em 0.75em;
+  text-align: left;
+}
+td {
+  border-bottom: 1px solid var(--border);
+  padding: 0.6em 0.75em;
+}
+tr:last-child td {
+  border-bottom: none;
+}
+
+/* Watercolor-paper wash for cards — pure CSS, no image requests. */
+.venus-texture {
+  background-image:
+    radial-gradient(
+      ellipse 80% 60% at 12% 8%,
+      color-mix(in oklab, var(--rose) 7%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse 70% 55% at 88% 18%,
+      color-mix(in oklab, var(--sage) 8%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse 90% 70% at 50% 100%,
+      color-mix(in oklab, var(--gold) 5%, transparent),
+      transparent 65%
+    );
+}
+
+/* Buttons bloom on hover; cards lift. */
+.venus-bloom {
+  transition:
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.venus-bloom:hover {
+  transform: translateY(-1px) scale(1.015);
+  box-shadow: 0 10px 28px -10px color-mix(in oklab, var(--rose) 45%, transparent);
+}
+
+/* Floating petals — sparse, slow, calm. Respect reduced motion. */
+@keyframes venus-petal-drift {
+  0% {
+    transform: translate3d(0, -8vh, 0) rotate(0deg);
+    opacity: 0;
+  }
+  12% {
+    opacity: var(--petal-opacity, 0.5);
+  }
+  88% {
+    opacity: var(--petal-opacity, 0.5);
+  }
+  100% {
+    transform: translate3d(var(--petal-sway, 4vw), 108vh, 0) rotate(var(--petal-spin, 200deg));
+    opacity: 0;
+  }
+}
+.venus-petal {
+  position: absolute;
+  top: 0;
+  pointer-events: none;
+  animation: venus-petal-drift var(--petal-duration, 16s) linear infinite;
+  animation-delay: var(--petal-delay, 0s);
+  will-change: transform, opacity;
+}
+@media (prefers-reduced-motion: reduce) {
+  .venus-petal {
+    display: none;
+  }
+}
+
+/* Soft rise for activity feed lines and cards. */
+@keyframes venus-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.venus-rise {
+  animation: venus-rise 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }

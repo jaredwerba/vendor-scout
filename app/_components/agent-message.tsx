@@ -103,26 +103,75 @@ function AgentMessagePart({
       return <AuthorizationPrompt part={part} />;
     case "dynamic-tool":
       return (
-        <Tool
-          defaultOpen={part.state === "approval-requested" || part.state === "approval-responded"}
-        >
-          <ToolHeader
-            state={part.state}
-            title={part.toolName}
-            toolName={part.toolName}
-            type="dynamic-tool"
-          />
-          <ToolContent>
-            <ToolInput input={part.input} />
-            <InputRequestActions
-              canRespond={canRespond}
-              part={part}
-              onInputResponses={onInputResponses}
+        <div className="venus-rise">
+          <Tool
+            defaultOpen={part.state === "approval-requested" || part.state === "approval-responded"}
+          >
+            <ToolHeader
+              state={part.state}
+              title={venusActivityLabel(part)}
+              toolName={part.toolName}
+              type="dynamic-tool"
             />
-            <ToolOutput errorText={part.errorText} output={part.output} />
-          </ToolContent>
-        </Tool>
+            <ToolContent>
+              <ToolInput input={part.input} />
+              <InputRequestActions
+                canRespond={canRespond}
+                part={part}
+                onInputResponses={onInputResponses}
+              />
+              <ToolOutput errorText={part.errorText} output={part.output} />
+            </ToolContent>
+          </Tool>
+        </div>
       );
+  }
+}
+
+/** The Venus activity feed: tool calls narrated as a planner at work. */
+function venusActivityLabel(part: EveDynamicToolPart): string {
+  const input = (part.input ?? {}) as Record<string, unknown>;
+  const done = part.state === "output-available";
+  const str = (v: unknown) => (typeof v === "string" ? v : undefined);
+
+  switch (part.toolName) {
+    case "web_search": {
+      const q = str(input.query);
+      return done
+        ? `Venus searched for ${q ?? "options"}`
+        : `Venus is searching for ${q ?? "options"}…`;
+    }
+    case "web_fetch": {
+      let host: string | undefined;
+      try {
+        host = input.url ? new URL(String(input.url)).hostname.replace(/^www\./, "") : undefined;
+      } catch {
+        host = undefined;
+      }
+      return done ? `Venus read ${host ?? "a vendor's site"}` : `Venus is reading ${host ?? "a vendor's site"}…`;
+    }
+    case "agent":
+      return done
+        ? "A Venus specialist finished their research"
+        : "A Venus specialist is deep in research…";
+    case "send_outreach": {
+      const vendor = str(input.vendor_name);
+      return done
+        ? `Venus wrote to ${vendor ?? "a vendor"}`
+        : `Venus is writing to ${vendor ?? "a vendor"}…`;
+    }
+    case "check_outreach_status":
+      return done
+        ? "Venus reviewed your vendor conversations"
+        : "Venus is reviewing vendor conversations…";
+    case "cancel_followups":
+      return "Venus is quietly closing a thread…";
+    case "ask_question":
+      return "Venus needs one thing from you";
+    case "todo":
+      return done ? "Venus updated her plan" : "Venus is organizing her plan…";
+    default:
+      return done ? "Venus finished a task" : "Venus is at work on your wedding…";
   }
 }
 
