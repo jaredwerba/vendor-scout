@@ -222,6 +222,12 @@ function VenusLanding({
           </div>
         </div>
         <p className="text-[11px] text-muted-foreground">{COPY.trustLine}</p>
+        <a
+          className="inline-block text-[12px] text-primary underline-offset-4 hover:underline"
+          href="/curated"
+        >
+          See weddings curated by Venus →
+        </a>
       </div>
     </div>
   );
