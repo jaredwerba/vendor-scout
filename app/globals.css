@@ -242,9 +242,12 @@ tr:last-child td {
   margin: 0.35rem 0;
   box-shadow: 0 10px 30px -18px rgba(60, 47, 47, 0.5);
 }
-/* Two or more images in one paragraph become a swipeable carousel:
-   native scroll-snap physics, next-photo peek to invite the swipe. */
-[data-venus-chat] p:has(img + img) {
+/* Two or more images in one paragraph become a swipeable carousel with
+   native scroll-snap physics and a next-photo peek. The markdown renderer
+   wraps each image in a div, so selectors target both wrapped and bare
+   structures (verified against the live DOM). */
+[data-venus-chat] p:has(> div > img):has(> div:nth-of-type(2) > img),
+[data-venus-chat] p:has(> img + img) {
   display: flex;
   gap: 0.5rem;
   overflow-x: auto;
@@ -254,22 +257,35 @@ tr:last-child td {
   border-radius: 16px;
   cursor: grab;
 }
-[data-venus-chat] p:has(img + img)::-webkit-scrollbar {
+[data-venus-chat] p:has(> div > img):has(> div:nth-of-type(2) > img)::-webkit-scrollbar,
+[data-venus-chat] p:has(> img + img)::-webkit-scrollbar {
   display: none;
 }
-[data-venus-chat] p:has(img + img) img {
+[data-venus-chat] p:has(> div > img):has(> div:nth-of-type(2) > img) > div,
+[data-venus-chat] p:has(> img + img) > img {
   flex: 0 0 85%;
-  width: 85%;
-  height: 230px;
-  max-height: 230px;
   margin: 0;
   scroll-snap-align: center;
   scroll-snap-stop: always;
 }
+[data-venus-chat] p:has(> div > img):has(> div:nth-of-type(2) > img) > div > img {
+  width: 100%;
+  height: 230px;
+  max-height: 230px;
+  margin: 0;
+  object-fit: cover;
+}
+[data-venus-chat] p:has(> img + img) > img {
+  height: 230px;
+  max-height: 230px;
+}
 @media (min-width: 640px) {
-  [data-venus-chat] p:has(img + img) img {
+  [data-venus-chat] p:has(> div > img):has(> div:nth-of-type(2) > img) > div,
+  [data-venus-chat] p:has(> img + img) > img {
     flex-basis: 55%;
-    width: 55%;
+  }
+  [data-venus-chat] p:has(> div > img):has(> div:nth-of-type(2) > img) > div > img,
+  [data-venus-chat] p:has(> img + img) > img {
     height: 260px;
     max-height: 260px;
   }
