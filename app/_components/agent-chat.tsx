@@ -2,7 +2,8 @@
 
 import type { UserContent } from "ai";
 import { useEveAgent } from "eve/react";
-import { AlertCircleIcon } from "lucide-react";
+import { AlertCircleIcon, CheckIcon, CopyIcon } from "lucide-react";
+import { useState } from "react";
 import {
   Conversation,
   ConversationContent,
@@ -17,7 +18,51 @@ import {
 import { cn } from "@/lib/utils";
 import { AgentMessage } from "./agent-message";
 
-const AGENT_NAME = "wedding";
+const AGENT_NAME = "Vendor Scout";
+
+const ONE_SHOT_TEMPLATE = `Plan my wedding:
+- Budget: $28,000 total
+- Date: September 11, 2027 (flexible ±2 weeks)
+- Location: within 45 min of Methuen, MA
+- Guests: ~50
+- Style: boho, outdoorsy, relaxed
+- Priorities: venue + food first, then photography
+- Skip: (anything already booked)`;
+
+function TemplateCard() {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    await navigator.clipboard.writeText(ONE_SHOT_TEMPLATE).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <div className="w-full max-w-md rounded-2xl border border-border bg-muted/30 p-4 text-left">
+      <div className="mb-2 flex items-center justify-between">
+        <p className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+          One message is all it takes
+        </p>
+        <button
+          type="button"
+          onClick={copy}
+          className="flex items-center gap-1 rounded-md px-2 py-1 text-muted-foreground text-xs hover:bg-muted"
+        >
+          {copied ? <CheckIcon className="size-3" /> : <CopyIcon className="size-3" />}
+          {copied ? "Copied" : "Copy"}
+        </button>
+      </div>
+      <pre className="whitespace-pre-wrap font-mono text-[13px] text-foreground/90 leading-relaxed">
+        {ONE_SHOT_TEMPLATE}
+      </pre>
+      <p className="mt-3 text-muted-foreground text-xs">
+        Copy it, swap in your details, send. Budget, date, location, guests, and style are the five
+        that matter — give all five and planning starts instantly: budget split, then parallel
+        research across venue, catering, photo, florals, and music, then one master plan with the
+        option to email vendors for you.
+      </p>
+    </div>
+  );
+}
 
 type AgentStatus = ReturnType<typeof useEveAgent>["status"];
 
@@ -109,8 +154,14 @@ export function AgentChat() {
         )}
       >
         {isEmpty ? (
-          <div className="flex flex-col items-center gap-3 text-center">
-            <h1 className="font-medium text-5xl tracking-tighter">{AGENT_NAME}</h1>
+          <div className="flex flex-col items-center gap-5 text-center">
+            <div className="flex flex-col items-center gap-2">
+              <h1 className="font-medium text-5xl tracking-tighter">{AGENT_NAME}</h1>
+              <p className="max-w-sm text-muted-foreground text-sm">
+                Your AI wedding planner — research, comparisons, and vendor outreach, done for you.
+              </p>
+            </div>
+            <TemplateCard />
           </div>
         ) : null}
         <div className="w-full">{composer}</div>
