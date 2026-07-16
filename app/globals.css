@@ -30,7 +30,6 @@
   --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, "SF Mono", monospace;
   --font-display: var(--font-serif), Georgia, serif;
-  --font-script: var(--font-cursive), cursive;
 }
 
 /* ————— Blush & Bloom: soft ivory, deep rose, sage, warm gold ————— */
@@ -156,10 +155,14 @@ tr:last-child td {
   border-bottom: none;
 }
 
-/* Explicit type classes — immune to utility-generation subtleties. */
+/* Explicit type classes — immune to utility-generation subtleties.
+   No script fonts anywhere (legibility rule): the former script class now
+   renders as elegant serif italic. */
 .venus-script {
-  font-family: var(--font-cursive), "Snell Roundhand", cursive !important;
-  font-weight: 400;
+  font-family: var(--font-serif), Georgia, serif !important;
+  font-style: italic;
+  font-weight: 500;
+  letter-spacing: 0.01em;
 }
 .venus-serif {
   font-family: var(--font-serif), Georgia, serif !important;

@@ -27,7 +27,9 @@ const COPY = {
   sliderHint: "Slide to where you're comfortable — I'll make every dollar behave beautifully.",
   cta: "Begin with Venus",
   trustLine:
-    "Real vendors, real emails — sent only after you've read every draft and given the go-ahead, with gentle follow-ups only if you allow them.",
+    "Real vendors, real emails — I write them in your voice, send them the moment you pick your plan, and gently nudge anyone who doesn't reply. Say the word and I'll stop any thread.",
+  nameLabel: "Your first name",
+  namePlaceholder: "So I know who I'm planning for…",
   question:
     "Close your eyes for a moment. It's the evening of your wedding — where are you standing, who is around you, and what does it feel like? Tell me everything you can see: the place, the season, how many people, what you're spending, what matters most. I'll take it from there.",
   working: "Venus is composing your wedding…",
@@ -106,10 +108,16 @@ function usd(n: number): string {
   return n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 }
 
-function VenusLanding({ onBegin }: { readonly onBegin: (budget: number) => void }) {
+function VenusLanding({
+  onBegin,
+}: {
+  readonly onBegin: (budget: number, firstName: string) => void;
+}) {
   const [budget, setBudget] = useState(28000);
+  const [firstName, setFirstName] = useState("");
   const tier = useMemo(() => [...TIERS].reverse().find((t) => budget >= t.min) ?? TIERS[0], [budget]);
   const pct = ((budget - 5000) / 95000) * 100;
+  const ready = firstName.trim().length >= 2;
 
   return (
     <div className="venus-rise flex w-full max-w-xl flex-col items-center gap-7 text-center">
@@ -153,13 +161,33 @@ function VenusLanding({ onBegin }: { readonly onBegin: (budget: number) => void 
         <p aria-live="polite" className="mt-2 min-h-9 text-muted-foreground text-xs leading-relaxed">
           {tier.blurb}
         </p>
-        <button
-          className="venus-bloom mt-2 h-12 w-full rounded-2xl bg-primary font-medium text-primary-foreground text-sm"
-          onClick={() => onBegin(budget)}
-          type="button"
-        >
-          {COPY.cta}
-        </button>
+        <label className="mt-1 block text-left">
+          <span className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+            {COPY.nameLabel}
+          </span>
+          <input
+            autoComplete="given-name"
+            className="mt-1.5 h-12 w-full rounded-2xl border border-input bg-background px-4 text-base outline-none focus:border-ring"
+            maxLength={40}
+            onChange={(e) => setFirstName(e.target.value)}
+            placeholder={COPY.namePlaceholder}
+            type="text"
+            value={firstName}
+          />
+        </label>
+        {ready ? (
+          <button
+            className="venus-bloom venus-rise mt-3 h-12 w-full rounded-2xl bg-primary font-medium text-primary-foreground text-sm"
+            onClick={() => onBegin(budget, firstName.trim())}
+            type="button"
+          >
+            {COPY.cta}
+          </button>
+        ) : (
+          <p className="mt-3 flex h-12 items-center justify-center text-muted-foreground text-xs">
+            set your budget & tell me your name — then we begin ✨
+          </p>
+        )}
       </div>
 
       <div className="max-w-md space-y-3">
@@ -179,10 +207,10 @@ export function AgentChat() {
   const isBusy = agent.status === "submitted" || agent.status === "streaming";
   const isEmpty = agent.data.messages.length === 0;
 
-  const begin = (budget: number) => {
+  const begin = (budget: number, firstName: string) => {
     if (isBusy || !isEmpty) return; // no double-taps, no duplicate openings
     void agent.send({
-      message: `Hi Venus — our budget is around ${usd(budget)}. Help us plan our wedding.`,
+      message: `Hi Venus! I'm ${firstName}. Our budget is around ${usd(budget)} — plan our wedding for us.`,
     });
   };
 
@@ -213,9 +241,7 @@ export function AgentChat() {
 
   const composer = (
     <PromptInput onSubmit={handleSubmit}>
-      <PromptInputTextarea
-        placeholder={isEmpty ? "…or begin by describing your day in your own words" : "Tell Venus…"}
-      />
+      <PromptInputTextarea placeholder="Tell Venus…" />
       <PromptInputSubmit onStop={agent.stop} status={agent.status} />
     </PromptInput>
   );
@@ -277,9 +303,9 @@ export function AgentChat() {
         )}
       >
         {isEmpty ? (
+          // Onboarding gate: no prompt bar until "Begin with Venus" is tapped.
           <div className="my-auto flex w-full flex-col items-center gap-6">
             <VenusLanding onBegin={begin} />
-            <div className="w-full">{composer}</div>
           </div>
         ) : (
           <div className="w-full">{composer}</div>

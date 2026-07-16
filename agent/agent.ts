@@ -9,9 +9,11 @@ export default defineAgent({
   // tool (tools/web_search.ts) either way, so the model swap is safe anytime.
   model: "anthropic/claude-sonnet-5",
   reasoning: "medium",
-  // Safety net so a runaway session can't rack up a surprise bill during demos.
+  // Owner directive (launch mode): no token gates, no "continue?" pauses —
+  // a couple mid-planning must never hit a meter. Runaway protection now
+  // lives in the outreach caps + the access-code gate, not session budgets.
   limits: {
-    maxInputTokensPerSession: 3_000_000,
-    maxOutputTokensPerSession: 100_000,
+    maxInputTokensPerSession: false,
+    maxOutputTokensPerSession: false,
   },
 });

@@ -134,26 +134,52 @@ function AgentMessagePart({
   }
 }
 
-/** The Venus activity feed: tool calls narrated as a planner at work. */
+/** The Venus activity feed: tool calls narrated like a planner texting you. */
+
+const CATEGORY_HINTS: readonly (readonly [RegExp, string, string])[] = [
+  [/venue|estate|barn|farm|ballroom|vineyard|inn\b/i, "Venue agent", "hunting your dream venue"],
+  [/photo|videograph/i, "Photography agent", "finding your photographer"],
+  [/cater|food|menu|dinner|chef|bar\b/i, "Food & catering agent", "curating your menu"],
+  [/floral|florist|flower|bloom|decor/i, "Florals agent", "designing your florals"],
+  [/music|dj\b|band|entertain|jazz/i, "Music agent", "booking your sound"],
+  [/attire|dress|beauty|hair|makeup/i, "Style agent", "styling your day"],
+  [/transport|rental|stationery|cake|favor/i, "Details agent", "handling the finishing touches"],
+];
+
+function delegationLabel(message: string, done: boolean): string {
+  for (const [re, name, doing] of CATEGORY_HINTS) {
+    if (re.test(message)) {
+      return done ? `${name} — done, matches found ✓` : `${name} — ${doing}…`;
+    }
+  }
+  return done ? "Research agent — done ✓" : "Research agent — digging in for you…";
+}
+
 function venusActivityLabel(part: EveDynamicToolPart): string {
   const input = (part.input ?? {}) as Record<string, unknown>;
   const done = part.state === "output-available";
   const failed = part.state === "output-error" || part.state === "output-denied";
   const str = (v: unknown) => (typeof v === "string" ? v : undefined);
 
+  // Any delegation to a research child carries a `message` briefing — label it
+  // by category regardless of what the tool happens to be named.
+  const briefing = str(input.message);
+  if (briefing && part.toolName !== "send_outreach") {
+    if (failed) return "One of my helpers hit a snag — regrouping…";
+    return delegationLabel(briefing, done);
+  }
+
   if (failed) {
     const vendor = str(input.vendor_name);
     return part.toolName === "send_outreach"
-      ? `Venus couldn't reach ${vendor ?? "a vendor"} — she'll regroup`
-      : "That one didn't go through — Venus is adjusting";
+      ? `Couldn't reach ${vendor ?? "a vendor"} just now — I'll regroup`
+      : "That one didn't go through — adjusting…";
   }
 
   switch (part.toolName) {
     case "web_search": {
       const q = str(input.query);
-      return done
-        ? `Venus searched for ${q ?? "options"}`
-        : `Venus is searching for ${q ?? "options"}…`;
+      return done ? `Searched: ${q ?? "options"} ✓` : `Searching ${q ?? "for options"}…`;
     }
     case "web_fetch": {
       let host: string | undefined;
@@ -162,30 +188,24 @@ function venusActivityLabel(part: EveDynamicToolPart): string {
       } catch {
         host = undefined;
       }
-      return done ? `Venus read ${host ?? "a vendor's site"}` : `Venus is reading ${host ?? "a vendor's site"}…`;
+      return done ? `Read ${host ?? "a vendor's site"} ✓` : `Reading ${host ?? "a vendor's site"}…`;
     }
-    case "agent":
-      return done
-        ? "A Venus specialist finished their research"
-        : "A Venus specialist is deep in research…";
     case "send_outreach": {
       const vendor = str(input.vendor_name);
       return done
-        ? `Venus wrote to ${vendor ?? "a vendor"}`
-        : `Venus is writing to ${vendor ?? "a vendor"}…`;
+        ? `Email sent to ${vendor ?? "a vendor"} ✓ — tracking replies`
+        : `Writing to ${vendor ?? "a vendor"} right now…`;
     }
     case "check_outreach_status":
-      return done
-        ? "Venus reviewed your vendor conversations"
-        : "Venus is reviewing vendor conversations…";
+      return done ? "Checked every vendor thread ✓" : "Checking who's written back…";
     case "cancel_followups":
-      return "Venus is quietly closing a thread…";
+      return "Closing that thread for you…";
     case "ask_question":
-      return "Venus needs one thing from you";
+      return "Quick thing — I need your take";
     case "todo":
-      return done ? "Venus updated her plan" : "Venus is organizing her plan…";
+      return done ? "Plan updated ✓" : "Organizing my plan…";
     default:
-      return done ? "Venus finished a task" : "Venus is at work on your wedding…";
+      return done ? "Done ✓" : "On it for you…";
   }
 }
 

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Great_Vibes, Inter, Playfair_Display } from "next/font/google";
+import { Inter, Playfair_Display } from "next/font/google";
 import type { ReactNode } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -17,13 +17,6 @@ const serif = Playfair_Display({
   display: "swap",
 });
 
-const cursive = Great_Vibes({
-  variable: "--font-cursive",
-  subsets: ["latin"],
-  weight: "400",
-  display: "swap",
-});
-
 export const metadata: Metadata = {
   title: "Venus — your wedding, planned",
   description:
@@ -32,7 +25,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { readonly children: ReactNode }) {
   return (
-    <html className={cn(body.variable, serif.variable, cursive.variable)} lang="en">
+    <html className={cn(body.variable, serif.variable)} lang="en">
       <body>
         <TooltipProvider>{children}</TooltipProvider>
       </body>
