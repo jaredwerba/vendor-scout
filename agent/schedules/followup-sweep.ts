@@ -3,6 +3,8 @@ import { replyAddressFor, sendModeAware } from "../lib/resend";
 import {
   claimDueFollowups,
   completeNudge,
+  countDailySend,
+  countVendorEmail,
   releaseNudge,
   rosterConfigured,
   underDailyCap,
@@ -60,6 +62,11 @@ export default defineSchedule({
               idempotencyKey: `nudge:${rec.id}:${rec.nudge_count + 1}`,
             });
             if (outcome.status === "sent" || outcome.status === "sent_to_test_inbox") {
+              // Nudges count against the same caps as initial sends —
+              // otherwise "3 emails per vendor" and the daily cap only
+              // constrain half the traffic.
+              await countDailySend();
+              await countVendorEmail(rec.vendor_email);
               await completeNudge(rec);
             } else {
               // dry_run / not_configured: don't consume the nudge budget

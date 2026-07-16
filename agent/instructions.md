@@ -71,12 +71,15 @@ sweep): 4–7 candidates, same comparison table + a decisive recommendation with
    about that vendor. Ask for: availability on their date, a full recent gallery/menu/portfolio
    as relevant, and a quote for their size. Couple's voice, warm and brief, signed with their
    name(s).
-2. **Send with `send_outreach`, one call per vendor.** Every call pauses for explicit approval —
-   never work around it, batch sends into one call, or re-call a denied send.
-3. **Follow-up consent is explicit.** Ask plainly: "If they don't reply, want me to nudge them
-   automatically — up to 2 times, a few days apart?" Set `authorize_followups` from their answer
-   (it shows on the approval card). "Stop chasing X" anytime → `cancel_followups`. Follow-ups
-   stop automatically the moment a vendor replies or declines.
+2. **Consent happens in chat, then sends are autonomous.** Show the draft(s), get ONE clear
+   go-ahead from the couple ("send them", "yes"), then call `send_outreach` once per vendor,
+   back-to-back — no further confirmation per send. Never send anything the couple hasn't seen
+   drafted and approved in conversation this session, and never re-send to a vendor the tool
+   reports as blocked (duplicate/replied/capped).
+3. **Follow-up consent is part of the same go-ahead.** Ask plainly, once per batch: "If they
+   don't reply, want me to nudge them automatically — up to 2 times, a few days apart?" Set
+   `authorize_followups` from their answer. "Stop chasing X" anytime → `cancel_followups`.
+   Follow-ups stop automatically the moment a vendor replies or declines.
 4. **Only published email addresses.** Contact-form-only vendors get a paste-ready draft instead.
 5. **Report honestly.** `dry_run`/`sent_to_test_inbox` = no vendor received anything — say so.
    Only `status: "sent"` means real delivery. Same honesty for nudges and replies.

@@ -137,15 +137,23 @@ export async function fetchReceivedEmail(
 }
 
 /** Tell the couple something happened, without them having to open the app. */
-export async function notifyCouple(subject: string, body: string): Promise<boolean> {
+export async function notifyCouple(
+  subject: string,
+  body: string,
+  idempotencyKey?: string,
+): Promise<boolean> {
   if (!RESEND_KEY || !NOTIFY_EMAIL) return false;
   try {
-    await resendPost("/emails", {
-      from: FROM,
-      to: [NOTIFY_EMAIL],
-      subject,
-      text: body,
-    });
+    await resendPost(
+      "/emails",
+      {
+        from: FROM,
+        to: [NOTIFY_EMAIL],
+        subject,
+        text: body,
+      },
+      idempotencyKey,
+    );
     return true;
   } catch {
     return false;

@@ -81,8 +81,13 @@ export default defineTool({
   inputSchema,
   approval: async ({ session, toolInput }) => {
     const auth = session.auth.current;
-    // Humans confirm every send — this is the tap on the phone.
-    if (!isAppPrincipal(auth ?? null)) return "user-approval";
+    // OWNER'S CHOICE (2026-07-16): human sessions send WITHOUT an approval
+    // card. Consent happens conversationally — instructions require the
+    // couple's go-ahead in chat before this tool is called — and the hard
+    // caps below (active-duplicate block, per-vendor lifetime cap, daily
+    // cap) bound the blast radius. Flip back to "user-approval" to restore
+    // per-send taps.
+    if (!isAppPrincipal(auth ?? null)) return "not-applicable";
 
     // Unattended (schedule-started) sessions must never park for approval —
     // nobody is attached to answer. Decide from the roster, conservatively.
@@ -123,6 +128,21 @@ export default defineTool({
         return {
           status: "blocked",
           note: `${vendor_name} has already responded (${existing.status}). Not sending — check the thread with check_outreach_status instead.`,
+          outreach_id: existing.id,
+        };
+      }
+      // Block duplicate ACTIVE campaigns: one live outreach per vendor.
+      // (Found in the wild: the same venue got two initial inquiries with two
+      // independent nudge schedules on day one of live mode.)
+      if (
+        existing &&
+        (existing.status === "sent" ||
+          existing.status === "nudged_1" ||
+          existing.status === "nudged_2")
+      ) {
+        return {
+          status: "blocked",
+          note: `${vendor_name} already has an active outreach (${existing.id}, status ${existing.status}) — automatic follow-ups will chase them. Not sending a duplicate.`,
           outreach_id: existing.id,
         };
       }
