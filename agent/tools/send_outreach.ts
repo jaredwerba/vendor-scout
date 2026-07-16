@@ -152,9 +152,14 @@ export default defineTool({
         reply_address: null,
       });
     }
-    // Replies must come back to the AGENT (plus-addressed per outreach),
-    // never to the couple's inbox — otherwise the loop is deaf.
-    const replyTo = record ? replyAddressFor(record.id) : null;
+    // Replies go to the AGENT's receiving address (plus-addressed per
+    // outreach) when inbound email is configured. Until it is, fall back to
+    // the couple's own inbox — a live send must NEVER go out with no usable
+    // reply-to (vendor replies would bounce off the send-only from-address).
+    const replyTo =
+      (record ? replyAddressFor(record.id) : null) ??
+      process.env.COUPLE_NOTIFY_EMAIL ??
+      null;
     if (record) record.reply_address = replyTo;
 
     // --- send (mode-aware) ---

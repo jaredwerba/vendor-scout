@@ -52,7 +52,11 @@ export default defineSchedule({
               vendorName: rec.vendor_name,
               subject: `Re: ${rec.subject}`,
               body: renderNudge(rec),
-              replyTo: rec.reply_address ?? replyAddressFor(rec.id),
+              replyTo:
+                rec.reply_address ??
+                replyAddressFor(rec.id) ??
+                process.env.COUPLE_NOTIFY_EMAIL ??
+                null,
               idempotencyKey: `nudge:${rec.id}:${rec.nudge_count + 1}`,
             });
             if (outcome.status === "sent" || outcome.status === "sent_to_test_inbox") {
