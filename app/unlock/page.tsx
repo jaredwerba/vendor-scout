@@ -32,8 +32,8 @@ export default function UnlockPage() {
   return (
     <main className="flex h-dvh flex-col items-center justify-center gap-8 bg-background px-6 text-foreground">
       <div className="flex flex-col items-center gap-3 text-center">
-        <h1 className="font-script text-7xl leading-none text-primary">Venus</h1>
-        <h2 className="font-display text-xl">Venus is by invitation</h2>
+        <h1 className="venus-script text-7xl leading-none text-primary">Venus</h1>
+        <h2 className="venus-serif text-xl">Venus is by invitation</h2>
         <p className="max-w-xs text-muted-foreground text-sm leading-relaxed">
           Enter your access code and we'll begin where every great wedding begins — with a
           conversation.

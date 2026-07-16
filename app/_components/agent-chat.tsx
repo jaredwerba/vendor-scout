@@ -115,8 +115,8 @@ function VenusLanding({ onBegin }: { readonly onBegin: (budget: number) => void 
     <div className="venus-rise flex w-full max-w-xl flex-col items-center gap-7 text-center">
       <div className="flex flex-col items-center gap-3">
         <p className="text-[11px] uppercase tracking-[0.28em] text-muted-foreground">{COPY.eyebrow}</p>
-        <h1 className="font-script text-7xl leading-none text-primary sm:text-8xl">Venus</h1>
-        <h2 className="max-w-md font-display text-2xl leading-snug sm:text-[1.7rem]">{COPY.headline}</h2>
+        <h1 className="venus-script text-7xl leading-none text-primary sm:text-8xl">Venus</h1>
+        <h2 className="max-w-md venus-serif text-2xl leading-snug sm:text-[1.7rem]">{COPY.headline}</h2>
         <p className="max-w-md text-muted-foreground text-sm leading-relaxed">{COPY.subhead}</p>
       </div>
 
@@ -125,12 +125,12 @@ function VenusLanding({ onBegin }: { readonly onBegin: (budget: number) => void 
           <span className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
             {COPY.sliderLabel}
           </span>
-          <span className="rounded-full bg-accent px-3 py-1 font-display text-accent-foreground text-xs tracking-wide">
+          <span className="rounded-full bg-accent px-3 py-1 venus-serif text-accent-foreground text-xs tracking-wide">
             {tier.name}
           </span>
         </div>
-        <p className="mt-3 font-display text-4xl tabular-nums tracking-tight sm:text-5xl">{usd(budget)}</p>
-        <p className="mt-0.5 font-script text-gold text-xl">the estimated cost of love</p>
+        <p className="mt-3 venus-serif text-4xl tabular-nums tracking-tight sm:text-5xl">{usd(budget)}</p>
+        <p className="mt-0.5 venus-script text-gold text-xl">the estimated cost of love</p>
         <input
           aria-label="Wedding budget"
           className="mt-5 h-2 w-full cursor-pointer appearance-none rounded-full outline-none"
@@ -156,7 +156,7 @@ function VenusLanding({ onBegin }: { readonly onBegin: (budget: number) => void 
       </div>
 
       <div className="max-w-md space-y-3">
-        <p className="font-display text-[15px] italic leading-relaxed text-foreground/80">
+        <p className="venus-serif text-[15px] italic leading-relaxed text-foreground/80">
           “{COPY.question}”
         </p>
         <p className="text-[11px] text-muted-foreground">{COPY.trustLine}</p>
@@ -218,7 +218,7 @@ export function AgentChat() {
       {isEmpty ? null : (
         <header className="flex h-14 shrink-0 items-center justify-center gap-3 pl-4 pr-2">
           <span className="flex min-w-0 items-center gap-2.5">
-            <span className="font-script text-3xl text-primary leading-none">Venus</span>
+            <span className="venus-script text-3xl text-primary leading-none">Venus</span>
             <StatusDot status={agent.status} />
             {isBusy ? (
               <span className="truncate text-muted-foreground text-xs italic">{COPY.working}</span>

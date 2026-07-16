@@ -154,6 +154,15 @@ tr:last-child td {
   border-bottom: none;
 }
 
+/* Explicit type classes — immune to utility-generation subtleties. */
+.venus-script {
+  font-family: var(--font-cursive), "Snell Roundhand", cursive !important;
+  font-weight: 400;
+}
+.venus-serif {
+  font-family: var(--font-serif), Georgia, serif !important;
+}
+
 /* Watercolor-paper wash for cards — pure CSS, no image requests. */
 .venus-texture {
   background-image:
