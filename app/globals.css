@@ -242,15 +242,37 @@ tr:last-child td {
   margin: 0.35rem 0;
   box-shadow: 0 10px 30px -18px rgba(60, 47, 47, 0.5);
 }
+/* Two or more images in one paragraph become a swipeable carousel:
+   native scroll-snap physics, next-photo peek to invite the swipe. */
 [data-venus-chat] p:has(img + img) {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  display: flex;
   gap: 0.5rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  border-radius: 16px;
+  cursor: grab;
+}
+[data-venus-chat] p:has(img + img)::-webkit-scrollbar {
+  display: none;
 }
 [data-venus-chat] p:has(img + img) img {
-  height: 130px;
-  max-height: 130px;
+  flex: 0 0 85%;
+  width: 85%;
+  height: 230px;
+  max-height: 230px;
   margin: 0;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+}
+@media (min-width: 640px) {
+  [data-venus-chat] p:has(img + img) img {
+    flex-basis: 55%;
+    width: 55%;
+    height: 260px;
+    max-height: 260px;
+  }
 }
 
 /* The budget slider: visible rose-ringed thumb on every engine, 22px touch target. */

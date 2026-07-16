@@ -447,16 +447,23 @@ function InputRequestActions({
   );
 
   return (
-    <div className="space-y-3 rounded-md border border-yellow-500/30 bg-yellow-500/5 p-3">
-      <p className="text-muted-foreground text-sm">{inputRequest.prompt}</p>
+    <div className="space-y-3">
+      <p className="font-medium text-sm leading-relaxed">{inputRequest.prompt}</p>
       {inputResponse ? (
-        <p className="font-medium text-sm">
-          Responded: {selectedOption?.label ?? inputResponse.text ?? inputResponse.optionId}
+        <p className="text-muted-foreground text-sm">
+          You chose:{" "}
+          <span className="font-medium text-foreground">
+            {selectedOption?.label ?? inputResponse.text ?? inputResponse.optionId}
+          </span>
         </p>
       ) : (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
           {inputRequest.options?.map((option) => (
             <Button
+              className={cn(
+                "venus-bloom h-11 justify-center rounded-full px-5 font-medium text-sm sm:h-10",
+                option.style === "danger" ? "" : "bg-primary text-primary-foreground",
+              )}
               disabled={!canRespond}
               key={option.id}
               onClick={() => {
@@ -474,6 +481,11 @@ function InputRequestActions({
               {option.label}
             </Button>
           ))}
+          {inputRequest.allowFreeform ? (
+            <p className="self-center text-muted-foreground text-xs sm:ml-1">
+              …or just type your answer below
+            </p>
+          ) : null}
         </div>
       )}
     </div>
