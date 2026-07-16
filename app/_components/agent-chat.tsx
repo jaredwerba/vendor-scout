@@ -31,7 +31,19 @@ const COPY = {
   nameLabel: "Your first name",
   namePlaceholder: "So I know who I'm planning for…",
   question:
-    "Close your eyes for a moment. It's the evening of your wedding — where are you standing, who is around you, and what does it feel like? Tell me everything you can see: the place, the season, how many people, what you're spending, what matters most. I'll take it from there.",
+    "Close your eyes for a moment. It's the evening of your wedding — where are you standing, who is around you, and what does it feel like? Tell me everything you can see. I'll take it from there.",
+  checklistIntro: "For your perfect plan, tell me:",
+  checklist: [
+    "Season or date (+ how flexible)",
+    "Location & how far you'll travel",
+    "Guest count",
+    "Style / vibe in a few words",
+    "Live music or DJ?",
+    "Photographer style · videographer?",
+    "Food & bar style",
+    "Must-haves & dealbreakers",
+    "Anything already booked",
+  ],
   working: "Venus is composing your wedding…",
 } as const;
 
@@ -190,10 +202,25 @@ function VenusLanding({
         )}
       </div>
 
-      <div className="max-w-md space-y-3">
+      <div className="max-w-md space-y-4">
         <p className="venus-serif text-[15px] italic leading-relaxed text-foreground/80">
           “{COPY.question}”
         </p>
+        <div className="text-left">
+          <p className="mb-2 text-center text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+            {COPY.checklistIntro}
+          </p>
+          <div className="flex flex-wrap justify-center gap-1.5">
+            {COPY.checklist.map((item) => (
+              <span
+                className="rounded-full border border-border bg-card/70 px-3 py-1 text-[11px] text-foreground/75"
+                key={item}
+              >
+                {item}
+              </span>
+            ))}
+          </div>
+        </div>
         <p className="text-[11px] text-muted-foreground">{COPY.trustLine}</p>
       </div>
     </div>
@@ -272,6 +299,25 @@ export function AgentChat() {
           </span>
         </header>
       )}
+
+      {!isEmpty && isBusy ? (
+        <div className="mx-auto w-full max-w-3xl shrink-0 px-4 pt-2 sm:px-6">
+          <div className="venus-rise flex items-center gap-3 rounded-2xl border border-accent bg-accent/25 px-4 py-2.5">
+            <span className="relative flex size-2 shrink-0">
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-rose opacity-60" />
+              <span className="relative inline-flex size-2 rounded-full bg-rose" />
+            </span>
+            <p className="text-xs leading-relaxed">
+              <span className="font-medium">I'm working on this in the background</span>
+              <span className="text-muted-foreground">
+                {" "}
+                — deep research can take 5–10 minutes. Keep this tab open so we don't lose our
+                thread. (Early preview: I'm tuned for care over speed.)
+              </span>
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       {agent.error ? (
         <div className="mx-auto w-full max-w-3xl shrink-0 px-4 pt-2 sm:px-6">

@@ -16,13 +16,6 @@ import {
 } from "lucide-react";
 import { Message, MessageContent, MessageResponse } from "@/components/ai-elements/message";
 import { Reasoning, ReasoningContent, ReasoningTrigger } from "@/components/ai-elements/reasoning";
-import {
-  Tool,
-  ToolContent,
-  ToolHeader,
-  ToolInput,
-  ToolOutput,
-} from "@/components/ai-elements/tool";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -101,37 +94,121 @@ function AgentMessagePart({
       return <AttachmentPart part={part} />;
     case "authorization":
       return <AuthorizationPrompt part={part} />;
-    case "dynamic-tool":
-      return (
-        <div className="venus-rise">
-          <Tool
-            defaultOpen={
-              part.state === "approval-requested" ||
-              part.state === "approval-responded" ||
-              // Question/gate prompts (e.g. "Yes, go execute for me") must never
-              // hide their buttons inside a collapsed card.
-              part.toolMetadata?.eve?.inputRequest !== undefined
-            }
-          >
-            <ToolHeader
-              state={part.state}
-              title={venusActivityLabel(part)}
-              toolName={part.toolName}
-              type="dynamic-tool"
+    case "dynamic-tool": {
+      const input = (part.input ?? {}) as Record<string, unknown>;
+      const hasInputRequest = part.toolMetadata?.eve?.inputRequest !== undefined;
+      const isSend = part.toolName === "send_outreach";
+      const isDelegation = typeof input.message === "string" && !isSend && !hasInputRequest;
+
+      // Questions & gates: prompt + tappable options, always visible, no JSON.
+      if (hasInputRequest) {
+        return (
+          <div className="venus-rise rounded-2xl border border-accent bg-accent/30 p-4">
+            <InputRequestActions
+              canRespond={canRespond}
+              part={part}
+              onInputResponses={onInputResponses}
             />
-            <ToolContent>
-              <ToolInput input={part.input} />
-              <InputRequestActions
-                canRespond={canRespond}
-                part={part}
-                onInputResponses={onInputResponses}
-              />
-              <ToolOutput errorText={part.errorText} output={part.output} />
-            </ToolContent>
-          </Tool>
-        </div>
-      );
+          </div>
+        );
+      }
+      // Research specialists: a clean progress row — never an expandable field.
+      if (isDelegation) {
+        return <AgentProgressRow message={String(input.message)} part={part} />;
+      }
+      // Vendor emails: compact card with the actual email readable on tap.
+      if (isSend) {
+        return <OutreachCard part={part} />;
+      }
+      // Everything else (searches, reads, plan upkeep): a quiet one-line chip.
+      return <ActivityChip part={part} />;
+    }
   }
+}
+
+/** A specialist at work: label + living progress bar. No JSON, no expansion. */
+function AgentProgressRow({
+  message,
+  part,
+}: {
+  readonly message: string;
+  readonly part: EveDynamicToolPart;
+}) {
+  const done = part.state === "output-available";
+  const failed = part.state === "output-error" || part.state === "output-denied";
+  const { name, phase } = delegationInfo(message);
+  return (
+    <div className="venus-rise flex items-center gap-3 rounded-2xl border bg-card/60 px-4 py-3">
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-medium text-sm">
+          {name}
+          <span className="ml-2 font-normal text-muted-foreground text-xs">
+            {failed ? "hit a snag — regrouping" : done ? "done ✓" : phase + "…"}
+          </span>
+        </p>
+        <div className="venus-progress mt-2" data-state={failed ? "failed" : done ? "done" : "running"}>
+          <div className="venus-progress-fill" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** A sent (or sending) vendor email — the email itself readable on tap, as text. */
+function OutreachCard({ part }: { readonly part: EveDynamicToolPart }) {
+  const input = (part.input ?? {}) as Record<string, unknown>;
+  const done = part.state === "output-available";
+  const failed = part.state === "output-error" || part.state === "output-denied";
+  const vendor = typeof input.vendor_name === "string" ? input.vendor_name : "a vendor";
+  const subject = typeof input.subject === "string" ? input.subject : undefined;
+  const body = typeof input.body === "string" ? input.body : undefined;
+  return (
+    <div
+      className={cn(
+        "venus-rise rounded-2xl border px-4 py-3",
+        failed ? "border-destructive/40 bg-destructive/5" : "bg-card/60",
+      )}
+    >
+      <p className="font-medium text-sm">
+        {failed
+          ? `Couldn't reach ${vendor} just now — I'll regroup`
+          : done
+            ? `Email sent to ${vendor} ✓`
+            : `Writing to ${vendor}…`}
+        {done ? (
+          <span className="ml-2 font-normal text-muted-foreground text-xs">tracking replies</span>
+        ) : null}
+      </p>
+      {body ? (
+        <details className="mt-2">
+          <summary className="cursor-pointer text-muted-foreground text-xs hover:text-foreground">
+            read the email
+          </summary>
+          <div className="mt-2 rounded-xl bg-muted/60 p-3 text-sm leading-relaxed">
+            {subject ? <p className="mb-2 font-medium">{subject}</p> : null}
+            <p className="whitespace-pre-wrap">{body}</p>
+          </div>
+        </details>
+      ) : null}
+    </div>
+  );
+}
+
+/** Quiet one-liner for searches, page reads, and plan upkeep. */
+function ActivityChip({ part }: { readonly part: EveDynamicToolPart }) {
+  const done = part.state === "output-available";
+  const failed = part.state === "output-error" || part.state === "output-denied";
+  return (
+    <p className="venus-rise flex items-center gap-2 text-muted-foreground text-xs">
+      <span
+        className={cn(
+          "inline-block size-1.5 shrink-0 rounded-full",
+          failed ? "bg-destructive" : done ? "bg-sage" : "animate-pulse bg-rose",
+        )}
+      />
+      {venusActivityLabel(part)}
+    </p>
+  );
 }
 
 /** The Venus activity feed: tool calls narrated like a planner texting you. */
@@ -146,13 +223,11 @@ const CATEGORY_HINTS: readonly (readonly [RegExp, string, string])[] = [
   [/transport|rental|stationery|cake|favor/i, "Details agent", "handling the finishing touches"],
 ];
 
-function delegationLabel(message: string, done: boolean): string {
+function delegationInfo(message: string): { name: string; phase: string } {
   for (const [re, name, doing] of CATEGORY_HINTS) {
-    if (re.test(message)) {
-      return done ? `${name} — done, matches found ✓` : `${name} — ${doing}…`;
-    }
+    if (re.test(message)) return { name, phase: doing };
   }
-  return done ? "Research agent — done ✓" : "Research agent — digging in for you…";
+  return { name: "Research agent", phase: "digging in for you" };
 }
 
 function venusActivityLabel(part: EveDynamicToolPart): string {
@@ -161,19 +236,8 @@ function venusActivityLabel(part: EveDynamicToolPart): string {
   const failed = part.state === "output-error" || part.state === "output-denied";
   const str = (v: unknown) => (typeof v === "string" ? v : undefined);
 
-  // Any delegation to a research child carries a `message` briefing — label it
-  // by category regardless of what the tool happens to be named.
-  const briefing = str(input.message);
-  if (briefing && part.toolName !== "send_outreach") {
-    if (failed) return "One of my helpers hit a snag — regrouping…";
-    return delegationLabel(briefing, done);
-  }
-
   if (failed) {
-    const vendor = str(input.vendor_name);
-    return part.toolName === "send_outreach"
-      ? `Couldn't reach ${vendor ?? "a vendor"} just now — I'll regroup`
-      : "That one didn't go through — adjusting…";
+    return "That one didn't go through — adjusting…";
   }
 
   switch (part.toolName) {

@@ -280,6 +280,62 @@ input[type="range"].venus-slider:focus-visible {
   border-radius: 9999px;
 }
 
+/* Per-agent progress bars: alive while running, full when done. */
+.venus-progress {
+  height: 5px;
+  border-radius: 9999px;
+  background: var(--muted);
+  overflow: hidden;
+  position: relative;
+}
+.venus-progress-fill {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, var(--rose), var(--gold), var(--rose));
+  background-size: 200% 100%;
+}
+.venus-progress[data-state="running"] .venus-progress-fill {
+  width: 40%;
+  animation:
+    venus-progress-slide 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite,
+    venus-progress-hue 4s linear infinite;
+}
+.venus-progress[data-state="done"] .venus-progress-fill {
+  width: 100%;
+  background: var(--sage);
+  animation: none;
+}
+.venus-progress[data-state="failed"] .venus-progress-fill {
+  width: 100%;
+  background: var(--destructive);
+  opacity: 0.45;
+  animation: none;
+}
+@keyframes venus-progress-slide {
+  0% {
+    transform: translateX(-110%);
+  }
+  100% {
+    transform: translateX(280%);
+  }
+}
+@keyframes venus-progress-hue {
+  0% {
+    background-position: 0% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .venus-progress[data-state="running"] .venus-progress-fill {
+    animation: none;
+    width: 60%;
+    opacity: 0.7;
+  }
+}
+
 /* Soft rise for activity feed lines and cards. */
 @keyframes venus-rise {
   from {
