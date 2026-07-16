@@ -49,12 +49,41 @@ export default async function CuratedDetailPage({
           </div>
         </header>
 
+        {w.image_urls && w.image_urls.length > 0 ? (
+          <div
+            className="mb-6 flex gap-2 overflow-x-auto rounded-2xl"
+            style={{ scrollSnapType: "x mandatory", scrollbarWidth: "none" }}
+          >
+            {w.image_urls.map((url) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                alt={w.title}
+                className="h-52 w-[85%] flex-none rounded-2xl object-cover sm:h-64 sm:w-[55%]"
+                key={url}
+                src={url}
+                style={{ scrollSnapAlign: "center", scrollSnapStop: "always" }}
+              />
+            ))}
+          </div>
+        ) : null}
+
         <article
           className="venus-texture rounded-3xl border bg-card p-5 sm:p-8"
           data-venus-chat=""
         >
           <PlanMarkdown markdown={w.plan_markdown} />
         </article>
+
+        {w.research_markdown ? (
+          <details className="mt-6 rounded-3xl border bg-card/70 p-5 sm:p-6">
+            <summary className="venus-serif cursor-pointer text-base hover:text-primary">
+              Venus's full research notes — every vendor considered
+            </summary>
+            <div className="mt-4" data-venus-chat="">
+              <PlanMarkdown markdown={w.research_markdown} />
+            </div>
+          </details>
+        ) : null}
 
         <footer className="mt-8 flex flex-col items-center gap-3 text-center">
           <p className="venus-serif text-sm italic text-muted-foreground">

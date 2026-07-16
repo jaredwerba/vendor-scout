@@ -82,6 +82,12 @@ export default async function CuratedPage() {
                       {w.style}
                     </span>
                   </div>
+                  {w.tier_totals ? (
+                    <p className="pt-1 text-[11px] text-muted-foreground tabular-nums">
+                      Ultra-Luxe {usd(w.tier_totals.ultra_luxe)} · Elevated{" "}
+                      {usd(w.tier_totals.elevated)} · Intimate {usd(w.tier_totals.intimate)}
+                    </p>
+                  ) : null}
                 </div>
               </Link>
             ))}

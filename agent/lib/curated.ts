@@ -24,6 +24,12 @@ export interface CuratedWedding {
   brief_summary: string;
   plan_markdown: string;
   hero_image_url: string | null;
+  /** Every venue photo used in the plan (newer records; legacy may lack them). */
+  image_urls?: string[];
+  /** Estimated totals per tier, for gallery display. */
+  tier_totals?: { ultra_luxe: number; elevated: number; intimate: number } | null;
+  /** The specialists' complete findings — every vendor considered, per category. */
+  research_markdown?: string | null;
 }
 
 async function redis(...command: (string | number)[]): Promise<unknown> {

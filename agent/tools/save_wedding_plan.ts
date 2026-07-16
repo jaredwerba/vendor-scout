@@ -33,12 +33,34 @@ export default defineTool({
     plan_markdown: z
       .string()
       .min(200)
-      .describe("The COMPLETE three-option presentation markdown, verbatim as shown to the couple."),
+      .describe(
+        "The COMPLETE three-option presentation, BYTE-FOR-BYTE as shown to the couple — every " +
+          "image line, every financial breakdown table, every word. Never summarize or omit.",
+      ),
     hero_image_url: z
       .string()
       .url()
       .optional()
       .describe("The single best venue image URL from the plan (https)."),
+    image_urls: z
+      .array(z.string().url())
+      .min(1)
+      .describe("EVERY venue photo URL used across all three options."),
+    tier_totals: z
+      .object({
+        ultra_luxe: z.number().int(),
+        elevated: z.number().int(),
+        intimate: z.number().int(),
+      })
+      .describe("The estimated total for each of the three options, in USD."),
+    research_markdown: z
+      .string()
+      .min(100)
+      .describe(
+        "Your specialists' COMPLETE findings as markdown: for each category, every vendor " +
+          "considered (not just the winners) with price signal, what's included, style fit, " +
+          "standout/caveat, and source link. This is the full research record.",
+      ),
   }),
   async execute(input) {
     if (!curatedConfigured()) {
