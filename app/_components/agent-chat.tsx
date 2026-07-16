@@ -17,7 +17,6 @@ import {
 } from "@/components/ai-elements/prompt-input";
 import { cn } from "@/lib/utils";
 import { AgentMessage } from "./agent-message";
-import { MicButton, SpeakerToggle, useSpokenReplies } from "./voice";
 
 const COPY = {
   eyebrow: "Your private wedding planner",
@@ -235,22 +234,6 @@ export function AgentChat() {
   const isBusy = agent.status === "submitted" || agent.status === "streaming";
   const isEmpty = agent.data.messages.length === 0;
 
-  // Venus out loud: read the latest completed reply when voice is on.
-  const lastAssistantText = useMemo(() => {
-    for (let i = agent.data.messages.length - 1; i >= 0; i--) {
-      const m = agent.data.messages[i];
-      if (m.role === "assistant") {
-        const text = m.parts
-          .filter((p): p is Extract<typeof p, { type: "text" }> => p.type === "text")
-          .map((p) => p.text)
-          .join("\n");
-        return text || null;
-      }
-    }
-    return null;
-  }, [agent.data.messages]);
-  const speech = useSpokenReplies(lastAssistantText, isBusy);
-
   // No broken image boxes, ever: any venue photo that fails to load vanishes.
   useEffect(() => {
     const hideBroken = (e: Event) => {
@@ -296,14 +279,12 @@ export function AgentChat() {
   };
 
   const composer = (
-    <div className="flex items-end gap-2">
-      <MicButton disabled={isBusy} targetSelector="[data-venus-composer] textarea" />
-      <div className="min-w-0 flex-1" data-venus-composer="">
-        <PromptInput onSubmit={handleSubmit}>
-          <PromptInputTextarea placeholder="Tell Venus… or tap the mic and just talk" />
-          <PromptInputSubmit onStop={agent.stop} status={agent.status} />
-        </PromptInput>
-      </div>
+    // The border glows softly while Venus computes — the quiet "I'm working" signal.
+    <div className={cn("rounded-3xl", isBusy && "venus-glow")} data-venus-composer="">
+      <PromptInput onSubmit={handleSubmit}>
+        <PromptInputTextarea placeholder="Tell Venus…" />
+        <PromptInputSubmit onStop={agent.stop} status={agent.status} />
+      </PromptInput>
     </div>
   );
 
@@ -317,9 +298,6 @@ export function AgentChat() {
             <StatusDot status={agent.status} />
             {isBusy ? (
               <span className="truncate text-muted-foreground text-xs italic">{COPY.working}</span>
-            ) : null}
-            {speech.supported ? (
-              <SpeakerToggle on={speech.voiceOn} onToggle={speech.toggle} />
             ) : null}
           </span>
         </header>

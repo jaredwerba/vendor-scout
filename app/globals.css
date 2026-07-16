@@ -109,6 +109,17 @@ button,
 input,
 textarea {
   font: inherit;
+  /* Mobile-first hygiene: instant taps, no gray tap flash. */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* iOS zooms the page when a focused field is under 16px — never let the
+   composer (or any input) trigger that jump. */
+[data-venus-composer] textarea,
+input[type="text"],
+input[type="password"] {
+  font-size: 16px;
 }
 
 /* Display serif for every heading, including markdown Venus writes. */
@@ -371,6 +382,38 @@ input[type="range"].venus-slider:focus-visible {
     animation: none;
     width: 60%;
     opacity: 0.7;
+  }
+}
+
+/* The compute heartbeat: while Venus works, the composer border breathes
+   through her palette — rose, gold, sage — slow and calm. */
+@keyframes venus-glow-cycle {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1.5px color-mix(in oklab, var(--rose) 55%, transparent),
+      0 0 22px 2px color-mix(in oklab, var(--rose) 28%, transparent);
+  }
+  33% {
+    box-shadow:
+      0 0 0 1.5px color-mix(in oklab, var(--gold) 55%, transparent),
+      0 0 22px 2px color-mix(in oklab, var(--gold) 26%, transparent);
+  }
+  66% {
+    box-shadow:
+      0 0 0 1.5px color-mix(in oklab, var(--sage) 60%, transparent),
+      0 0 22px 2px color-mix(in oklab, var(--sage) 30%, transparent);
+  }
+}
+.venus-glow {
+  animation: venus-glow-cycle 3.8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .venus-glow {
+    animation: none;
+    box-shadow:
+      0 0 0 1.5px color-mix(in oklab, var(--rose) 50%, transparent),
+      0 0 18px 2px color-mix(in oklab, var(--rose) 25%, transparent);
   }
 }
 
