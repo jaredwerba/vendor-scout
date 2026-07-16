@@ -42,19 +42,20 @@
   --card-foreground: #3c2f2f;
   --popover: #ffffff;
   --popover-foreground: #3c2f2f;
-  --primary: #c97b84;
+  /* Rose stays the decorative hue; primary is darkened for AA text contrast. */
+  --primary: #a85f6b;
   --primary-foreground: #fff9f7;
   --secondary: #eef2ec;
   --secondary-foreground: #4c5f4a;
   --muted: #f7edea;
-  --muted-foreground: #8a7370;
+  --muted-foreground: #7d6663;
   --accent: #f3e0de;
   --accent-foreground: #9c4a56;
   --destructive: #b3423e;
   --border: #efe2dc;
   --input: #eadcd5;
-  --ring: #c97b84;
-  --gold: #d4af37;
+  --ring: #a85f6b;
+  --gold: #8f6c14;
   --sage: #8ba888;
   --rose: #c97b84;
   --radius: 1rem;
@@ -119,15 +120,16 @@ h3 {
   letter-spacing: -0.01em;
 }
 
-/* Venus speaks in script when she quotes something from the heart. */
+/* Quotes read as elegant serif italic — email drafts inside blockquotes must
+   stay perfectly legible (the consent gate depends on couples reading them). */
 blockquote {
-  font-family: var(--font-script);
-  font-size: 1.45em;
-  line-height: 1.5;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.08em;
+  line-height: 1.6;
   color: var(--accent-foreground);
   border-left: 2px solid var(--gold);
   padding-left: 0.9em;
-  font-style: normal;
 }
 
 /* Luxury-invoice tables for plans, breakdowns, and the value summary. */
@@ -223,6 +225,33 @@ tr:last-child td {
   .venus-petal {
     display: none;
   }
+}
+
+/* The budget slider: visible rose-ringed thumb on every engine, 22px touch target. */
+input[type="range"].venus-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 9999px;
+  background: var(--card);
+  border: 2.5px solid var(--rose);
+  box-shadow: 0 2px 8px rgba(60, 47, 47, 0.25);
+  cursor: grab;
+}
+input[type="range"].venus-slider::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 9999px;
+  background: var(--card);
+  border: 2.5px solid var(--rose);
+  box-shadow: 0 2px 8px rgba(60, 47, 47, 0.25);
+  cursor: grab;
+}
+input[type="range"].venus-slider:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 4px;
+  border-radius: 9999px;
 }
 
 /* Soft rise for activity feed lines and cards. */

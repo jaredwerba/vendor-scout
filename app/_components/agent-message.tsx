@@ -105,7 +105,13 @@ function AgentMessagePart({
       return (
         <div className="venus-rise">
           <Tool
-            defaultOpen={part.state === "approval-requested" || part.state === "approval-responded"}
+            defaultOpen={
+              part.state === "approval-requested" ||
+              part.state === "approval-responded" ||
+              // Question/gate prompts (e.g. "Yes, go execute for me") must never
+              // hide their buttons inside a collapsed card.
+              part.toolMetadata?.eve?.inputRequest !== undefined
+            }
           >
             <ToolHeader
               state={part.state}
@@ -132,7 +138,15 @@ function AgentMessagePart({
 function venusActivityLabel(part: EveDynamicToolPart): string {
   const input = (part.input ?? {}) as Record<string, unknown>;
   const done = part.state === "output-available";
+  const failed = part.state === "output-error" || part.state === "output-denied";
   const str = (v: unknown) => (typeof v === "string" ? v : undefined);
+
+  if (failed) {
+    const vendor = str(input.vendor_name);
+    return part.toolName === "send_outreach"
+      ? `Venus couldn't reach ${vendor ?? "a vendor"} — she'll regroup`
+      : "That one didn't go through — Venus is adjusting";
+  }
 
   switch (part.toolName) {
     case "web_search": {

@@ -12,7 +12,7 @@
 export const OUTREACH_MODE = (process.env.OUTREACH_MODE ?? "dry_run").toLowerCase();
 const RESEND_KEY = process.env.RESEND_API_KEY;
 const TEST_INBOX = process.env.OUTREACH_TEST_INBOX;
-const FROM = process.env.OUTREACH_FROM ?? "Vendor Scout <onboarding@resend.dev>";
+const FROM = process.env.OUTREACH_FROM ?? "Venus <onboarding@resend.dev>";
 // The agent's own receiving address (plus-addressing appends the outreach id).
 const REPLY_ADDRESS = process.env.OUTREACH_REPLY_ADDRESS;
 const NOTIFY_EMAIL = process.env.COUPLE_NOTIFY_EMAIL;

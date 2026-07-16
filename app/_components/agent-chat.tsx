@@ -27,7 +27,7 @@ const COPY = {
   sliderHint: "Slide to where you're comfortable — I'll make every dollar behave beautifully.",
   cta: "Begin with Venus",
   trustLine:
-    "Real vendors, real emails, sent only with your approval. You stay in control of every word.",
+    "Real vendors, real emails — sent only after you've read every draft and given the go-ahead, with gentle follow-ups only if you allow them.",
   question:
     "Close your eyes for a moment. It's the evening of your wedding — where are you standing, who is around you, and what does it feel like? Tell me everything you can see: the place, the season, how many people, what you're spending, what matters most. I'll take it from there.",
   working: "Venus is composing your wedding…",
@@ -133,19 +133,26 @@ function VenusLanding({ onBegin }: { readonly onBegin: (budget: number) => void 
         <p className="mt-0.5 venus-script text-gold text-xl">the estimated cost of love</p>
         <input
           aria-label="Wedding budget"
-          className="mt-5 h-2 w-full cursor-pointer appearance-none rounded-full outline-none"
+          aria-valuetext={`${usd(budget)} — ${tier.name}`}
+          className="venus-slider mt-4 h-[22px] w-full cursor-pointer appearance-none bg-transparent outline-none"
           max={100000}
           min={5000}
           onChange={(e) => setBudget(Number(e.target.value))}
           step={1000}
           style={{
-            background: `linear-gradient(to right, var(--rose) 0%, var(--rose) ${pct}%, var(--muted) ${pct}%, var(--muted) 100%)`,
-            accentColor: "var(--rose)",
+            background: `linear-gradient(to right, var(--rose) 0%, var(--rose) ${pct}%, var(--muted) ${pct}%, var(--muted) 100%) no-repeat center / 100% 8px`,
+            borderRadius: "9999px",
           }}
           type="range"
           value={budget}
         />
-        <p className="mt-3 min-h-9 text-muted-foreground text-xs leading-relaxed">{tier.blurb}</p>
+        <div className="mt-1 flex justify-between text-[10px] text-muted-foreground tabular-nums">
+          <span>$5,000</span>
+          <span>$100,000</span>
+        </div>
+        <p aria-live="polite" className="mt-2 min-h-9 text-muted-foreground text-xs leading-relaxed">
+          {tier.blurb}
+        </p>
         <button
           className="venus-bloom mt-2 h-12 w-full rounded-2xl bg-primary font-medium text-primary-foreground text-sm"
           onClick={() => onBegin(budget)}
@@ -173,6 +180,7 @@ export function AgentChat() {
   const isEmpty = agent.data.messages.length === 0;
 
   const begin = (budget: number) => {
+    if (isBusy || !isEmpty) return; // no double-taps, no duplicate openings
     void agent.send({
       message: `Hi Venus — our budget is around ${usd(budget)}. Help us plan our wedding.`,
     });
@@ -262,12 +270,20 @@ export function AgentChat() {
         className={cn(
           "relative mx-auto w-full px-4 sm:px-6",
           isEmpty
-            ? "flex max-w-xl flex-1 flex-col items-center justify-center gap-6 overflow-y-auto py-8"
+            ? // justify-start + inner my-auto: centers when it fits, scrolls from the
+              // top when it doesn't (justify-center would clip the wordmark off-screen).
+              "flex max-w-xl flex-1 flex-col items-center justify-start gap-6 overflow-y-auto py-8"
             : "max-w-3xl shrink-0 pb-6",
         )}
       >
-        {isEmpty ? <VenusLanding onBegin={begin} /> : null}
-        <div className="w-full">{composer}</div>
+        {isEmpty ? (
+          <div className="my-auto flex w-full flex-col items-center gap-6">
+            <VenusLanding onBegin={begin} />
+            <div className="w-full">{composer}</div>
+          </div>
+        ) : (
+          <div className="w-full">{composer}</div>
+        )}
       </div>
     </main>
   );

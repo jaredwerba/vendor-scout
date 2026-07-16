@@ -63,7 +63,7 @@ export default defineChannel({
                 body.text.slice(0, 1500) || "(no text body)",
                 "",
                 `Follow-ups for this vendor are now stopped automatically.`,
-                `Open Vendor Scout and ask "what's the outreach status?" for the full picture.`,
+                `Open Venus and ask "how's outreach going?" for the full picture.`,
               ].join("\n"),
               // Idempotent per received email: a replayed webhook or re-run
               // step can't double-notify the couple.

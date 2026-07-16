@@ -32,7 +32,7 @@ function renderNudge(rec: OutreachRecord): string {
     "We know this is a busy season! If you're booked for our window, a quick no is completely fine and appreciated.",
     "",
     "Thanks so much,",
-    "Sent by Vendor Scout on behalf of the couple — just reply to this email and it reaches them.",
+    "Sent by Venus, wedding planning, on behalf of the couple — just reply to this email and it reaches them.",
   ].join("\n");
 }
 
