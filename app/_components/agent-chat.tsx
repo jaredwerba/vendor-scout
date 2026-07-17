@@ -290,6 +290,11 @@ export function AgentChat() {
     <div
       className={cn("venus-glass rounded-3xl", isBusy && "venus-siri")}
       data-venus-composer=""
+      // Inline because the CSS minifier strips backdrop-filter from stylesheets.
+      style={{
+        backdropFilter: "blur(18px) saturate(1.7)",
+        WebkitBackdropFilter: "blur(18px) saturate(1.7)",
+      }}
     >
       <PromptInput onSubmit={handleSubmit}>
         <PromptInputTextarea placeholder="Tell Venus…" />
