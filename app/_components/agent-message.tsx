@@ -441,10 +441,18 @@ function InputRequestActions({
   const selectedOption = inputRequest.options?.find(
     (option) => option.id === inputResponse?.optionId,
   );
+  // A degenerate question (junk/placeholder prompt, no tappable options) must
+  // never dead-end the couple — typed answers always resolve a parked question.
+  const options = inputRequest.options ?? [];
+  const promptLooksBroken =
+    !inputRequest.prompt || inputRequest.prompt.trim().length < 12;
+  const displayPrompt = promptLooksBroken
+    ? "I need your go-ahead here — tell me which way you'd like to go."
+    : inputRequest.prompt;
 
   return (
     <div className="space-y-3">
-      <p className="font-medium text-sm leading-relaxed">{inputRequest.prompt}</p>
+      <p className="font-medium text-sm leading-relaxed">{displayPrompt}</p>
       {inputResponse ? (
         <p className="text-muted-foreground text-sm">
           You chose:{" "}
@@ -454,7 +462,7 @@ function InputRequestActions({
         </p>
       ) : (
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-          {inputRequest.options?.map((option) => (
+          {options.map((option) => (
             <Button
               className={cn(
                 "venus-bloom h-11 justify-center rounded-full px-5 font-medium text-sm sm:h-10",
@@ -477,9 +485,9 @@ function InputRequestActions({
               {option.label}
             </Button>
           ))}
-          {inputRequest.allowFreeform ? (
+          {inputRequest.allowFreeform || options.length === 0 ? (
             <p className="self-center text-muted-foreground text-xs sm:ml-1">
-              …or just type your answer below
+              …{options.length === 0 ? "type your answer below and I'll pick it up" : "or just type your answer below"}
             </p>
           ) : null}
         </div>

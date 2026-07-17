@@ -42,9 +42,13 @@ export default defineTool({
       .url()
       .optional()
       .describe("The single best venue image URL from the plan (https)."),
+    // Everything below is wanted but must NEVER block an archive — a save
+    // that fails validation can wedge the whole flow, and archiving is
+    // strictly less important than the couple's wedding moving forward.
     image_urls: z
       .array(z.string().url())
-      .min(1)
+      .optional()
+      .default([])
       .describe("EVERY venue photo URL used across all three options."),
     tier_totals: z
       .object({
@@ -52,10 +56,11 @@ export default defineTool({
         elevated: z.number().int(),
         intimate: z.number().int(),
       })
+      .optional()
       .describe("The estimated total for each of the three options, in USD."),
     research_markdown: z
       .string()
-      .min(100)
+      .optional()
       .describe(
         "Your specialists' COMPLETE findings as markdown: for each category, every vendor " +
           "considered (not just the winners) with price signal, what's included, style fit, " +
@@ -68,7 +73,7 @@ export default defineTool({
     }
     const rec = await saveCuratedWedding({
       ...input,
-      hero_image_url: input.hero_image_url ?? null,
+      hero_image_url: input.hero_image_url ?? input.image_urls?.[0] ?? null,
     });
     return {
       status: "saved",
