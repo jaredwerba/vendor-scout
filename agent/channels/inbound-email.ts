@@ -1,4 +1,5 @@
 import { defineChannel, POST } from "eve/channels";
+import { classifyReply } from "../lib/classify";
 import { fetchReceivedEmail, notifyCouple } from "../lib/resend";
 import { findRecordForInbound, recordReply, rosterConfigured } from "../lib/roster";
 import { verifySvix } from "../lib/verify-svix";
@@ -49,20 +50,49 @@ export default defineChannel({
             : { text: "", subject: data.subject };
           const rec = await findRecordForInbound(data.to ?? [], data.from ?? "");
           if (!rec) return; // unrelated inbound mail — drop silently
-          const updated = await recordReply(rec.id, {
-            from: data.from ?? "unknown",
-            subject: data.subject ?? body.subject,
-            text: body.text || "(empty reply body)",
+          const text = body.text || "(empty reply body)";
+          // Understand the reply before filing it — never lose it over a
+          // classification failure (heuristic fallback inside).
+          const { intel, via } = await classifyReply({
+            vendorName: rec.vendor_name,
+            replyText: text,
+            originalSubject: rec.subject,
           });
+          const updated = await recordReply(
+            rec.id,
+            { from: data.from ?? "unknown", subject: data.subject ?? body.subject, text },
+            { ...intel, via },
+          );
           if (updated) {
+            const headline =
+              intel.intent === "available"
+                ? "available! 🎉"
+                : intel.intent === "priced"
+                  ? "sent pricing"
+                  : intel.intent === "needs_info"
+                    ? "has questions for you"
+                    : intel.intent === "unavailable"
+                      ? "isn't available"
+                      : intel.intent === "declined" || intel.intent === "unsubscribe"
+                        ? "passed"
+                        : "replied";
+            const facts = [
+              intel.availability ? `Availability: ${intel.availability}` : null,
+              intel.price_info ? `Pricing: ${intel.price_info}` : null,
+              intel.questions.length ? `They asked: ${intel.questions.join(" · ")}` : null,
+            ].filter(Boolean);
             await notifyCouple(
-              `${updated.vendor_name} replied${updated.status === "declined" ? " (looks like a decline)" : ""}`,
+              `${updated.vendor_name} ${headline}`,
               [
-                `${updated.vendor_name} <${updated.vendor_email}> answered your inquiry.`,
+                intel.summary,
                 "",
-                body.text.slice(0, 1500) || "(no text body)",
+                ...(facts.length ? [...facts, ""] : []),
+                "— Full reply —",
+                text.slice(0, 1500),
                 "",
-                `Follow-ups for this vendor are now stopped automatically.`,
+                updated.status === "declined"
+                  ? "I've closed this thread — no more follow-ups to them."
+                  : "Follow-ups for this vendor stopped automatically.",
                 `Open Venus and ask "how's outreach going?" for the full picture.`,
               ].join("\n"),
               // Idempotent per received email: a replayed webhook or re-run

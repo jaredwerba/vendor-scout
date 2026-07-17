@@ -36,6 +36,16 @@ export interface ThreadEntry {
   text: string;
 }
 
+export interface ReplyIntelRecord {
+  intent: string;
+  availability: string | null;
+  price_info: string | null;
+  questions: string[];
+  summary: string;
+  sentiment: string;
+  via: "model" | "heuristic";
+}
+
 export interface OutreachRecord {
   id: string;
   vendor_name: string;
@@ -50,6 +60,8 @@ export interface OutreachRecord {
   last_activity_at: string;
   next_followup_at: string | null;
   reply_address: string | null;
+  /** Understanding of the latest vendor reply (newer records). */
+  reply_intel?: ReplyIntelRecord | null;
 }
 
 export const MAX_NUDGES = 2;
@@ -160,6 +172,7 @@ export function looksLikeDecline(text: string): boolean {
 export async function recordReply(
   id: string,
   reply: { from: string; subject?: string; text: string },
+  intel?: ReplyIntelRecord | null,
 ): Promise<OutreachRecord | null> {
   const rec = await getRecord(id);
   if (!rec) return null;
@@ -169,7 +182,17 @@ export async function recordReply(
     subject: reply.subject,
     text: reply.text.slice(0, 4000),
   });
-  rec.status = looksLikeDecline(reply.text) ? "declined" : "replied";
+  // Intelligence decides the status; keywords only when no intel exists.
+  // "unavailable" (can't do the date) and hard declines both stop the chase.
+  const closedIntents = new Set(["declined", "unsubscribe", "unavailable"]);
+  rec.status = intel
+    ? closedIntents.has(intel.intent)
+      ? "declined"
+      : "replied"
+    : looksLikeDecline(reply.text)
+      ? "declined"
+      : "replied";
+  rec.reply_intel = intel ?? null;
   rec.next_followup_at = null; // vendor answered — never nudge again
   await putRecord(rec);
   return rec;

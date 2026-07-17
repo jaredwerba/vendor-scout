@@ -35,6 +35,8 @@ export default defineTool({
         followups_authorized: r.followups_authorized,
         nudges_sent: r.nudge_count,
         next_followup_at: r.next_followup_at,
+        // The understanding of their latest reply, when one exists.
+        reply_understanding: r.reply_intel ?? null,
         thread: r.thread.map((t) => ({
           who: t.who,
           when: t.when,
