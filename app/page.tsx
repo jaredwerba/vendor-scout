@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { AgentChat } from "@/app/_components/agent-chat";
+import { VenusApp } from "@/app/_components/venus-app";
 
 /**
  * Server-side gate: no access cookie -> the unlock page. This is UX only;
@@ -11,5 +11,5 @@ import { AgentChat } from "@/app/_components/agent-chat";
 export default async function Page() {
   const jar = await cookies();
   if (!jar.get("vs_code")?.value) redirect("/unlock");
-  return <AgentChat />;
+  return <VenusApp />;
 }

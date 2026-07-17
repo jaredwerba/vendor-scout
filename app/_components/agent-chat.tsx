@@ -2,8 +2,8 @@
 
 import type { UserContent } from "ai";
 import { useEveAgent } from "eve/react";
-import { AlertCircleIcon } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { AlertCircleIcon, RotateCcwIcon } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Conversation,
   ConversationContent,
@@ -17,6 +17,13 @@ import {
 } from "@/components/ai-elements/prompt-input";
 import { cn } from "@/lib/utils";
 import { AgentMessage } from "./agent-message";
+import { clearSavedSession, saveSession } from "./venus-app";
+
+export interface SavedVenusSession {
+  session: { sessionId?: string; continuationToken?: string; streamIndex: number };
+  events: readonly unknown[];
+  savedAt: string;
+}
 
 const COPY = {
   eyebrow: "Your private wedding planner",
@@ -235,10 +242,49 @@ function VenusLanding({
 
 type AgentStatus = ReturnType<typeof useEveAgent>["status"];
 
-export function AgentChat() {
-  const agent = useEveAgent();
+export function AgentChat({ saved }: { readonly saved?: SavedVenusSession | null }) {
+  const agent = useEveAgent(
+    saved
+      ? {
+          initialSession: saved.session,
+          initialEvents: saved.events as never,
+        }
+      : undefined,
+  );
   const isBusy = agent.status === "submitted" || agent.status === "streaming";
   const isEmpty = agent.data.messages.length === 0;
+
+  // Persist the resumable cursor + authoritative events so a refresh or a
+  // closed tab never loses the wedding. Saved when a turn settles and on
+  // the way out the door; the durable session server-side does the rest.
+  const persistRef = useRef({ session: agent.session, events: agent.events });
+  persistRef.current = { session: agent.session, events: agent.events };
+  useEffect(() => {
+    if (agent.status !== "ready" && agent.status !== "error") return;
+    const { session, events } = persistRef.current;
+    if (session?.sessionId && events.length > 0) {
+      saveSession({ session, events, savedAt: new Date().toISOString() });
+    }
+  }, [agent.status, agent.events.length]);
+  useEffect(() => {
+    const flush = () => {
+      const { session, events } = persistRef.current;
+      if (session?.sessionId && events.length > 0) {
+        saveSession({ session, events, savedAt: new Date().toISOString() });
+      }
+    };
+    window.addEventListener("beforeunload", flush);
+    window.addEventListener("pagehide", flush);
+    return () => {
+      window.removeEventListener("beforeunload", flush);
+      window.removeEventListener("pagehide", flush);
+    };
+  }, []);
+
+  const startFresh = () => {
+    clearSavedSession();
+    window.location.reload();
+  };
 
   // No broken image boxes, ever: any venue photo that fails to load vanishes.
   useEffect(() => {
@@ -307,7 +353,7 @@ export function AgentChat() {
     <main className="relative flex h-dvh flex-col overflow-hidden bg-background text-foreground">
       {isEmpty ? <Petals /> : null}
       {isEmpty ? null : (
-        <header className="flex h-14 shrink-0 items-center justify-center gap-3 pl-4 pr-2">
+        <header className="relative flex h-14 shrink-0 items-center justify-center gap-3 px-4">
           <span className="flex min-w-0 items-center gap-2.5">
             <span className="venus-script text-3xl text-primary leading-none">Venus</span>
             <StatusDot status={agent.status} />
@@ -315,6 +361,15 @@ export function AgentChat() {
               <span className="truncate text-muted-foreground text-xs italic">{COPY.working}</span>
             ) : null}
           </span>
+          <button
+            aria-label="Start a new wedding"
+            className="absolute right-3 flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            onClick={startFresh}
+            title="Start a new wedding"
+            type="button"
+          >
+            <RotateCcwIcon className="size-4" />
+          </button>
         </header>
       )}
 
