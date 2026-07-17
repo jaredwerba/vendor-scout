@@ -266,8 +266,10 @@ export function AgentChat({ saved }: { readonly saved?: SavedVenusSession | null
       saveSession({ session, events, savedAt: new Date().toISOString() });
     }
   }, [agent.status, agent.events.length]);
+  const suppressPersistRef = useRef(false);
   useEffect(() => {
     const flush = () => {
+      if (suppressPersistRef.current) return; // starting fresh — don't resurrect
       const { session, events } = persistRef.current;
       if (session?.sessionId && events.length > 0) {
         saveSession({ session, events, savedAt: new Date().toISOString() });
@@ -282,6 +284,7 @@ export function AgentChat({ saved }: { readonly saved?: SavedVenusSession | null
   }, []);
 
   const startFresh = () => {
+    suppressPersistRef.current = true; // the unload flush must not re-save
     clearSavedSession();
     window.location.reload();
   };
