@@ -34,12 +34,22 @@ export function clearSavedSession(): void {
   } catch {}
 }
 
+export interface CuratedPreview {
+  image: string | null;
+  title: string;
+  count: number;
+}
+
 /**
  * Mount gate for session resume: localStorage only exists client-side, and
  * useEveAgent binds its session at store creation — so we decide (fresh vs
  * restored) exactly once, after mount, then render the chat.
  */
-export function VenusApp() {
+export function VenusApp({
+  curatedPreview,
+}: {
+  readonly curatedPreview?: CuratedPreview | null;
+}) {
   const [state, setState] = useState<
     { ready: false } | { ready: true; saved: SavedVenusSession | null }
   >({ ready: false });
@@ -51,5 +61,11 @@ export function VenusApp() {
   if (!state.ready) {
     return <main className="h-dvh bg-background" />;
   }
-  return <AgentChat key={state.saved?.session.sessionId ?? "fresh"} saved={state.saved} />;
+  return (
+    <AgentChat
+      curatedPreview={curatedPreview}
+      key={state.saved?.session.sessionId ?? "fresh"}
+      saved={state.saved}
+    />
+  );
 }

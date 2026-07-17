@@ -17,7 +17,7 @@ import {
 } from "@/components/ai-elements/prompt-input";
 import { cn } from "@/lib/utils";
 import { AgentMessage } from "./agent-message";
-import { clearSavedSession, saveSession } from "./venus-app";
+import { clearSavedSession, type CuratedPreview, saveSession } from "./venus-app";
 
 export interface SavedVenusSession {
   session: { sessionId?: string; continuationToken?: string; streamIndex: number };
@@ -128,8 +128,10 @@ function usd(n: number): string {
 }
 
 function VenusLanding({
+  curatedPreview,
   onBegin,
 }: {
+  readonly curatedPreview?: CuratedPreview | null;
   readonly onBegin: (budget: number, firstName: string) => void;
 }) {
   const [budget, setBudget] = useState(28000);
@@ -229,20 +231,56 @@ function VenusLanding({
           </div>
         </div>
         <p className="text-[11px] text-muted-foreground">{COPY.trustLine}</p>
-        <a
-          className="inline-block text-[12px] text-primary underline-offset-4 hover:underline"
-          href="/curated"
-        >
-          See weddings curated by Venus →
-        </a>
       </div>
+
+      <a
+        className="venus-bloom relative block w-full overflow-hidden rounded-3xl border shadow-[0_14px_40px_-24px_rgba(160,90,100,0.45)]"
+        href="/curated"
+      >
+        {curatedPreview?.image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            alt="Curated by Venus"
+            className="h-40 w-full object-cover sm:h-44"
+            src={curatedPreview.image}
+          />
+        ) : (
+          <div className="venus-texture flex h-40 w-full items-center justify-center bg-card sm:h-44">
+            <span className="venus-script text-5xl text-primary/60">V</span>
+          </div>
+        )}
+        <div
+          className="absolute inset-0 flex flex-col justify-end p-4 text-left"
+          style={{
+            background: "linear-gradient(to top, rgba(40,24,26,0.82), rgba(40,24,26,0.12) 55%, transparent)",
+          }}
+        >
+          <p className="text-[10px] uppercase tracking-[0.25em] text-white/75">
+            Curated by Venus
+          </p>
+          <p className="venus-serif text-lg text-white leading-snug">
+            {curatedPreview ? curatedPreview.title : "Weddings I've composed"}
+          </p>
+          <p className="text-[11px] text-white/85">
+            {curatedPreview && curatedPreview.count > 1
+              ? `Browse ${curatedPreview.count} real weddings — venues, photos, and full budgets →`
+              : "Real venues, real photos, full budgets — see the gallery →"}
+          </p>
+        </div>
+      </a>
     </div>
   );
 }
 
 type AgentStatus = ReturnType<typeof useEveAgent>["status"];
 
-export function AgentChat({ saved }: { readonly saved?: SavedVenusSession | null }) {
+export function AgentChat({
+  curatedPreview,
+  saved,
+}: {
+  readonly curatedPreview?: CuratedPreview | null;
+  readonly saved?: SavedVenusSession | null;
+}) {
   const agent = useEveAgent(
     saved
       ? {
@@ -440,7 +478,7 @@ export function AgentChat({ saved }: { readonly saved?: SavedVenusSession | null
         {isEmpty ? (
           // Onboarding gate: no prompt bar until "Begin with Venus" is tapped.
           <div className="my-auto flex w-full flex-col items-center gap-6">
-            <VenusLanding onBegin={begin} />
+            <VenusLanding curatedPreview={curatedPreview} onBegin={begin} />
           </div>
         ) : (
           <div className="w-full">{composer}</div>
