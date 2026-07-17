@@ -385,35 +385,81 @@ input[type="range"].venus-slider:focus-visible {
   }
 }
 
-/* The compute heartbeat: while Venus works, the composer border breathes
-   through her palette — rose, gold, sage — slow and calm. */
-@keyframes venus-glow-cycle {
-  0%,
-  100% {
-    box-shadow:
-      0 0 0 1.5px color-mix(in oklab, var(--rose) 55%, transparent),
-      0 0 22px 2px color-mix(in oklab, var(--rose) 28%, transparent);
-  }
-  33% {
-    box-shadow:
-      0 0 0 1.5px color-mix(in oklab, var(--gold) 55%, transparent),
-      0 0 22px 2px color-mix(in oklab, var(--gold) 26%, transparent);
-  }
-  66% {
-    box-shadow:
-      0 0 0 1.5px color-mix(in oklab, var(--sage) 60%, transparent),
-      0 0 22px 2px color-mix(in oklab, var(--sage) 30%, transparent);
+/* Liquid glass: the floating composer lets content glide beneath it. */
+.venus-glass {
+  backdrop-filter: blur(18px) saturate(1.7);
+  -webkit-backdrop-filter: blur(18px) saturate(1.7);
+  background: color-mix(in oklab, var(--card) 52%, transparent);
+  border: 1px solid color-mix(in oklab, var(--border) 65%, transparent);
+  box-shadow: 0 12px 40px -18px rgba(60, 47, 47, 0.35);
+}
+.venus-glass [data-slot="input-group"] {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+/* The Siri ring: while Venus generates, colors circle the composer
+   hypnotically — blurred, blending, slowly shifting hue. */
+@property --venus-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+@keyframes venus-siri-spin {
+  to {
+    --venus-angle: 360deg;
   }
 }
-.venus-glow {
-  animation: venus-glow-cycle 3.8s ease-in-out infinite;
+@keyframes venus-siri-drift {
+  to {
+    filter: blur(14px) hue-rotate(50deg);
+  }
+}
+.venus-siri {
+  position: relative;
+}
+.venus-siri::before {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  z-index: -1;
+  border-radius: inherit;
+  background: conic-gradient(
+    from var(--venus-angle),
+    var(--rose),
+    var(--gold),
+    var(--sage),
+    #9a8cc9,
+    var(--rose)
+  );
+  filter: blur(14px);
+  opacity: 0.85;
+  animation:
+    venus-siri-spin 3.2s linear infinite,
+    venus-siri-drift 5s ease-in-out infinite alternate;
+}
+.venus-siri::after {
+  content: "";
+  position: absolute;
+  inset: -1.5px;
+  z-index: -1;
+  border-radius: inherit;
+  background: conic-gradient(
+    from calc(var(--venus-angle) * -1),
+    color-mix(in oklab, var(--rose) 70%, white),
+    color-mix(in oklab, var(--gold) 70%, white),
+    color-mix(in oklab, var(--sage) 70%, white),
+    color-mix(in oklab, var(--rose) 70%, white)
+  );
+  filter: blur(3px);
+  opacity: 0.9;
+  animation: venus-siri-spin 3.2s linear infinite;
 }
 @media (prefers-reduced-motion: reduce) {
-  .venus-glow {
+  .venus-siri::before,
+  .venus-siri::after {
     animation: none;
-    box-shadow:
-      0 0 0 1.5px color-mix(in oklab, var(--rose) 50%, transparent),
-      0 0 18px 2px color-mix(in oklab, var(--rose) 25%, transparent);
   }
 }
 

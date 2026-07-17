@@ -285,8 +285,12 @@ export function AgentChat() {
   };
 
   const composer = (
-    // The border glows softly while Venus computes — the quiet "I'm working" signal.
-    <div className={cn("rounded-3xl", isBusy && "venus-glow")} data-venus-composer="">
+    // Liquid glass, floating over the conversation; while Venus generates,
+    // the Siri ring circles it — colors blurring and drifting hypnotically.
+    <div
+      className={cn("venus-glass rounded-3xl", isBusy && "venus-siri")}
+      data-venus-composer=""
+    >
       <PromptInput onSubmit={handleSubmit}>
         <PromptInputTextarea placeholder="Tell Venus…" />
         <PromptInputSubmit onStop={agent.stop} status={agent.status} />
@@ -342,7 +346,7 @@ export function AgentChat() {
 
       {isEmpty ? null : (
         <Conversation className="min-h-0 flex-1" data-venus-chat="">
-          <ConversationContent className="mx-auto w-full max-w-3xl gap-6 px-4 py-6 sm:px-6">
+          <ConversationContent className="mx-auto w-full max-w-3xl gap-6 px-4 pt-6 pb-36 sm:px-6">
             {agent.data.messages.map((message, index) => (
               <AgentMessage
                 canRespond={!isBusy}
@@ -361,12 +365,13 @@ export function AgentChat() {
 
       <div
         className={cn(
-          "relative mx-auto w-full px-4 sm:px-6",
+          "mx-auto w-full px-4 sm:px-6",
           isEmpty
             ? // justify-start + inner my-auto: centers when it fits, scrolls from the
               // top when it doesn't (justify-center would clip the wordmark off-screen).
-              "flex max-w-xl flex-1 flex-col items-center justify-start gap-6 overflow-y-auto py-8"
-            : "max-w-3xl shrink-0 pb-6",
+              "relative flex max-w-xl flex-1 flex-col items-center justify-start gap-6 overflow-y-auto py-8"
+            : // Floating glass bar: conversation scrolls beneath it.
+              "absolute inset-x-0 bottom-0 z-10 max-w-3xl pb-4",
         )}
       >
         {isEmpty ? (

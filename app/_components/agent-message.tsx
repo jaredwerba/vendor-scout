@@ -15,7 +15,6 @@ import {
   XCircleIcon,
 } from "lucide-react";
 import { Message, MessageContent, MessageResponse } from "@/components/ai-elements/message";
-import { Reasoning, ReasoningContent, ReasoningTrigger } from "@/components/ai-elements/reasoning";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -84,12 +83,9 @@ function AgentMessagePart({
         </MessageResponse>
       );
     case "reasoning":
-      return (
-        <Reasoning defaultOpen isStreaming={part.state === "streaming"}>
-          <ReasoningTrigger />
-          <ReasoningContent>{part.text}</ReasoningContent>
-        </Reasoning>
-      );
+      // Venus's inner monologue stays hers — the progress bars, activity
+      // chips, and glow tell the couple work is happening.
+      return null;
     case "file":
       return <AttachmentPart part={part} />;
     case "authorization":
