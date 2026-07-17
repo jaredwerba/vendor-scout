@@ -206,6 +206,8 @@ export default defineTool({
       if (outcome.status === "sent" || outcome.status === "sent_to_test_inbox") {
         record.status = "sent";
         record.sent_at = new Date().toISOString();
+        // Track the provider message id so bounce/complaint events can find us.
+        record.provider_ids = [...(record.provider_ids ?? []), outcome.provider_id];
         scheduleNextFollowup(record);
         await countDailySend();
         await countVendorEmail(vendor_email);

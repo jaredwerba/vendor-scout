@@ -1,7 +1,13 @@
 import { defineChannel, POST } from "eve/channels";
 import { classifyReply } from "../lib/classify";
 import { fetchReceivedEmail, notifyCouple } from "../lib/resend";
-import { findRecordForInbound, recordReply, rosterConfigured } from "../lib/roster";
+import {
+  closeForDeliveryFailure,
+  findRecordForDeliveryEvent,
+  findRecordForInbound,
+  recordReply,
+  rosterConfigured,
+} from "../lib/roster";
 import { verifySvix } from "../lib/verify-svix";
 
 /**
@@ -39,10 +45,45 @@ export default defineChannel({
       } catch {
         return new Response("bad payload", { status: 400 });
       }
-      if (event.type !== "email.received") return Response.json({ ignored: true });
       if (!rosterConfigured()) return Response.json({ ok: true, note: "roster not configured" });
-
       const data = event.data ?? {};
+
+      // Delivery failures: a bounce means the vendor never saw us (bad
+      // address); a complaint means never contact them again. Both stop the
+      // chase instantly and tell the couple honestly.
+      if (event.type === "email.bounced" || event.type === "email.complained") {
+        const kind = event.type === "email.bounced" ? "bounced" : "complained";
+        waitUntil(
+          (async () => {
+            const toList = Array.isArray(data.to) ? data.to : data.to ? [String(data.to)] : [];
+            const rec = await findRecordForDeliveryEvent(data.email_id, toList);
+            if (!rec || rec.status === "closed") return; // unknown or already handled
+            const updated = await closeForDeliveryFailure(rec.id, kind);
+            if (updated) {
+              await notifyCouple(
+                kind === "bounced"
+                  ? `Couldn't reach ${updated.vendor_name} — address bounced`
+                  : `${updated.vendor_name} thread closed`,
+                kind === "bounced"
+                  ? [
+                      `My email to ${updated.vendor_name} <${updated.vendor_email}> bounced — the address may be out of date.`,
+                      "",
+                      "I've stopped that thread (no follow-ups will go out). Ask me to hunt for a better contact for them, or we can move on to another vendor.",
+                    ].join("\n")
+                  : [
+                      `${updated.vendor_name} marked our email as unwanted, so I've closed that thread permanently — no further contact from us.`,
+                      "",
+                      "Plenty of lovely vendors out there — say the word and I'll line up an alternative.",
+                    ].join("\n"),
+                `notify:${rec.id}:${kind}:${data.email_id ?? "unknown"}`,
+              );
+            }
+          })(),
+        );
+        return Response.json({ ok: true });
+      }
+
+      if (event.type !== "email.received") return Response.json({ ignored: true });
       waitUntil(
         (async () => {
           const body = data.email_id

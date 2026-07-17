@@ -65,6 +65,7 @@ export default defineSchedule({
               // Nudges count against the same caps as initial sends —
               // otherwise "3 emails per vendor" and the daily cap only
               // constrain half the traffic.
+              rec.provider_ids = [...(rec.provider_ids ?? []), outcome.provider_id];
               await countDailySend();
               await countVendorEmail(rec.vendor_email);
               await completeNudge(rec);

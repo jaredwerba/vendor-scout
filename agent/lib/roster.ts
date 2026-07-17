@@ -62,6 +62,8 @@ export interface OutreachRecord {
   reply_address: string | null;
   /** Understanding of the latest vendor reply (newer records). */
   reply_intel?: ReplyIntelRecord | null;
+  /** Resend message ids for every email sent on this thread (initial + nudges). */
+  provider_ids?: string[];
 }
 
 export const MAX_NUDGES = 2;
@@ -203,6 +205,42 @@ export async function cancelFollowups(id: string): Promise<OutreachRecord | null
   if (!rec) return null;
   rec.followups_authorized = false;
   rec.next_followup_at = null;
+  await putRecord(rec);
+  return rec;
+}
+
+/** Match a delivery event (bounce/complaint) to its outreach thread. */
+export async function findRecordForDeliveryEvent(
+  emailId: string | undefined,
+  toAddresses: string[],
+): Promise<OutreachRecord | null> {
+  const all = await listRecords();
+  if (emailId) {
+    const byId = all.find((r) => (r.provider_ids ?? []).includes(emailId));
+    if (byId) return byId;
+  }
+  const tos = toAddresses.map((t) => t.toLowerCase());
+  return all.find((r) => tos.includes(r.vendor_email.toLowerCase())) ?? null;
+}
+
+/** A send never reached the vendor (bounce) or was marked as spam (complaint). */
+export async function closeForDeliveryFailure(
+  id: string,
+  kind: "bounced" | "complained",
+): Promise<OutreachRecord | null> {
+  const rec = await getRecord(id);
+  if (!rec) return null;
+  rec.status = "closed";
+  rec.followups_authorized = false;
+  rec.next_followup_at = null;
+  rec.thread.push({
+    who: "agent",
+    when: new Date().toISOString(),
+    text:
+      kind === "bounced"
+        ? "(email bounced — the address may be wrong; this thread is closed)"
+        : "(recipient marked our email as spam — thread closed, never contact again)",
+  });
   await putRecord(rec);
   return rec;
 }
