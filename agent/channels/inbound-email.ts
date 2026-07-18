@@ -76,6 +76,7 @@ export default defineChannel({
                       "Plenty of lovely vendors out there — say the word and I'll line up an alternative.",
                     ].join("\n"),
                 `notify:${rec.id}:${kind}:${data.email_id ?? "unknown"}`,
+                updated.couple_email ?? null,
               );
             }
           })(),
@@ -139,6 +140,7 @@ export default defineChannel({
               // Idempotent per received email: a replayed webhook or re-run
               // step can't double-notify the couple.
               `notify:${rec.id}:${data.email_id ?? "unknown"}`,
+              updated.couple_email ?? null,
             );
           }
         })(),

@@ -27,7 +27,8 @@ export type OutreachStatus =
   | "nudged_1"
   | "nudged_2"
   | "closed"
-  | "declined";
+  | "declined"
+  | "booked";
 
 export interface ThreadEntry {
   who: "agent" | "vendor";
@@ -64,6 +65,10 @@ export interface OutreachRecord {
   reply_intel?: ReplyIntelRecord | null;
   /** Resend message ids for every email sent on this thread (initial + nudges). */
   provider_ids?: string[];
+  /** The couple's own email — replies fall back here, notifications go here. */
+  couple_email?: string | null;
+  /** Booking decision (dashboard): set when the couple confirms this vendor. */
+  booked?: { at: string; price: string | null; note: string | null } | null;
 }
 
 export const MAX_NUDGES = 2;

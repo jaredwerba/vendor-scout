@@ -53,6 +53,14 @@ const inputSchema = z.object({
     .describe(
       "One-line context for automatic follow-ups, e.g. 'Alex & Sam, fall 2027 woodland wedding, ~100 guests, light & airy photography'.",
     ),
+  couple_email: z
+    .string()
+    .email()
+    .optional()
+    .describe(
+      "The couple's own email (from their opening message). Vendor replies fall back here and " +
+        "notifications go here. Always pass it when known.",
+    ),
   authorize_followups: z
     .boolean()
     .default(true)
@@ -118,8 +126,15 @@ export default defineTool({
     return { type: "approved", reason: "Pre-authorized follow-up within caps." };
   },
   async execute(input) {
-    const { vendor_name, vendor_email, subject, body, couple_summary, authorize_followups } =
-      input;
+    const {
+      vendor_name,
+      vendor_email,
+      subject,
+      body,
+      couple_summary,
+      couple_email,
+      authorize_followups,
+    } = input;
 
     // --- execute-time re-checks (approval is a gate, not authorization) ---
     if (rosterConfigured()) {
@@ -177,13 +192,17 @@ export default defineTool({
     }
     // Replies go to the AGENT's receiving address (plus-addressed per
     // outreach) when inbound email is configured. Until it is, fall back to
-    // the couple's own inbox — a live send must NEVER go out with no usable
+    // THIS couple's own inbox — a live send must NEVER go out with no usable
     // reply-to (vendor replies would bounce off the send-only from-address).
     const replyTo =
       (record ? replyAddressFor(record.id) : null) ??
+      couple_email ??
       process.env.COUPLE_NOTIFY_EMAIL ??
       null;
-    if (record) record.reply_address = replyTo;
+    if (record) {
+      record.reply_address = replyTo;
+      record.couple_email = couple_email ?? null;
+    }
 
     // --- send (mode-aware) ---
     const outcome = await sendModeAware({

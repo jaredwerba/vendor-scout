@@ -2,7 +2,7 @@
 
 import type { UserContent } from "ai";
 import { useEveAgent } from "eve/react";
-import { AlertCircleIcon, RotateCcwIcon } from "lucide-react";
+import { AlertCircleIcon, ClipboardListIcon, RotateCcwIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Conversation,
@@ -35,8 +35,8 @@ const COPY = {
   cta: "Begin with Venus",
   trustLine:
     "Real vendors, real emails — I write them in your voice, send them the moment you pick your plan, and gently nudge anyone who doesn't reply. Say the word and I'll stop any thread.",
-  nameLabel: "Your first name",
-  namePlaceholder: "So I know who I'm planning for…",
+  emailLabel: "Your email",
+  emailPlaceholder: "So vendors' replies reach you…",
   question:
     "Close your eyes for a moment. It's the evening of your wedding — where are you standing, who is around you, and what does it feel like? Tell me everything you can see. I'll take it from there.",
   checklistIntro: "For your perfect plan, tell me:",
@@ -135,10 +135,10 @@ function VenusLanding({
   readonly onBegin: (budget: number, firstName: string) => void;
 }) {
   const [budget, setBudget] = useState(28000);
-  const [firstName, setFirstName] = useState("");
+  const [email, setEmail] = useState("");
   const tier = useMemo(() => [...TIERS].reverse().find((t) => budget >= t.min) ?? TIERS[0], [budget]);
   const pct = ((budget - 5000) / 95000) * 100;
-  const ready = firstName.trim().length >= 2;
+  const ready = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
 
   return (
     <div className="venus-rise flex w-full max-w-xl flex-col items-center gap-7 text-center">
@@ -184,29 +184,30 @@ function VenusLanding({
         </p>
         <label className="mt-1 block text-left">
           <span className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-            {COPY.nameLabel}
+            {COPY.emailLabel}
           </span>
           <input
-            autoComplete="given-name"
+            autoComplete="email"
             className="mt-1.5 h-12 w-full rounded-2xl border border-input bg-background px-4 text-base outline-none focus:border-ring"
-            maxLength={40}
-            onChange={(e) => setFirstName(e.target.value)}
-            placeholder={COPY.namePlaceholder}
-            type="text"
-            value={firstName}
+            inputMode="email"
+            maxLength={120}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder={COPY.emailPlaceholder}
+            type="email"
+            value={email}
           />
         </label>
         {ready ? (
           <button
             className="venus-bloom venus-rise mt-3 h-12 w-full rounded-2xl bg-primary font-medium text-primary-foreground text-sm"
-            onClick={() => onBegin(budget, firstName.trim())}
+            onClick={() => onBegin(budget, email.trim())}
             type="button"
           >
             {COPY.cta}
           </button>
         ) : (
           <p className="mt-3 flex h-12 items-center justify-center text-muted-foreground text-xs">
-            set your budget & tell me your name — then we begin ✨
+            set your budget & your email — then we begin ✨
           </p>
         )}
       </div>
@@ -339,10 +340,10 @@ export function AgentChat({
     return () => document.removeEventListener("error", hideBroken, true);
   }, []);
 
-  const begin = (budget: number, firstName: string) => {
+  const begin = (budget: number, email: string) => {
     if (isBusy || !isEmpty) return; // no double-taps, no duplicate openings
     void agent.send({
-      message: `Hi Venus! I'm ${firstName}. Our budget is around ${usd(budget)} — plan our wedding for us.`,
+      message: `Hi Venus! Our budget is around ${usd(budget)} and our email is ${email} — plan our wedding for us.`,
     });
   };
 
@@ -402,15 +403,25 @@ export function AgentChat({
               <span className="truncate text-muted-foreground text-xs italic">{COPY.working}</span>
             ) : null}
           </span>
-          <button
-            aria-label="Start a new wedding"
-            className="absolute right-3 flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            onClick={startFresh}
-            title="Start a new wedding"
-            type="button"
-          >
-            <RotateCcwIcon className="size-4" />
-          </button>
+          <span className="absolute right-3 flex items-center gap-1">
+            <a
+              aria-label="My Wedding dashboard"
+              className="flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              href="/my-wedding"
+              title="My Wedding"
+            >
+              <ClipboardListIcon className="size-4" />
+            </a>
+            <button
+              aria-label="Start a new wedding"
+              className="flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              onClick={startFresh}
+              title="Start a new wedding"
+              type="button"
+            >
+              <RotateCcwIcon className="size-4" />
+            </button>
+          </span>
         </header>
       )}
 

@@ -141,14 +141,16 @@ export async function notifyCouple(
   subject: string,
   body: string,
   idempotencyKey?: string,
+  toOverride?: string | null,
 ): Promise<boolean> {
-  if (!RESEND_KEY || !NOTIFY_EMAIL) return false;
+  const to = toOverride ?? NOTIFY_EMAIL;
+  if (!RESEND_KEY || !to) return false;
   try {
     await resendPost(
       "/emails",
       {
         from: FROM,
-        to: [NOTIFY_EMAIL],
+        to: [to],
         subject,
         text: body,
       },
