@@ -2,7 +2,13 @@
 
 import type { UserContent } from "ai";
 import { useEveAgent } from "eve/react";
-import { AlertCircleIcon, ClipboardListIcon, RotateCcwIcon } from "lucide-react";
+import {
+  AlertCircleIcon,
+  ClipboardListIcon,
+  ImageIcon,
+  MenuIcon,
+  RotateCcwIcon,
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Conversation,
@@ -15,6 +21,13 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
 } from "@/components/ai-elements/prompt-input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { AgentMessage } from "./agent-message";
 import { clearSavedSession, type CuratedPreview, saveSession } from "./venus-app";
@@ -328,6 +341,34 @@ export function AgentChat({
     window.location.reload();
   };
 
+  // The quiet stretch after every specialist reports back, while Venus writes
+  // the three visions — fill it, don't leave the couple staring at a gap.
+  const isFinalizing = useMemo(() => {
+    if (!isBusy) return false;
+    let delegations = 0;
+    let settled = 0;
+    for (const m of agent.data.messages) {
+      for (const p of m.parts) {
+        if (p.type !== "dynamic-tool") continue;
+        const input = (p.input ?? {}) as Record<string, unknown>;
+        const isDelegation =
+          typeof input.message === "string" &&
+          p.toolName !== "send_outreach" &&
+          p.toolMetadata?.eve?.inputRequest === undefined;
+        if (!isDelegation) continue;
+        delegations++;
+        if (
+          p.state === "output-available" ||
+          p.state === "output-error" ||
+          p.state === "output-denied"
+        ) {
+          settled++;
+        }
+      }
+    }
+    return delegations >= 2 && settled === delegations;
+  }, [agent.data.messages, isBusy]);
+
   // No broken image boxes, ever: any venue photo that fails to load vanishes.
   useEffect(() => {
     const hideBroken = (e: Event) => {
@@ -395,33 +436,41 @@ export function AgentChat({
     <main className="relative flex h-dvh flex-col overflow-hidden bg-background text-foreground">
       {isEmpty ? <Petals /> : null}
       {isEmpty ? null : (
-        <header className="relative flex h-14 shrink-0 items-center justify-center gap-3 px-4">
+        <header className="flex h-14 shrink-0 items-center justify-between px-4">
           <span className="flex min-w-0 items-center gap-2.5">
             <span className="venus-script text-3xl text-primary leading-none">Venus</span>
             <StatusDot status={agent.status} />
-            {isBusy ? (
-              <span className="truncate text-muted-foreground text-xs italic">{COPY.working}</span>
-            ) : null}
           </span>
-          <span className="absolute right-3 flex items-center gap-1">
-            <a
-              aria-label="My Wedding dashboard"
-              className="flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              href="/my-wedding"
-              title="My Wedding"
-            >
-              <ClipboardListIcon className="size-4" />
-            </a>
-            <button
-              aria-label="Start a new wedding"
-              className="flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              onClick={startFresh}
-              title="Start a new wedding"
-              type="button"
-            >
-              <RotateCcwIcon className="size-4" />
-            </button>
-          </span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                aria-label="Menu"
+                className="flex size-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                type="button"
+              >
+                <MenuIcon className="size-5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 rounded-2xl">
+              <DropdownMenuItem asChild>
+                <a className="flex cursor-pointer items-center gap-2.5" href="/my-wedding">
+                  <ClipboardListIcon className="size-4" />
+                  My Wedding
+                </a>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <a className="flex cursor-pointer items-center gap-2.5" href="/curated">
+                  <ImageIcon className="size-4" />
+                  Curated by Venus
+                </a>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="flex cursor-pointer items-center gap-2.5" onClick={startFresh}>
+                <RotateCcwIcon className="size-4" />
+                Start a new wedding
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </header>
       )}
 
@@ -470,6 +519,18 @@ export function AgentChat({
                 onInputResponses={(inputResponses) => agent.send({ inputResponses })}
               />
             ))}
+            {isFinalizing ? (
+              <div className="venus-rise venus-texture rounded-3xl border bg-card/80 p-5 text-center">
+                <p className="venus-serif text-lg">All my specialists are back 🤍</p>
+                <p className="mx-auto mt-1.5 max-w-sm text-muted-foreground text-sm leading-relaxed">
+                  I'm weaving everything into your three visions right now — your wedding details
+                  are being finalized. Hang tight, this is the good part ✨
+                </p>
+                <div className="venus-progress mx-auto mt-4 max-w-xs" data-state="running">
+                  <div className="venus-progress-fill" />
+                </div>
+              </div>
+            ) : null}
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>
