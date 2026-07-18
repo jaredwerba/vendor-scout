@@ -2,6 +2,13 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { listRecords, type OutreachRecord } from "@/agent/lib/roster";
+import {
+  daysUntil,
+  getTimelineMeta,
+  listMilestones,
+  type Milestone,
+  type TimelineMeta,
+} from "@/agent/lib/timeline";
 
 export const dynamic = "force-dynamic";
 
@@ -76,11 +83,17 @@ export default async function MyWeddingPage() {
   if (!jar.get("vs_code")?.value) redirect("/unlock");
 
   let records: OutreachRecord[] = [];
+  let meta: TimelineMeta | null = null;
+  let milestones: Milestone[] = [];
   try {
     records = await listRecords();
+    meta = await getTimelineMeta();
+    milestones = meta ? await listMilestones() : [];
   } catch {
     records = [];
   }
+  const upcoming = milestones.filter((m) => m.status === "upcoming");
+  const doneCount = milestones.filter((m) => m.status === "done").length;
 
   const booked = records.filter((r) => r.status === "booked");
   const needsDecision = records.filter((r) => r.status === "replied");
@@ -103,11 +116,56 @@ export default async function MyWeddingPage() {
             Where everything stands — updated the moment vendors reply and decisions land.
           </p>
           <div className="mt-1 flex flex-wrap justify-center gap-1.5">
+            {meta ? (
+              <Chip tone="action">💍 {daysUntil(meta.wedding_date)} days to go</Chip>
+            ) : null}
             <Chip tone="booked">{booked.length} booked</Chip>
             <Chip tone="action">{needsDecision.length} need your call</Chip>
             <Chip tone="waiting">{waiting.length} waiting on vendors</Chip>
           </div>
         </header>
+
+        {meta && upcoming.length > 0 ? (
+          <section className="mb-8">
+            <div className="mb-3 flex items-baseline justify-between">
+              <h2 className="venus-serif text-lg">The Countdown</h2>
+              <span className="text-muted-foreground text-xs">
+                {doneCount}/{milestones.length} done
+              </span>
+            </div>
+            <div className="space-y-2">
+              {upcoming.slice(0, 5).map((m) => {
+                const d = daysUntil(m.due_date);
+                return (
+                  <div
+                    className="flex items-center justify-between gap-3 rounded-2xl border bg-card/70 px-4 py-3"
+                    key={m.id}
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-sm">{m.title}</p>
+                      <p className="mt-0.5 line-clamp-1 text-muted-foreground text-xs">
+                        {m.detail}
+                      </p>
+                    </div>
+                    <span
+                      className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] ${
+                        d <= 14
+                          ? "bg-accent text-accent-foreground"
+                          : "border text-muted-foreground"
+                      }`}
+                    >
+                      {d < 0 ? "overdue" : d === 0 ? "today" : `${d}d`}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="mt-2 text-muted-foreground text-xs">
+              Done something? Tell Venus — "we sent the save-the-dates!" — and it's crossed off.
+              I'll email you as each one approaches.
+            </p>
+          </section>
+        ) : null}
 
         {records.length === 0 ? (
           <div className="venus-texture mx-auto max-w-md rounded-3xl border bg-card p-8 text-center">
