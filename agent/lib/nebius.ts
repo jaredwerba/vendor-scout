@@ -19,7 +19,7 @@ const tokenFactory = createOpenAICompatible({
   // Read the key at request time. createOpenAICompatible would otherwise
   // snapshot process.env at module load (empty during `eve build` / Vercel).
   fetch: (url, init) => {
-    const key = process.env.NEBIUS_API_KEY;
+    const key = process.env.NEBIUS_API_KEY?.trim();
     const headers = new Headers(init?.headers);
     if (key) headers.set("Authorization", `Bearer ${key}`);
     return fetch(url, { ...init, headers });
@@ -27,5 +27,9 @@ const tokenFactory = createOpenAICompatible({
 });
 
 export function tokenFactoryModel(modelId?: string) {
-  return tokenFactory.chatModel(modelId ?? process.env.NEBIUS_MODEL ?? DEFAULT_TOKEN_FACTORY_MODEL);
+  const raw = modelId ?? process.env.NEBIUS_MODEL ?? DEFAULT_TOKEN_FACTORY_MODEL;
+  // Vercel env --value / stdin often stores a trailing newline; Token Factory
+  // then 404s chat/completions because the id is not in the catalog.
+  const id = raw.trim();
+  return tokenFactory.chatModel(id.length > 0 ? id : DEFAULT_TOKEN_FACTORY_MODEL);
 }
