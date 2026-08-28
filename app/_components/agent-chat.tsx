@@ -140,9 +140,13 @@ function usd(n: number): string {
 
 function VenusLanding({
   curatedPreview,
+  errorMessage,
+  isStarting,
   onBegin,
 }: {
   readonly curatedPreview?: CuratedPreview | null;
+  readonly errorMessage?: string;
+  readonly isStarting: boolean;
   readonly onBegin: (budget: number) => void;
 }) {
   const [budget, setBudget] = useState(28000);
@@ -191,12 +195,18 @@ function VenusLanding({
         <p aria-live="polite" className="mt-2 min-h-9 text-muted-foreground text-xs leading-relaxed">
           {tier.blurb}
         </p>
+        {errorMessage ? (
+          <p className="mt-3 rounded-2xl border border-destructive/30 bg-destructive/5 px-3 py-2 text-left text-sm text-destructive">
+            {errorMessage}
+          </p>
+        ) : null}
         <button
-          className="venus-bloom mt-4 h-12 w-full rounded-2xl bg-primary font-medium text-primary-foreground text-sm"
+          className="venus-bloom mt-4 h-12 w-full rounded-2xl bg-primary font-medium text-primary-foreground text-sm disabled:opacity-60"
+          disabled={isStarting}
           onClick={() => onBegin(budget)}
           type="button"
         >
-          {COPY.cta}
+          {isStarting ? "Starting…" : COPY.cta}
         </button>
       </div>
 
@@ -525,7 +535,12 @@ export function AgentChat({
         {isEmpty ? (
           // Onboarding gate: no prompt bar until "Begin with Venus" is tapped.
           <div className="my-auto flex w-full flex-col items-center gap-6">
-            <VenusLanding curatedPreview={curatedPreview} onBegin={begin} />
+            <VenusLanding
+              curatedPreview={curatedPreview}
+              errorMessage={agent.error?.message}
+              isStarting={isBusy}
+              onBegin={begin}
+            />
           </div>
         ) : (
           <div className="w-full">{composer}</div>
