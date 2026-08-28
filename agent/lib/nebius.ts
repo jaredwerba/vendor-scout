@@ -16,7 +16,14 @@ export const DEFAULT_TOKEN_FACTORY_MODEL = "Qwen/Qwen3-235B-A22B-Instruct-2507";
 const tokenFactory = createOpenAICompatible({
   name: "token-factory",
   baseURL: TOKEN_FACTORY_BASE_URL,
-  apiKey: process.env.NEBIUS_API_KEY,
+  // Read the key at request time. createOpenAICompatible would otherwise
+  // snapshot process.env at module load (empty during `eve build` / Vercel).
+  fetch: (url, init) => {
+    const key = process.env.NEBIUS_API_KEY;
+    const headers = new Headers(init?.headers);
+    if (key) headers.set("Authorization", `Bearer ${key}`);
+    return fetch(url, { ...init, headers });
+  },
 });
 
 export function tokenFactoryModel(modelId?: string) {
