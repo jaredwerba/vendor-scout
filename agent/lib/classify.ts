@@ -1,5 +1,6 @@
 import { generateObject } from "ai";
 import { z } from "zod";
+import { tokenFactoryModel } from "./nebius";
 
 /**
  * Reply intelligence: understand what a vendor actually said, instead of
@@ -56,7 +57,7 @@ export async function classifyReply(args: {
   const text = args.replyText.slice(0, 6000);
   try {
     const { object } = await generateObject({
-      model: "anthropic/claude-sonnet-5",
+      model: tokenFactoryModel(),
       schema: replyIntelSchema,
       prompt: [
         `A wedding vendor ("${args.vendorName}") replied to a couple's inquiry` +

@@ -29,13 +29,17 @@ follow-ups, decision tracking, and a proactive countdown to the day itself.
   KV-backed daily request cap in `agent/channels/eve.ts` is the only throttle. Session resume
   via localStorage, liquid-glass composer with a Siri ring while Venus works.
 - Storage: Upstash KV (`outreach:*`, `timeline:*`, `curated:*`). Email: Resend (send + inbound
-  webhook). Search: Tavily (`include_images` for venue photos). Models: Vercel AI Gateway.
+  webhook). Search: Tavily (`include_images` for venue photos). Models: **Nebius Token Factory**
+  (OpenAI-compatible `https://api.tokenfactory.nebius.com/v1`, not Vercel AI Gateway, not
+  Nebius AI Cloud).
 
 ## Env (all three Vercel environments + `.env.local`)
 
-`RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, `OUTREACH_MODE` (dry_run|test|live),
-`OUTREACH_FROM`, `OUTREACH_TEST_INBOX`, `COUPLE_NOTIFY_EMAIL`, `OUTREACH_REPLY_ADDRESS`
-(optional), `TAVILY_API_KEY`, KV vars (auto-injected by the Upstash integration).
+`NEBIUS_API_KEY` (Token Factory Bearer token), `NEBIUS_MODEL` (optional catalog id; default
+`Qwen/Qwen3-235B-A22B-Instruct-2507`), `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`,
+`OUTREACH_MODE` (dry_run|test|live), `OUTREACH_FROM`, `OUTREACH_TEST_INBOX`,
+`COUPLE_NOTIFY_EMAIL`, `OUTREACH_REPLY_ADDRESS` (optional), `TAVILY_API_KEY`, KV vars
+(auto-injected by the Upstash integration).
 
 ## Develop & test
 
