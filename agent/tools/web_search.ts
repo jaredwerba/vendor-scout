@@ -18,6 +18,7 @@ type TavilyResult = {
   url?: string;
   content?: string;
   score?: number;
+  published_date?: string;
 };
 
 export default defineTool({
@@ -39,8 +40,19 @@ export default defineTool({
       .describe(
         "Also return image URLs related to the query. Use for venue photo hunts, e.g. query '<venue name> wedding venue'.",
       ),
+    time_range: z
+      .enum(["day", "week", "month", "year"])
+      .optional()
+      .describe(
+        "Only return pages published within this window. Use for anything that goes stale — " +
+          "current pricing, availability, 'this season' packages, news about a vendor.",
+      ),
+    topic: z
+      .enum(["general", "news"])
+      .optional()
+      .describe("'news' searches recent news sources only; default 'general'."),
   }),
-  async execute({ query, max_results, include_images }) {
+  async execute({ query, max_results, include_images, time_range, topic }) {
     if (!TAVILY_KEY) {
       return {
         status: "not_configured",
@@ -60,9 +72,13 @@ export default defineTool({
       body: JSON.stringify({
         query,
         max_results: max_results ?? 6,
-        search_depth: "basic",
+        // "advanced" when freshness matters: Tavily re-ranks for relevance and
+        // honours the time window more tightly (2 credits instead of 1).
+        search_depth: time_range ? "advanced" : "basic",
         include_answer: false,
         include_images: include_images ?? false,
+        ...(time_range ? { time_range } : {}),
+        ...(topic ? { topic } : {}),
       }),
     });
 
@@ -86,10 +102,12 @@ export default defineTool({
     return {
       status: "ok",
       query,
+      ...(time_range ? { time_range } : {}),
       results: (json.results ?? []).map((r) => ({
         title: r.title ?? "",
         url: r.url ?? "",
         snippet: (r.content ?? "").slice(0, 600),
+        ...(r.published_date ? { published: r.published_date } : {}),
       })),
       ...(images.length ? { images } : {}),
     };
