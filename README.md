@@ -8,8 +8,7 @@ follow-ups, decision tracking, and a proactive countdown to the day itself.
 ## The journey
 
 1. **Front door** (`/`): budget slider → "Begin with Venus". Public — no access code, no
-   sign-in, no email field; anyone with the link can plan. Venus asks for names + a reply email
-   in conversation, only when it needs them.
+   sign-in, no email field; anyone with the link can plan.
 2. **Interview**: one signature question + an explicit checklist; complete brief = zero follow-ups.
 3. **Research**: parallel specialist agents (venue · photography · catering · styling), live
    progress bars.

@@ -61,7 +61,6 @@ const COPY = {
     "Food & bar style",
     "Must-haves & dealbreakers",
     "Anything already booked",
-    "Your first names + the email vendors should reply to",
   ],
   working: "Venus is composing your wedding…",
 } as const;
