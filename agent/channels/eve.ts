@@ -1,43 +1,25 @@
-import { createHash, timingSafeEqual } from "node:crypto";
 import { eveChannel } from "eve/channels/eve";
 import { localDev, vercelOidc, type AuthFn } from "eve/channels/auth";
 
 /**
- * Access-code auth: the app is public at the production URL for anyone who
- * has the shared code (set once on the unlock page, carried as an httpOnly
- * cookie the browser attaches to every same-origin request).
+ * Public-link auth: Venus is open to anyone who has the URL. No access code,
+ * no sign-in — every browser request to the chat routes is accepted as the
+ * shared "couple" principal.
  *
- * - The cookie value is compared to ACCESS_CODE server-side, constant-time
- *   (sha256 both sides so lengths always match).
- * - Rotating the code = changing one env var; every device must re-unlock.
- * - A generous KV-backed daily request counter caps runaway/scripted use;
- *   it fails OPEN if the store is unreachable (availability over strictness
- *   for a demo product — the code is the actual gate).
+ * - The one guard that remains is a generous KV-backed daily request counter
+ *   that caps runaway/scripted use; it fails OPEN if the store is unreachable
+ *   (availability over strictness for a demo product). Real-world runaway
+ *   protection lives in the outreach caps (per-vendor + daily sends).
  * - The inbound-email webhook channel is untouched: custom channels own
  *   their auth (svix signature), this walk guards only the chat routes.
  */
 
 const DAILY_REQUEST_CAP = 2000;
 
-function readCookie(header: string | null, name: string): string | null {
-  if (!header) return null;
-  for (const part of header.split(";")) {
-    const [k, ...rest] = part.trim().split("=");
-    if (k === name) return decodeURIComponent(rest.join("="));
-  }
-  return null;
-}
-
-function codesMatch(candidate: string, expected: string): boolean {
-  const a = createHash("sha256").update(candidate).digest();
-  const b = createHash("sha256").update(expected).digest();
-  return timingSafeEqual(a, b);
-}
-
 async function underDailyRequestCap(): Promise<boolean> {
   const url = process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_API_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.KV_REST_API_TOKEN;
-  if (!url || !token) return true; // fail open — the code is the gate
+  if (!url || !token) return true; // fail open
   try {
     const key = `access:daily:${new Date().toISOString().slice(0, 10)}`;
     const res = await fetch(`${url}/pipeline`, {
@@ -55,15 +37,11 @@ async function underDailyRequestCap(): Promise<boolean> {
   }
 }
 
-function accessCode(): AuthFn<Request> {
-  return async (request) => {
-    const expected = process.env.ACCESS_CODE;
-    if (!expected) return null; // not configured -> walk falls through (fail closed)
-    const candidate = readCookie(request.headers.get("cookie"), "vs_code");
-    if (!candidate || !codesMatch(candidate, expected)) return null;
+function publicLink(): AuthFn<Request> {
+  return async () => {
     if (!(await underDailyRequestCap())) return null; // cap exhausted -> 401
     return {
-      authenticator: "access-code",
+      authenticator: "public-link",
       principalId: "couple",
       principalType: "user",
       attributes: {},
@@ -77,7 +55,7 @@ export default eveChannel({
     vercelOidc(),
     // Open on localhost for `eve dev`; ignored everywhere else.
     localDev(),
-    // The shared access code — the public front door.
-    accessCode(),
+    // Anyone with the link — the public front door.
+    publicLink(),
   ],
 });

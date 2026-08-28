@@ -1,6 +1,4 @@
-import { cookies } from "next/headers";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { listCuratedWeddings } from "@/agent/lib/curated";
 
 export const dynamic = "force-dynamic";
@@ -10,8 +8,6 @@ function usd(n: number): string {
 }
 
 export default async function CuratedPage() {
-  const jar = await cookies();
-  if (!jar.get("vs_code")?.value) redirect("/unlock");
   const weddings = await listCuratedWeddings();
 
   return (

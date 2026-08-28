@@ -1,6 +1,5 @@
-import { cookies } from "next/headers";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { getCuratedWedding } from "@/agent/lib/curated";
 import { PlanMarkdown } from "../plan-markdown";
 
@@ -15,8 +14,6 @@ export default async function CuratedDetailPage({
 }: {
   readonly params: Promise<{ id: string }>;
 }) {
-  const jar = await cookies();
-  if (!jar.get("vs_code")?.value) redirect("/unlock");
   const { id } = await params;
   const w = await getCuratedWedding(id);
   if (!w) notFound();

@@ -48,8 +48,6 @@ const COPY = {
   cta: "Begin with Venus",
   trustLine:
     "Real vendors, real emails — I write them in your voice, send them the moment you pick your plan, and gently nudge anyone who doesn't reply. Say the word and I'll stop any thread.",
-  emailLabel: "Your email",
-  emailPlaceholder: "So vendors' replies reach you…",
   question:
     "Close your eyes for a moment. It's the evening of your wedding — where are you standing, who is around you, and what does it feel like? Tell me everything you can see. I'll take it from there.",
   checklistIntro: "For your perfect plan, tell me:",
@@ -63,6 +61,7 @@ const COPY = {
     "Food & bar style",
     "Must-haves & dealbreakers",
     "Anything already booked",
+    "Your first names + the email vendors should reply to",
   ],
   working: "Venus is composing your wedding…",
 } as const;
@@ -145,13 +144,11 @@ function VenusLanding({
   onBegin,
 }: {
   readonly curatedPreview?: CuratedPreview | null;
-  readonly onBegin: (budget: number, firstName: string) => void;
+  readonly onBegin: (budget: number) => void;
 }) {
   const [budget, setBudget] = useState(28000);
-  const [email, setEmail] = useState("");
   const tier = useMemo(() => [...TIERS].reverse().find((t) => budget >= t.min) ?? TIERS[0], [budget]);
   const pct = ((budget - 5000) / 95000) * 100;
-  const ready = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
 
   return (
     <div className="venus-rise flex w-full max-w-xl flex-col items-center gap-7 text-center">
@@ -195,34 +192,13 @@ function VenusLanding({
         <p aria-live="polite" className="mt-2 min-h-9 text-muted-foreground text-xs leading-relaxed">
           {tier.blurb}
         </p>
-        <label className="mt-1 block text-left">
-          <span className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-            {COPY.emailLabel}
-          </span>
-          <input
-            autoComplete="email"
-            className="mt-1.5 h-12 w-full rounded-2xl border border-input bg-background px-4 text-base outline-none focus:border-ring"
-            inputMode="email"
-            maxLength={120}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder={COPY.emailPlaceholder}
-            type="email"
-            value={email}
-          />
-        </label>
-        {ready ? (
-          <button
-            className="venus-bloom venus-rise mt-3 h-12 w-full rounded-2xl bg-primary font-medium text-primary-foreground text-sm"
-            onClick={() => onBegin(budget, email.trim())}
-            type="button"
-          >
-            {COPY.cta}
-          </button>
-        ) : (
-          <p className="mt-3 flex h-12 items-center justify-center text-muted-foreground text-xs">
-            set your budget & your email — then we begin ✨
-          </p>
-        )}
+        <button
+          className="venus-bloom mt-4 h-12 w-full rounded-2xl bg-primary font-medium text-primary-foreground text-sm"
+          onClick={() => onBegin(budget)}
+          type="button"
+        >
+          {COPY.cta}
+        </button>
       </div>
 
       <div className="max-w-md space-y-4">
@@ -381,10 +357,10 @@ export function AgentChat({
     return () => document.removeEventListener("error", hideBroken, true);
   }, []);
 
-  const begin = (budget: number, email: string) => {
+  const begin = (budget: number) => {
     if (isBusy || !isEmpty) return; // no double-taps, no duplicate openings
     void agent.send({
-      message: `Hi Venus! Our budget is around ${usd(budget)} and our email is ${email} — plan our wedding for us.`,
+      message: `Hi Venus! Our budget is around ${usd(budget)} — plan our wedding for us.`,
     });
   };
 

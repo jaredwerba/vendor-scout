@@ -1,6 +1,4 @@
-import { cookies } from "next/headers";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { listRecords, type OutreachRecord } from "@/agent/lib/roster";
 import {
   daysUntil,
@@ -79,9 +77,6 @@ function VendorRow({ r }: { readonly r: OutreachRecord }) {
 }
 
 export default async function MyWeddingPage() {
-  const jar = await cookies();
-  if (!jar.get("vs_code")?.value) redirect("/unlock");
-
   let records: OutreachRecord[] = [];
   let meta: TimelineMeta | null = null;
   let milestones: Milestone[] = [];

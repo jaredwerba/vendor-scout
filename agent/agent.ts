@@ -11,7 +11,8 @@ export default defineAgent({
   reasoning: "medium",
   // Owner directive (launch mode): no token gates, no "continue?" pauses —
   // a couple mid-planning must never hit a meter. Runaway protection now
-  // lives in the outreach caps + the access-code gate, not session budgets.
+  // lives in the outreach caps + the daily request cap in channels/eve.ts
+  // (Venus is public — no access code), not session budgets.
   limits: {
     maxInputTokensPerSession: false,
     maxOutputTokensPerSession: false,
