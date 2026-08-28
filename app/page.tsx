@@ -25,5 +25,13 @@ export default async function Page() {
     curatedPreview = null;
   }
 
-  return <VenusApp curatedPreview={curatedPreview} />;
+  // What the live agent-stack panel should say about the model and tracing.
+  const runtime = {
+    model: (process.env.NEBIUS_MODEL ?? "").trim() || "Qwen/Qwen3-235B-A22B-Instruct-2507",
+    provider: "Nebius Token Factory",
+    tracing: Boolean(process.env.LANGSMITH_API_KEY),
+    project: process.env.LANGSMITH_PROJECT ?? "venus",
+  };
+
+  return <VenusApp curatedPreview={curatedPreview} runtime={runtime} />;
 }

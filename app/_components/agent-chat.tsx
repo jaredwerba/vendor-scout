@@ -3,6 +3,7 @@
 import type { UserContent } from "ai";
 import { useEveAgent } from "eve/react";
 import {
+  ActivityIcon,
   AlertCircleIcon,
   ClipboardListIcon,
   ImageIcon,
@@ -30,6 +31,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { AgentMessage } from "./agent-message";
+import { AgentStack, type StackEvent, type StackRuntime } from "./agent-stack";
 import { clearSavedSession, type CuratedPreview, saveSession } from "./venus-app";
 
 export interface SavedVenusSession {
@@ -275,9 +277,11 @@ type AgentStatus = ReturnType<typeof useEveAgent>["status"];
 
 export function AgentChat({
   curatedPreview,
+  runtime,
   saved,
 }: {
   readonly curatedPreview?: CuratedPreview | null;
+  readonly runtime?: StackRuntime | null;
   readonly saved?: SavedVenusSession | null;
 }) {
   const agent = useEveAgent(
@@ -290,6 +294,22 @@ export function AgentChat({
   );
   const isBusy = agent.status === "submitted" || agent.status === "streaming";
   const isEmpty = agent.data.messages.length === 0;
+
+  // "Under the hood": the live agent-stack diagram, remembered per browser.
+  const [stackOpen, setStackOpen] = useState(false);
+  useEffect(() => {
+    try {
+      setStackOpen(localStorage.getItem("venus_stack_open") === "1");
+    } catch {}
+  }, []);
+  const toggleStack = () =>
+    setStackOpen((open) => {
+      const next = !open;
+      try {
+        localStorage.setItem("venus_stack_open", next ? "1" : "0");
+      } catch {}
+      return next;
+    });
 
   // Persist the resumable cursor + authoritative events so a refresh or a
   // closed tab never loses the wedding. Saved when a turn settles and on
@@ -426,6 +446,19 @@ export function AgentChat({
             <span className="venus-script text-3xl text-primary leading-none">Venus</span>
             <StatusDot status={agent.status} />
           </span>
+          <span className="flex items-center gap-1">
+            <button
+              aria-label="Under the hood — live agent stack"
+              aria-pressed={stackOpen}
+              className={cn(
+                "flex size-10 items-center justify-center rounded-full transition-colors hover:bg-muted hover:text-foreground",
+                stackOpen ? "text-primary" : "text-muted-foreground",
+              )}
+              onClick={toggleStack}
+              type="button"
+            >
+              <ActivityIcon className="size-5" />
+            </button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
@@ -449,6 +482,12 @@ export function AgentChat({
                   Curated by Venus
                 </a>
               </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <a className="flex cursor-pointer items-center gap-2.5" href="/observe">
+                  <ActivityIcon className="size-4" />
+                  Observability
+                </a>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem className="flex cursor-pointer items-center gap-2.5" onClick={startFresh}>
                 <RotateCcwIcon className="size-4" />
@@ -456,8 +495,20 @@ export function AgentChat({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          </span>
         </header>
       )}
+
+      {!isEmpty && stackOpen ? (
+        <div className="mx-auto w-full max-w-3xl shrink-0 px-4 pt-2 sm:px-6">
+          <AgentStack
+            compact
+            events={agent.events as readonly StackEvent[]}
+            runtime={runtime}
+            status={agent.status}
+          />
+        </div>
+      ) : null}
 
       {!isEmpty && isBusy ? (
         <div className="mx-auto w-full max-w-3xl shrink-0 px-4 pt-2 sm:px-6">

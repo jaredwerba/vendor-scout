@@ -16,6 +16,11 @@ export const DEFAULT_TOKEN_FACTORY_MODEL = "Qwen/Qwen3-235B-A22B-Instruct-2507";
 const tokenFactory = createOpenAICompatible({
   name: "token-factory",
   baseURL: TOKEN_FACTORY_BASE_URL,
+  // Token Factory honours response_format json_schema (verified 2026-08-28).
+  // Without this flag the AI SDK drops the schema on generateObject calls and
+  // classifyReply silently falls back to keyword heuristics — the reply eval
+  // (npm run eval:replies) is what caught it.
+  supportsStructuredOutputs: true,
   // Read the key at request time. createOpenAICompatible would otherwise
   // snapshot process.env at module load (empty during `eve build` / Vercel).
   fetch: (url, init) => {

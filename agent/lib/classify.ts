@@ -66,6 +66,17 @@ export async function classifyReply(args: {
         "Cautions: conditional business language ('we're not taking a deposit until you confirm " +
           "the date') is NOT a decline. Quoted text from the couple's own email below 'On ... " +
           "wrote:' lines is not the vendor speaking — ignore it.",
+        // Precedence rules: the enum alone left the open-weight model guessing
+        // between available/priced and unavailable/declined (reply eval, 2026-08-28).
+        "Decision rules, in priority order — pick the FIRST that applies: (1) unsubscribe — they " +
+          "ask to be removed or to stop being contacted. (2) priced — the reply contains any concrete " +
+          "price, fee, or package number for this couple, even if they are also available. " +
+          "(3) unavailable — they cannot do the date (booked, fully booked, closed that day) but " +
+          "would otherwise take weddings. (4) declined — they turn down the business itself (not a " +
+          "fit, not taking weddings, not interested), regardless of date. (5) needs_info — no price " +
+          "yet and they ask the couple questions before quoting. (6) available — the date is open " +
+          "and no price was given. (7) other — auto-replies, out-of-office notices, or anything that " +
+          "fits none of the above.",
         "REPLY:",
         text,
       ].join("\n\n"),

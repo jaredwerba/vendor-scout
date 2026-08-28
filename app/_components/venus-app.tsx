@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AgentChat, type SavedVenusSession } from "./agent-chat";
+import type { StackRuntime } from "./agent-stack";
 
 const STORAGE_KEY = "venus_session_v1";
 
@@ -47,8 +48,10 @@ export interface CuratedPreview {
  */
 export function VenusApp({
   curatedPreview,
+  runtime,
 }: {
   readonly curatedPreview?: CuratedPreview | null;
+  readonly runtime?: StackRuntime | null;
 }) {
   const [state, setState] = useState<
     { ready: false } | { ready: true; saved: SavedVenusSession | null }
@@ -65,6 +68,7 @@ export function VenusApp({
     <AgentChat
       curatedPreview={curatedPreview}
       key={state.saved?.session.sessionId ?? "fresh"}
+      runtime={runtime}
       saved={state.saved}
     />
   );
