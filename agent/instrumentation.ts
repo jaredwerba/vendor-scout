@@ -39,7 +39,14 @@ function spanKindFor(name: string): string | null {
   return null;
 }
 
-const seenSessions = new Set<string>();
+/**
+ * Spans arrive in no guaranteed order and carry different halves of what a
+ * deep link needs, so both halves are collected per trace and written once.
+ */
+const traceSessions = new Map<string, string>();
+const traceRoots = new Map<string, string>();
+const traceFallbacks = new Map<string, string>();
+const written = new Set<string>();
 
 /** An 8-byte OTel span id as the UUID LangSmith uses for the run. */
 export function langsmithRunId(spanId: string): string {
@@ -82,19 +89,32 @@ function transformExportedSpan(span: ReadableSpan): ReadableSpan {
   //
   //    Not the OTel trace id. LangSmith derives a run id from the OTel SPAN
   //    id, zero-padded into a UUID — a real one looks like
-  //    00000000-0000-0000-2c13-12a1be0cc1a4, where the last 16 hex digits are
-  //    the 8-byte span id. Storing the 32-character trace id produced a link
-  //    that always 404'd, and the 404 was invisible from this side because
-  //    nothing here ever fetches it.
+  //    00000000-0000-0000-2c13-12a1be0cc1a4. Storing the 32-character trace
+  //    id produced a link that always 404'd, invisibly, because nothing on
+  //    this side ever fetched it.
   //
-  //    Only the root span (no parent) becomes the run a deep link should open.
-  const sessionId = String(attrs["langsmith.metadata.session_id"] ?? "");
+  //    The session id arrives from the step.started runtime context, so it is
+  //    present on model-call spans and absent from the parentless root span.
+  //    Matching on "has a session id AND has no parent" therefore never fired.
+  //    Instead: learn trace -> session from whichever spans carry it, learn
+  //    trace -> root span from whichever span has no parent, and write the
+  //    mapping as soon as both halves are known. A child span is used as a
+  //    fallback, since LangSmith opens the surrounding tree either way.
+  const traceId = span.spanContext().traceId;
+  const sessionId = String(attrs["langsmith.metadata.session_id"] ?? attrs["eve.session.id"] ?? "");
   const parentSpanId =
     (span as { parentSpanContext?: { spanId?: string } }).parentSpanContext?.spanId ??
     (span as { parentSpanId?: string }).parentSpanId;
-  if (sessionId && !parentSpanId && !seenSessions.has(sessionId)) {
-    seenSessions.add(sessionId);
-    void saveLangSmithTraceId(sessionId, langsmithRunId(span.spanContext().spanId)).catch(() => {});
+
+  if (sessionId) traceSessions.set(traceId, sessionId);
+  if (!parentSpanId) traceRoots.set(traceId, span.spanContext().spanId);
+  else if (!traceRoots.has(traceId)) traceFallbacks.set(traceId, span.spanContext().spanId);
+
+  const knownSession = traceSessions.get(traceId);
+  const knownSpan = traceRoots.get(traceId) ?? traceFallbacks.get(traceId);
+  if (knownSession && knownSpan && !written.has(knownSession)) {
+    written.add(knownSession);
+    void saveLangSmithTraceId(knownSession, langsmithRunId(knownSpan)).catch(() => {});
   }
 
   return span;
