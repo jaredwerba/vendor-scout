@@ -26,7 +26,9 @@
     "models:compare": "node --env-file=.env.local --import ./scripts/ts-resolve.mjs scripts/compare-models.ts",
     "probe:schema": "node --env-file=.env.local --import ./scripts/ts-resolve.mjs scripts/probe-structured-output.ts",
     "report": "node --env-file=.env.local --import ./scripts/ts-resolve.mjs scripts/report.ts",
-    "simulate": "node --env-file=.env.local --import ./scripts/ts-resolve.mjs scripts/simulate.ts"
+    "simulate": "node --env-file=.env.local --import ./scripts/ts-resolve.mjs scripts/simulate.ts",
+    "grade": "node --env-file=.env.local --import ./scripts/ts-resolve.mjs scripts/grade.ts",
+    "run:eve": "node --env-file=.env.local --import ./scripts/ts-resolve.mjs scripts/run-eve.ts"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "^3.0.39",
