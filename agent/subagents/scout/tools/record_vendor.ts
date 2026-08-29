@@ -30,6 +30,19 @@ export default defineTool({
     style_fit: z.string().max(400).optional().describe("Why this fits THIS brief, in one line."),
     caveat: z.string().max(400).optional().describe("The one thing that might rule it out."),
     source_url: z.string().max(300).optional().describe("Where you read it."),
+    location: z
+      .string()
+      .min(2)
+      .max(80)
+      .describe("The vendor's actual town and state, e.g. 'Rowley, MA'. Required."),
+    distance_note: z
+      .string()
+      .min(3)
+      .max(120)
+      .describe(
+        "Why this is inside the couple's travel radius, e.g. '~35 min from Methuen'. " +
+          "State the real drive. If it is outside the radius, do not record it at all.",
+      ),
     image_urls: z
       .array(z.string().max(500))
       .max(8)
@@ -68,6 +81,19 @@ export default defineTool({
       };
     }
 
+    // A vendor in the wrong state is the failure the couple never catches
+    // until an email is already out. The model cannot be asked to "remember"
+    // the radius — it is asked to state the drive, in writing, per vendor,
+    // which makes the violation visible here and in the trace.
+    if (!input.location.trim() || !input.distance_note.trim()) {
+      return {
+        status: "rejected_missing_location",
+        note:
+          "Record the vendor's actual town and state, and how far that is from the couple. " +
+          "If it is outside the radius they gave you, do not record it — find someone closer.",
+      };
+    }
+
     const email = (input.inquiry_email ?? "").trim();
     const isFormOnly = isContactFormOnly(email);
     if (email && !isFormOnly && emailLooksForeign(email, input.website, input.name)) {
@@ -90,6 +116,8 @@ export default defineTool({
         styleFit: input.style_fit ?? null,
         caveat: input.caveat ?? null,
         sourceUrl: input.source_url ?? null,
+        location: input.location.trim(),
+        distanceNote: input.distance_note.trim(),
         imageUrls: images,
         bySession: ctx.session.id,
       });

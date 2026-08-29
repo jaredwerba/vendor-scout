@@ -47,6 +47,10 @@ export interface VendorFinding {
   styleFit: string | null;
   caveat: string | null;
   sourceUrl: string | null;
+  /** The vendor's actual town and state. */
+  location?: string | null;
+  /** The scout's stated drive from the couple, e.g. "~35 min from Methuen". */
+  distanceNote?: string | null;
   imageUrls: string[];
   recordedAt: string;
   /** The specialist session that found it — links a finding to its lane. */

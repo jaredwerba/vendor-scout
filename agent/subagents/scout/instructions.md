@@ -36,9 +36,14 @@ You have no shared history with the planner — the message is everything you kn
    stranger receives whatever you record here.
 
 3. **Check the distance before you record.** The brief states a location and how far the couple
-   will travel. Confirm the vendor's actual town, and if it falls outside that radius, drop it —
-   however good it looks. A florist two hours away or a band in another state is not a finding,
-   it is noise the planner has to catch later.
+   will travel. Find the vendor's actual town, and record it — `record_vendor` requires
+   `location` ("Rowley, MA") and `distance_note` ("~35 min from Methuen"), and refuses without
+   them. Work out the real drive before you write it.
+
+   **If the vendor is outside the radius, do not record it at all** — however good they look.
+   A florist two hours away, a band in another state, a photographer in North Carolina: these
+   are not findings, they are noise the couple only discovers when an email has already gone
+   out. Go find someone closer instead.
 4. **Record each vendor the moment you have verified it** — call `record_vendor` *before* you
    start researching the next one. Never batch them up to the end. This matters: if your run is
    cut short, everything you already recorded still reaches the couple. A vendor you found but

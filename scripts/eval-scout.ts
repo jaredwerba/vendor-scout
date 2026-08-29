@@ -36,6 +36,8 @@ const args = process.argv.slice(2);
 const host = args.find((a) => a.startsWith("http")) ?? "https://vendor-scout-xi.vercel.app";
 const runAll = args.includes("--all");
 const TURN_TIMEOUT_MS = Number(process.env.EVAL_TURN_TIMEOUT_MS ?? 15 * 60 * 1000);
+/** How long to let the specialists finish after the parent turn parks. */
+const SPECIALIST_SETTLE_MS = Number(process.env.EVAL_SETTLE_TIMEOUT_MS ?? 12 * 60 * 1000);
 
 const briefs = JSON.parse(
   readFileSync(new URL("../evals/data/briefs.json", import.meta.url), "utf8"),
@@ -86,6 +88,7 @@ async function judgeVendor(f: VendorFinding, region: string) {
       `Business name: ${f.name}`,
       `Website: ${f.website ?? "(none given)"}`,
       `Source: ${f.sourceUrl ?? "(none given)"}`,
+      `Stated location: ${f.location ?? "(none given)"} — ${f.distanceNote ?? "no drive stated"}`,
       `Price signal: ${f.priceSignal ?? "(none)"}`,
       "Two independent questions:",
       "1. real — is this a real, currently-operating business of that category? A placeholder, " +
@@ -160,6 +163,28 @@ for (const brief of selected) {
   if (!sessionId) {
     note(false, `${brief.id} · turn`, "a completed planning turn", status);
     continue;
+  }
+
+  // The parent turn settles as soon as Venus has dispatched her scouts — she
+  // parks while they work. Grading here measured a run in flight and scored
+  // "0 recorded" against specialists that were still searching. Wait for the
+  // tree to go quiet before reading anything.
+  const settleDeadline = Date.now() + SPECIALIST_SETTLE_MS;
+  for (;;) {
+    const snapshot = await getTraceTree(sessionId).catch(() => null);
+    const kids = snapshot?.children ?? [];
+    const running = kids.filter((c) => c.status === "active");
+    if (kids.length > 0 && running.length === 0) {
+      console.log(`  specialists settled (${kids.length})`);
+      break;
+    }
+    if (Date.now() > settleDeadline) {
+      console.log(`  gave up waiting: ${running.length} still active after ${SPECIALIST_SETTLE_MS / 1000}s`);
+      break;
+    }
+    const recorded = kids.reduce((n, c) => n + c.vendorsRecorded, 0);
+    console.log(`  waiting on ${running.length}/${kids.length} specialists · ${recorded} vendors so far`);
+    await new Promise((r) => setTimeout(r, 15_000));
   }
   note(
     status !== "unknown" && !status.startsWith("error"),
@@ -241,6 +266,19 @@ for (const brief of selected) {
       "no addresses from unrelated domains",
       foreignEmails.length === 0 ? "clean" : `${foreignEmails.length} suspicious`,
       foreignEmails.map((f) => `${f.name}: ${f.inquiryEmail}`).slice(0, 2).join(" | ") || undefined,
+    );
+
+    const located = list.filter((f) => (f.location ?? "").trim().length > 1);
+    note(
+      located.length === list.length,
+      `${brief.id} · ${category} · location recorded`,
+      "every vendor states its town",
+      `${located.length}/${list.length}`,
+      list
+        .filter((f) => !(f.location ?? "").trim())
+        .map((f) => f.name)
+        .slice(0, 2)
+        .join(", ") || undefined,
     );
 
     const withSource = list.filter((f) => f.sourceUrl?.startsWith("https://"));
