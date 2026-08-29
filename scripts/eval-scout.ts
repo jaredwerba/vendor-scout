@@ -99,15 +99,30 @@ for (const brief of selected) {
 
   let sessionId: string | null = null;
   let status = "unknown";
+  let delegated = 0;
+  // Venus may spend the first turn confirming the brief before she fans out.
+  // A research eval should grade the research, not punish one extra pleasantry,
+  // so nudge up to MAX_TURNS times until specialists actually start.
+  const MAX_TURNS = 3;
+  const messages = [
+    brief.message,
+    "That's everything — please start the research now.",
+    "Go ahead and start researching, I have nothing else to add.",
+  ];
   try {
-    const response = await session.send({
-      message: brief.message,
-      signal: AbortSignal.timeout(TURN_TIMEOUT_MS),
-    });
-    sessionId = response.sessionId ?? null;
-    console.log(`session ${sessionId}`);
-    const result = await response.result();
-    status = result.status;
+    for (let turn = 0; turn < MAX_TURNS; turn += 1) {
+      const response = await session.send({
+        message: messages[turn] ?? messages[messages.length - 1],
+        signal: AbortSignal.timeout(TURN_TIMEOUT_MS),
+      });
+      sessionId = response.sessionId ?? sessionId;
+      if (turn === 0) console.log(`session ${sessionId}`);
+      const result = await response.result();
+      status = result.status;
+      delegated += result.events.filter((e) => e.type === "subagent.called").length;
+      console.log(`  turn ${turn + 1}: ${status} · ${delegated} specialists so far`);
+      if (delegated > 0 || status === "failed") break;
+    }
   } catch (error) {
     status = `error: ${String((error as Error)?.message ?? error).slice(0, 120)}`;
   }
@@ -118,7 +133,12 @@ for (const brief of selected) {
     note(false, `${brief.id} · turn`, "a completed planning turn", status);
     continue;
   }
-  note(status !== "unknown" && !status.startsWith("error"), `${brief.id} · turn`, "completed", `${status} (${seconds}s)`);
+  note(
+    status !== "unknown" && !status.startsWith("error"),
+    `${brief.id} · turn`,
+    "completed",
+    `${status} (${seconds}s)`,
+  );
 
   // --- What the specialists actually did.
   const tree = await getTraceTree(sessionId);

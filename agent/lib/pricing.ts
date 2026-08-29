@@ -21,10 +21,22 @@ export interface ModelPrice {
   context: number;
 }
 
+/**
+ * eve reports the configured model as `token-factory/Qwen/Qwen3-...` — the
+ * provider prefix it routed through, plus the catalog id. The price table is
+ * keyed on the catalog id alone, so peel prefixes until one matches.
+ */
 export function priceFor(modelId: string | null | undefined): ModelPrice | null {
-  const id = (modelId ?? "").trim();
+  let id = (modelId ?? "").trim().replace(/^dynamic:/, "");
   if (!id) return null;
-  return TOKEN_FACTORY_PRICING[id] ?? null;
+  for (let i = 0; i < 3; i += 1) {
+    const hit = TOKEN_FACTORY_PRICING[id];
+    if (hit) return hit;
+    const cut = id.indexOf("/");
+    if (cut === -1) return null;
+    id = id.slice(cut + 1);
+  }
+  return null;
 }
 
 /** Dollars for one step's usage on `modelId`. 0 when the model is unknown. */

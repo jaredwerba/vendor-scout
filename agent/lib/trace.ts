@@ -197,7 +197,10 @@ function apply(s: TraceSummary, ev: { type: string; data?: Any }, now: string): 
   switch (ev.type) {
     case "session.started": {
       s.status = "active";
-      const m = d?.runtime?.model;
+      // RuntimeIdentity.modelId is the authoritative field; the older
+      // `runtime.model` shape is kept as a fallback. Getting this wrong is
+      // invisible: the trace still records tokens, but every cost is $0.
+      const m = d?.runtime?.modelId ?? d?.runtime?.model;
       s.model = typeof m === "string" ? m : (m?.id ?? m?.modelId ?? s.model ?? null);
       if (d?.invocation?.kind === "subagent") {
         s.role = "specialist";
