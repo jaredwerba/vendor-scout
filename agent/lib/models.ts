@@ -45,11 +45,20 @@ export interface RoleSpec {
  *
  * The sharpest lesson came from acting on it too fast. DeepSeek-V4-Flash won
  * that sweep at 15/15, so the classifier was switched to it — and the very
- * next run of the same 15 cases scored 11/15 with six schema failures. One
- * pass over fifteen cases cannot separate two models near the top; it can
- * only rule out the ones that are clearly worse. `models:compare` now runs
- * several rounds and reports the worst round alongside the mean, and a
- * candidate has to beat the incumbent repeatedly before it takes the job.
+ * next run of the same 15 cases scored 11/15 with six schema failures.
+ *
+ * `npm run probe:schema` then settled it, and it was not noise: over 30
+ * structured-output calls each,
+ *
+ *   Qwen/Qwen3-235B-A22B-Instruct-2507    0/30 failed
+ *   deepseek-ai/DeepSeek-V4-Flash         4/30 failed (13%)
+ *     2× "the model did not return a response"
+ *     2× "could not parse the response"
+ *
+ * An accuracy sweep cannot see this: a call that never returns an object is
+ * not a wrong answer, it is no answer, and it reads as a tie. Reliability of
+ * the shape is a separate axis from correctness of the content, and for a
+ * job reading untrusted email it is the one that matters more.
  */
 export const MODEL_ROLES: Record<ModelRole, RoleSpec> = {
   /**

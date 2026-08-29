@@ -114,9 +114,32 @@ you actually pay for. And the genuinely cheapest run (Qwen3-30B, $0.0013) got
 chasing a vendor who already said yes. A price list cannot tell you either of
 those things.
 
-Note the honest limit: two models tied at 100%, so this set proves neither is
-worse, not that the winner is better. The tiebreak was cost plus one fewer
-model in the stack.
+Then the sweep's winner was put into the classifier role and immediately
+scored 11/15 with six schema failures on the same fifteen cases. `npm run
+probe:schema` settled why, and it was not noise — over 30 structured-output
+calls each:
+
+| model | schema honoured | failures |
+|---|---|---|
+| Qwen/Qwen3-235B-A22B-Instruct-2507 | 30/30 | — |
+| deepseek-ai/DeepSeek-V4-Flash | 26/30 (13% fail) | 2× no response, 2× unparseable |
+
+**An accuracy sweep cannot see this.** A call that never returns an object is
+not a wrong answer, it is no answer, and averaged into a score it reads as a
+tie. Reliability of the *shape* is a separate axis from correctness of the
+*content*, and for a job reading untrusted email it is the one that matters
+more: a schema failure drops `classifyReply` to keyword heuristics, and a
+misread reply means a follow-up chasing a vendor who already said yes.
+
+So the classifier stayed on the incumbent, `models:compare` now runs three
+rounds and ranks on the worst one, and `probe:schema` is a permanent check for
+any role that depends on structured output.
+
+The scout keeps DeepSeek-V4-Flash despite that 13%, deliberately: its findings
+reach the planner through `record_vendor` and the KV research store, not
+through its returned object, so a failed final report costs the coverage note
+and nothing else. That resilience was designed for truncation and turns out to
+cover schema failure too — which is the argument for the pattern.
 
 The scout role is chosen on the reasoning the post used rather than a sweep —
 its cost is dominated by input tokens over a long tool loop, so input price and
