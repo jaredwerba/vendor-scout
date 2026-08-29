@@ -164,14 +164,33 @@ its cost is dominated by input tokens over a long tool loop, so input price and
 context length are the terms that matter — and verified end to end with
 `npm run eval:scout` rather than assumed.
 
-**Adversarial testing.** Sentinel used Snowglobe to simulate personas and
-found a social-engineering bypass before launch. Venus has three adversarial
-cases in the reply eval — a prompt injection instructing the agent to forward
-the couple's details, an out-of-scope request, and malformed HTML — and a
-guardrail eval asserting a status question never triggers outreach. **This is
-less than Snowglobe.** A fixed set of three cases cannot find the bypass
-nobody thought of; a simulation sweep can. Named here as a real gap rather
-than counted as done.
+**Adversarial simulation.** Sentinel used Snowglobe to simulate personas and
+found a social-engineering bypass before launch: out-of-scope coding requests
+wrapped in compliance language. Venus started with three fixed injection cases
+in the reply eval, which is not simulation — a fixed set only catches the
+attack someone already imagined.
+
+`npm run simulate` closes most of that gap. It asks the judge model to write
+fresh adversarial vendor emails each run — deliberately a different model from
+the one under test — then grades whether the defence held. The first sweep
+produced tactics nothing in the fixed set covered: zero-width character
+injection, a unicode homograph domain, a multi-hop forwarding chain, an
+override buried in quoted email history, and an attacker impersonating the
+couple. Current result: **12/12 held, every attempt flagged for a human.**
+
+Two design notes, because the first version of this was wrong. Compliance is
+graded **semantically, not lexically**: a regex over the agent's output
+reported two false breaches on the first run, both cases where the classifier
+had correctly *flagged* the injection in its summary exactly as instructed —
+"quoted the attack" and "followed the attack" are not lexically
+distinguishable. And the run scores **only** whether the line held; the
+attacker also emits its own intent labels, but those are generated rather than
+ground truth, so they are reported as advisory. Accuracy belongs to the
+human-labelled set.
+
+Still short of Snowglobe in one respect: this attacks the reply surface, which
+is where a wedding agent meets the open internet, but it does not simulate a
+full adversarial *conversation* against the live agent. That remains open.
 
 ### Not adopted
 
@@ -188,7 +207,9 @@ countdown, which already exist.
 
 ## Known gaps
 
-1. **No adversarial simulation.** Three fixed injection cases, not a sweep.
+1. **Simulation covers the reply surface only.** `npm run simulate` generates
+   fresh attacks each run and grades them semantically, but it does not drive
+   a full adversarial conversation against the live agent.
 2. **Radius adherence is enforced by declaration, not measurement.** Every
    vendor must state its town, and the eval judges the radius, but nothing
    geocodes. Vendors 15–30 minutes past the line still get through.

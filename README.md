@@ -40,6 +40,8 @@ Live: **https://vendor-scout-xi.vercel.app** — public, no sign-in.
 | Deep traces | OTel spans → LangSmith, with a `transformExportedSpan` that maps eve's runtime context onto LangSmith metadata and span kinds (the built-in rules do not fire for eve's span names). | `agent/instrumentation.ts` |
 | Untrusted input | Vendor replies, web pages and scout reports are data, never instruction — asserted by injection cases in the reply eval. | `agent/lib/classify.ts`, `evals/data/vendor-replies.json` |
 | Evals | Fixed datasets, held constant across model swaps, with the **judge pinned away from the model under test**. | `evals/`, `scripts/eval-*.ts` |
+| Simulation | Adversarial emails generated fresh each run by a different model, graded on whether the defence held rather than on a keyword. | `scripts/simulate.ts` |
+| Evidence | Step reliability and its compounding curve, cost distribution with the tail, and five generations of the same agent — all from real traced runs. | `npm run report`, `/observe` |
 
 An honest audit against the blueprint — adopted, adapted, skipped, and the
 gaps that remain — is in [`docs/blueprint-audit.md`](docs/blueprint-audit.md).
@@ -88,6 +90,8 @@ without the second) + `LANGSMITH_PROJECT`, `RESEND_API_KEY`, `RESEND_WEBHOOK_SEC
 npm run verify                           # typecheck + next build + eve build + guard tests
 npm exec -- eve dev --no-ui --port 3111  # agent + API locally
 
+npm run report                           # the evidence pack: reliability, cost tails, generations
+npm run simulate                         # fresh adversarial attacks, graded semantically
 npm run eval                             # fast deterministic suite (eve evals)
 npm run eval:replies                     # 15 labelled vendor replies + injection cases
 npm run eval:scout                       # research quality, end to end (slow, real credits)
