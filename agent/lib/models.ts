@@ -26,6 +26,23 @@ export interface RoleSpec {
   rationale: string;
 }
 
+/**
+ * Measured on the 15 labelled vendor replies, 2026-08-29
+ * (`npm run models:compare`). Accuracy first, then cost for the whole set:
+ *
+ *   deepseek-ai/DeepSeek-V4-Flash        100%   $0.0020   1570ms
+ *   Qwen/Qwen3-235B-A22B-Instruct-2507   100%   $0.0023   1203ms
+ *   zai-org/GLM-5.3-Flash                 93%   $0.0041   2633ms
+ *   nvidia/Nemotron-3_5-Lightning         80%   $0.0077   6613ms
+ *   Qwen/Qwen3-30B-A3B-Instruct-2507      73%   $0.0013   1851ms
+ *
+ * Two things worth keeping from that run. The cheapest model per token
+ * (Nemotron-3.5-Lightning, $0.06/$0.24) was the most expensive per run and
+ * five times slower, because price per token is not cost — output volume is.
+ * And the cheapest per run (Qwen3-30B) got 73%, which on untrusted vendor
+ * email means misfiled replies and follow-ups chasing someone who already
+ * said yes.
+ */
 export const MODEL_ROLES: Record<ModelRole, RoleSpec> = {
   /**
    * Venus herself: holds the whole conversation, orchestrates the fan-out,
@@ -72,12 +89,14 @@ export const MODEL_ROLES: Record<ModelRole, RoleSpec> = {
    * what `npm run models:compare` runs.
    */
   classifier: {
-    model: "Qwen/Qwen3-235B-A22B-Instruct-2507",
+    model: "deepseek-ai/DeepSeek-V4-Flash",
     env: "NEBIUS_CLASSIFIER_MODEL",
-    contextWindow: 262_144,
+    contextWindow: 1_048_576,
     rationale:
-      "Structured output on untrusted email. Chosen by measured accuracy on the 15-case labelled " +
-      "set (npm run models:compare), not by price alone.",
+      "Measured on the 15 labelled replies (npm run models:compare, 2026-08-29): 15/15 at " +
+      "$0.13 per 1k replies, tied with Qwen3-235B on accuracy and 16% cheaper. The set does not " +
+      "separate the two — it proves neither is worse — so the tiebreak is cost, plus one fewer " +
+      "model in the stack and a 1M window for long quoted email threads.",
   },
 
   /**

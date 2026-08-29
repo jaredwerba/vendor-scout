@@ -53,7 +53,7 @@ One model per job, each chosen for what that job actually demands
 |---|---|---|
 | `planner` | Qwen3-235B-A22B-Instruct | Venus's voice and orchestration. ~15% of cost, 100% of what the couple reads. Held constant until an eval can measure the swap. |
 | `scout` | DeepSeek-V4-Flash | Cost is dominated by input tokens over 20–40 steps: $0.14/$0.28 vs $0.20/$0.60, and a 1M window vs 262k. |
-| `classifier` | chosen by `npm run models:compare` | Structured output on untrusted email, decided by measured accuracy on 15 labelled replies. |
+| `classifier` | DeepSeek-V4-Flash | Measured: 15/15 at $0.13 per 1k replies, tied on accuracy with Qwen3-235B and 16% cheaper (`npm run models:compare`). |
 | `judge` | DeepSeek-V4-Pro | Pinned away from every other role so a model swap can never move the bar. |
 
 ## Architecture

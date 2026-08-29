@@ -93,12 +93,35 @@ reply eval, not just asserted in a prompt.
 
 **Model comparison across configurations.** The post's headline is a 19× cost
 reduction found by swapping models against a held-constant dataset. Venus has
-`npm run models:compare`, which sweeps candidate models over the 15 labelled
-replies and reports accuracy, cost and median latency per candidate — so the
-entry in `agent/lib/models.ts` is a measurement, not a preference. The scout
-role is chosen on the same reasoning the post used (its cost is dominated by
-input tokens over a long tool loop, so input price and context length are the
-terms that matter) and verified with `npm run eval:scout`.
+`npm run models:compare`, which sweeps candidates over the 15 labelled replies
+and reports accuracy, cost and median latency each, so the classifier entry in
+`agent/lib/models.ts` is a result rather than a preference. First run
+(2026-08-29):
+
+| model | accuracy | cost/set | median |
+|---|---|---|---|
+| deepseek-ai/DeepSeek-V4-Flash | 100% | $0.0020 | 1570ms |
+| Qwen/Qwen3-235B-A22B-Instruct-2507 | 100% | $0.0023 | 1203ms |
+| zai-org/GLM-5.3-Flash | 93% | $0.0041 | 2633ms |
+| nvidia/Nemotron-3_5-Lightning | 80% | $0.0077 | 6613ms |
+| Qwen/Qwen3-30B-A3B-Instruct-2507 | 73% | $0.0013 | 1851ms |
+
+Two results worth keeping. **Price per token is not cost**: Nemotron-3.5-
+Lightning is the cheapest model in the catalog per token ($0.06/$0.24) and the
+most expensive per run here, five times slower, because output volume is what
+you actually pay for. And the genuinely cheapest run (Qwen3-30B, $0.0013) got
+73% — on untrusted vendor email that means misfiled replies and follow-ups
+chasing a vendor who already said yes. A price list cannot tell you either of
+those things.
+
+Note the honest limit: two models tied at 100%, so this set proves neither is
+worse, not that the winner is better. The tiebreak was cost plus one fewer
+model in the stack.
+
+The scout role is chosen on the reasoning the post used rather than a sweep —
+its cost is dominated by input tokens over a long tool loop, so input price and
+context length are the terms that matter — and verified end to end with
+`npm run eval:scout` rather than assumed.
 
 **Adversarial testing.** Sentinel used Snowglobe to simulate personas and
 found a social-engineering bypass before launch. Venus has three adversarial
