@@ -190,8 +190,18 @@ countdown, which already exist.
 
 1. **No adversarial simulation.** Three fixed injection cases, not a sweep.
 2. **Radius adherence is enforced by declaration, not measurement.** Every
-   vendor must state its town and drive, and the eval judges it, but nothing
+   vendor must state its town, and the eval judges the radius, but nothing
    geocodes. Vendors 15–30 minutes past the line still get through.
+
+   The first version of this control also required the scout to state the
+   drive, which backfired badly: with no geocoder and a search tool that
+   cannot answer "how long is the drive from A to B", one catering scout spent
+   **seven consecutive searches** on a single drive time and finished its
+   entire 25-search budget having recorded one vendor. Asking a model to
+   produce a fact its tools cannot reach turns a guardrail into a death
+   spiral. The drive note is optional now and the scout is told explicitly
+   never to search for one — the town is a fact it can read, the radius is a
+   judgement it can make, and the judge still catches the misses.
 3. **No eval measures prose quality**, so the planner's model is held constant
    on principle rather than evidence — deliberately, since it is the voice of
    the product.

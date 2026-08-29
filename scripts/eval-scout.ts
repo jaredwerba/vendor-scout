@@ -88,7 +88,7 @@ async function judgeVendor(f: VendorFinding, region: string) {
       `Business name: ${f.name}`,
       `Website: ${f.website ?? "(none given)"}`,
       `Source: ${f.sourceUrl ?? "(none given)"}`,
-      `Stated location: ${f.location ?? "(none given)"} — ${f.distanceNote ?? "no drive stated"}`,
+      `Stated location: ${f.location ?? "(none given)"}${f.distanceNote ? ` — ${f.distanceNote}` : ""}`,
       `Price signal: ${f.priceSignal ?? "(none)"}`,
       "Two independent questions:",
       "1. real — is this a real, currently-operating business of that category? A placeholder, " +

@@ -37,11 +37,11 @@ export default defineTool({
       .describe("The vendor's actual town and state, e.g. 'Rowley, MA'. Required."),
     distance_note: z
       .string()
-      .min(3)
       .max(120)
+      .optional()
       .describe(
-        "Why this is inside the couple's travel radius, e.g. '~35 min from Methuen'. " +
-          "State the real drive. If it is outside the radius, do not record it at all.",
+        "Optional, from your own knowledge of the area, e.g. '~35 min from Methuen'. " +
+          "NEVER search for a drive time to fill this in — leave it blank instead.",
       ),
     image_urls: z
       .array(z.string().max(500))
@@ -85,12 +85,13 @@ export default defineTool({
     // until an email is already out. The model cannot be asked to "remember"
     // the radius — it is asked to state the drive, in writing, per vendor,
     // which makes the violation visible here and in the trace.
-    if (!input.location.trim() || !input.distance_note.trim()) {
+    if (!input.location.trim()) {
       return {
         status: "rejected_missing_location",
         note:
-          "Record the vendor's actual town and state, and how far that is from the couple. " +
-          "If it is outside the radius they gave you, do not record it — find someone closer.",
+          "Record the vendor's actual town and state — you read it on their site. If that town " +
+          "is outside the radius the couple gave you, do not record them at all; find someone " +
+          "closer. Do not search for a drive time.",
       };
     }
 
@@ -117,7 +118,7 @@ export default defineTool({
         caveat: input.caveat ?? null,
         sourceUrl: input.source_url ?? null,
         location: input.location.trim(),
-        distanceNote: input.distance_note.trim(),
+        distanceNote: input.distance_note?.trim() || null,
         imageUrls: images,
         bySession: ctx.session.id,
       });

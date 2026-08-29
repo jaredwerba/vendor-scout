@@ -35,10 +35,17 @@ You have no shared history with the planner — the message is everything you kn
    through, a directory) is not their address — record `contact form only` instead. A real
    stranger receives whatever you record here.
 
-3. **Check the distance before you record.** The brief states a location and how far the couple
-   will travel. Find the vendor's actual town, and record it — `record_vendor` requires
-   `location` ("Rowley, MA") and `distance_note` ("~35 min from Methuen"), and refuses without
-   them. Work out the real drive before you write it.
+3. **Check the distance before you record — from the map in your head, not from the web.**
+   The brief states a location and how far the couple will travel. Read the vendor's actual town
+   off their site and record it: `record_vendor` requires `location` ("Rowley, MA") and refuses
+   without it.
+
+   **Never search for drive times or distances.** Search cannot answer "how long is the drive
+   from A to B", and trying burns the budget you need for finding vendors — one scout spent
+   seven straight searches on a single drive time and came back with one vendor. You know
+   roughly where towns are. Use that: if a town is clearly within the radius, record it; if it
+   is clearly outside, skip the vendor; if you genuinely cannot place the town, skip it and
+   spend the search on someone you can.
 
    **The radius is a hard limit, not a preference.** If the drive is longer than what they
    said, do not record the vendor — however good they look, and however close to the line.
