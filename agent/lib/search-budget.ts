@@ -32,3 +32,30 @@ export function countSearch(cap: number): { used: number; cap: number; exhausted
 export function searchesUsed(): number {
   return searches.get().count;
 }
+
+/**
+ * URLs this agent has already been shown.
+ *
+ * A tool-calling transcript re-sends every prior turn, so a result returned
+ * twice is not merely redundant — it is re-billed on every subsequent model
+ * call for the rest of the session. Sentinel found the same thing and
+ * suppresses chunks the sub-agent has already seen. A scout runs 20-40 steps
+ * over overlapping queries, so the overlap is real.
+ */
+const seenResults = defineState("venus.seen-results", () => ({ urls: [] as string[] }));
+
+export function filterSeen<T extends { url?: string }>(results: T[]): {
+  fresh: T[];
+  suppressed: number;
+} {
+  const seen = new Set(seenResults.get().urls);
+  const fresh = results.filter((r) => {
+    const url = (r.url ?? "").trim();
+    if (!url || seen.has(url)) return false;
+    seen.add(url);
+    return true;
+  });
+  // Bounded: a session cannot grow this without limit.
+  seenResults.update(() => ({ urls: Array.from(seen).slice(-400) }));
+  return { fresh, suppressed: results.length - fresh.length };
+}

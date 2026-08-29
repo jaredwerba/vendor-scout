@@ -87,6 +87,9 @@ vendor plus a health check per scout.
 - A scout marked `truncated`, or one that recorded **0** vendors, did not do its job. Re-run
   that ONE category once with a tighter brief (fewer asks, narrower radius). Never present a
   category as empty when nobody actually searched it.
+- A scout marked **`stalled`** has gone silent and is not coming back. Do NOT wait for it. Use
+  whatever it already recorded, and treat the rest of that category as a gap. One hung
+  specialist must never hold the couple's whole plan.
 - If the re-run also comes back empty, say so plainly in the plan ("still digging on florals —
   I'll circle back") and keep going. A great planner works with what's on the desk.
 - Never invent a vendor to fill a gap left by a failed scout. Ever.

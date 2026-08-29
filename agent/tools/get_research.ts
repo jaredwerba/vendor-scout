@@ -1,7 +1,7 @@
 import { defineTool } from "eve/tools";
 import { z } from "zod";
 import { countByCategory, listAllFindings, researchConfigured } from "../lib/research";
-import { getTraceTree } from "../lib/trace";
+import { getTraceTree, isStalled, STALL_AFTER_MS } from "../lib/trace";
 
 /**
  * Read back everything the specialists have recorded — plus an honest health
@@ -35,21 +35,29 @@ export default defineTool({
       getTraceTree(rootSessionId).catch(() => ({ root: null, children: [], langsmithTraceId: null })),
     ]);
 
-    const specialists = tree.children.map((c) => ({
-      category: c.label,
-      status: c.status,
-      searches: c.tools.web_search ?? 0,
-      vendors_recorded: c.vendorsRecorded,
-      truncated: c.truncations > 0,
-      failed_actions: c.failedActions,
-      note:
-        c.truncations > 0
-          ? "CUT OFF mid-run — its findings are incomplete. Re-run this category once with a narrower brief."
-          : c.vendorsRecorded === 0 && c.status !== "active"
-            ? "Recorded nothing. Either re-run this category once, or tell the couple it is still open."
-            : undefined,
-    }));
+    const specialists = tree.children.map((c) => {
+      const stalled = isStalled(c);
+      return {
+        category: c.label,
+        // A specialist that has gone silent is reported as stalled rather than
+        // as active, so a hang cannot hold the plan hostage waiting for it.
+        status: stalled ? "stalled" : c.status,
+        searches: c.tools.web_search ?? 0,
+        vendors_recorded: c.vendorsRecorded,
+        truncated: c.truncations > 0,
+        failed_actions: c.failedActions,
+        note: stalled
+          ? `STALLED — no activity for over ${Math.round(STALL_AFTER_MS / 60000)} minutes. ` +
+            "Do not wait for it. Use whatever it already recorded and move on."
+          : c.truncations > 0
+            ? "CUT OFF mid-run — its findings are incomplete. Re-run this category once with a narrower brief."
+            : c.vendorsRecorded === 0 && c.status !== "active"
+              ? "Recorded nothing. Either re-run this category once, or tell the couple it is still open."
+              : undefined,
+      };
+    });
 
+    const stalledCount = specialists.filter((s) => s.status === "stalled").length;
     const findings = category ? { [category]: all[category] ?? [] } : all;
     const total = Object.values(findings).reduce((n, list) => n + list.length, 0);
 
@@ -78,8 +86,11 @@ export default defineTool({
           ? `${withPhotos} vendors have verified photos above. Put ALL of a venue's photos on ONE line under its tier heading — that line becomes the carousel.`
           : "No verified photos were recorded. Run one web_search with include_images per venue before presenting.",
       findings,
+      stalled_specialists: stalledCount,
       note:
-        total === 0
+        stalledCount > 0
+          ? `${stalledCount} specialist(s) stalled. Proceed with what is recorded; do not wait.`
+          : total === 0
           ? "Nothing recorded yet. If your specialists have returned, treat this as a failure to research, not as an empty market."
           : undefined,
     };

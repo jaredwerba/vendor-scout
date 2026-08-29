@@ -431,6 +431,28 @@ export async function getTraceEvents(id: string, limit = MAX_EVENTS): Promise<Tr
   return (raws ?? []).map((r) => parse<TraceEntry>(r)).filter((e): e is TraceEntry => Boolean(e));
 }
 
+/**
+ * How long a specialist may go silent before it is treated as wedged.
+ *
+ * Sentinel carries a stall guard for a failure it actually hit: provider
+ * streams left in CLOSE_WAIT never raised, three hung workers held the whole
+ * fan-out hostage for 60+ minutes, and the audit produced nothing. Its guard
+ * wraps the thread pool, because Sentinel owns that loop.
+ *
+ * eve owns the loop here, so the same intent is enforced at the read instead:
+ * a specialist still marked active whose last event is older than this is
+ * reported as stalled, and the planner proceeds with what it has. A healthy
+ * scout emits an event every few seconds, so five minutes of silence is
+ * wedged rather than slow.
+ */
+export const STALL_AFTER_MS = Number(process.env.SCOUT_STALL_MS ?? 5 * 60 * 1000);
+
+export function isStalled(summary: TraceSummary, now = Date.now()): boolean {
+  if (summary.status !== "active") return false;
+  const last = Date.parse(summary.updatedAt);
+  return Number.isFinite(last) && now - last > STALL_AFTER_MS;
+}
+
 const isGenericLabel = (label: string) =>
   !label || label === "specialist" || label === "scout" || label === "subagent";
 

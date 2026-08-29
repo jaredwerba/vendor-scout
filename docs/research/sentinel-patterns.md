@@ -125,3 +125,62 @@ flight.
 **The failures that cost you are the ones that look like success.** That is
 the thesis the comparison document should be built on, and it is the axis on
 which the two architectures should be judged.
+
+## Audit: what Sentinel does that Venus did not
+
+Run against the code on 2026-08-29, not from memory.
+
+| Pattern | Venus before | Now |
+|---|---|---|
+| `record_finding` per finding | yes (`record_vendor`) | — |
+| Retrieval budget | yes (25 specialist / 40 root) | — |
+| Item text in the first message | yes (brief inline) | — |
+| Structured status, never prose, for retry | yes | — |
+| Trace re-parenting | yes (`ctx.session.parent` lineage) | — |
+| **Fail fast on a bad model id** | **no — silent fallback** | **added** |
+| **Stall guard** | **no watchdog at all** | **added at the read** |
+| **Suppress already-seen results** | **no — re-billed every step** | **added** |
+| Connection pooling | no | not adopted, see below |
+| Knowledge layer (Nexus) | no | still open |
+
+### Fail fast on a bad model id
+
+Sentinel's comment is exact: *"a typo'd NEBIUS_MODEL used to fall back
+silently to DeepSeek, so you could benchmark the wrong model without
+noticing."* Venus had the same fallback, and it is worse here, because every
+number in the V1-to-V2 comparison is attributed to a named model. A silent
+fallback would make those attributions quietly false — the same class as every
+other fault in this project's log. An unknown id now stops the process and
+names the near-misses.
+
+### Stall guard, adapted rather than copied
+
+Sentinel wraps its own `ThreadPoolExecutor`, because it owns the fan-out loop.
+eve owns the loop here, so there is nothing to wrap. The intent — *one hung
+worker must not hold the whole run hostage* — is enforced at the read instead:
+`get_research` reports a specialist still marked active with no event for five
+minutes as `stalled`, and the instructions tell the planner to proceed with
+what it has. Same guarantee, different mechanism.
+
+### Suppress already-seen results
+
+*"The ReAct transcript re-sends every prior turn, so a duplicate chunk gets
+re-billed on every subsequent LLM call."* A scout runs 20-40 steps over
+overlapping queries, so this was real spend. `web_search` now drops results
+the agent has already been shown and says how many it dropped.
+
+### Connection pooling — deliberately not adopted
+
+Sentinel shares one `httpx.Client` after DNS exhaustion at 50 concurrent
+workers in one process. Venus's specialists are separate durable sessions
+rather than threads in one process, and each scout's searches are sequential,
+so the failure that motivated the pattern cannot occur in this shape.
+Copying it would be cargo cult.
+
+### The knowledge layer is the real remaining gap
+
+Nexus "compiles task-specific knowledge artifacts at index time, so agents
+work from prepared context instead of assembling it at query time." Venus has
+123 verified vendors and re-researches every one of them for the next couple
+in the same town. That is the largest single difference from the blueprint,
+and it is architectural rather than a missing guard.

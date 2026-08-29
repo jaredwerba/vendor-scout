@@ -1,6 +1,6 @@
 import { defineTool } from "eve/tools";
 import { z } from "zod";
-import { countSearch, searchCapFor } from "../lib/search-budget";
+import { countSearch, filterSeen, searchCapFor } from "../lib/search-budget";
 
 /**
  * Our own web search, replacing Eve's built-in `web_search` by filename.
@@ -145,18 +145,26 @@ export default defineTool({
       .map((i) => (typeof i === "string" ? i : (i.url ?? "")))
       .filter((u) => u.startsWith("https://"))
       .slice(0, 8);
+    const allResults = (json.results ?? []).map((r) => ({
+      title: r.title ?? "",
+      url: r.url ?? "",
+      snippet: (r.content ?? "").slice(0, 600),
+      ...(r.published_date ? { published: r.published_date } : {}),
+    }));
+    // Overlapping queries return the same pages; a repeat is re-billed on
+    // every later step because the transcript re-sends it.
+    const { fresh, suppressed } = filterSeen(allResults);
+
     return {
       status: "ok",
       query,
       searches_used: budget.used,
       searches_left: Math.max(0, budget.cap - budget.used),
+      ...(suppressed > 0
+        ? { already_seen: suppressed, note: `${suppressed} result(s) you have already been shown were removed.` }
+        : {}),
       ...(time_range ? { time_range } : {}),
-      results: (json.results ?? []).map((r) => ({
-        title: r.title ?? "",
-        url: r.url ?? "",
-        snippet: (r.content ?? "").slice(0, 600),
-        ...(r.published_date ? { published: r.published_date } : {}),
-      })),
+      results: fresh,
       ...(images.length ? { images } : {}),
     };
   },

@@ -12,6 +12,7 @@
  */
 
 import { tokenFactoryModel } from "./nebius";
+import { TOKEN_FACTORY_PRICING } from "./pricing.generated";
 
 export type ModelRole = "planner" | "scout" | "classifier" | "judge";
 
@@ -135,10 +136,44 @@ export const MODEL_ROLES: Record<ModelRole, RoleSpec> = {
   },
 };
 
-/** The catalog id serving a role right now (env override wins). */
+/**
+ * The catalog id serving a role right now (env override wins).
+ *
+ * An unknown id stops the process. Sentinel's blueprint carries the same
+ * guard with the reason attached: a typo'd model id used to fall back
+ * silently to a different model, "so you could benchmark the wrong model
+ * without noticing". That is worse here than there — every number in the
+ * V1-to-V2 comparison is attributed to a named model, and a silent fallback
+ * would make those attributions quietly false.
+ *
+ * The price table is this project's snapshot of the catalog, so an unknown id
+ * means a typo or a stale table. Both are fixed in one command; both deserve
+ * a stop rather than a shrug.
+ */
 export function modelIdFor(role: ModelRole): string {
   const spec = MODEL_ROLES[role];
-  return (process.env[spec.env] ?? "").trim() || spec.model;
+  const id = (process.env[spec.env] ?? "").trim() || spec.model;
+  assertKnownModel(id, spec.env);
+  return id;
+}
+
+const KNOWN = new Set(Object.keys(TOKEN_FACTORY_PRICING));
+
+function assertKnownModel(id: string, envVar: string): void {
+  if (KNOWN.has(id) || process.env.NEBIUS_ALLOW_UNKNOWN_MODEL === "1") return;
+  const lower = id.toLowerCase();
+  const near = [...KNOWN]
+    .filter((k) => {
+      const t = k.toLowerCase();
+      return t.includes(lower) || lower.includes(t.split("/").pop() ?? t);
+    })
+    .slice(0, 3);
+  throw new Error(
+    `${envVar}="${id}" is not in the Token Factory catalog snapshot.\n` +
+      (near.length ? `  Did you mean: ${near.join(", ")}?\n` : "") +
+      "  If the model is new, refresh the snapshot: npm run pricing:refresh\n" +
+      "  To proceed anyway (cost will report as $0): NEBIUS_ALLOW_UNKNOWN_MODEL=1",
+  );
 }
 
 /** A ready LanguageModel for a role. */
