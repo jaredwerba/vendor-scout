@@ -3,9 +3,7 @@
 import {
   ActivityIcon,
   ChevronRightIcon,
-  CircleDotIcon,
   ExternalLinkIcon,
-  TriangleAlertIcon,
 } from "lucide-react";
 import { memo, useEffect, useMemo, useState } from "react";
 import { actionName } from "@/agent/lib/actions";
@@ -198,35 +196,6 @@ function laneStats(lane: Lane, derived: StackState): LaneStats {
 
 // ------------------------------------------------------------------ pieces
 
-function StatusPill({ lane, headline }: { readonly lane: Lane; readonly headline: string }) {
-  const tone =
-    lane.status === "failed"
-      ? "bg-destructive/10 text-destructive border-destructive/30"
-      : lane.status === "live"
-        ? "bg-sage/15 text-foreground border-sage/40"
-        : "bg-muted text-muted-foreground border-transparent";
-  return (
-    <span
-      className={cn(
-        "inline-flex max-w-full items-center gap-1.5 truncate rounded-full border px-2 py-0.5 font-medium text-[11px]",
-        tone,
-      )}
-    >
-      {lane.status === "live" ? (
-        <span className="relative flex size-1.5 shrink-0">
-          <span className="absolute inline-flex size-full animate-ping rounded-full bg-sage opacity-70" />
-          <span className="relative inline-flex size-1.5 rounded-full bg-sage" />
-        </span>
-      ) : lane.status === "failed" ? (
-        <TriangleAlertIcon className="size-3 shrink-0" />
-      ) : (
-        <CircleDotIcon className="size-3 shrink-0 opacity-60" />
-      )}
-      <span className="truncate">{headline}</span>
-    </span>
-  );
-}
-
 function PhaseStrip({ state }: { readonly state: StackState }) {
   const active = phaseIndex(state.phase);
   return (
@@ -258,62 +227,90 @@ const LaneCard = memo(function LaneCard({
   const stats = laneStats(lane, derived);
   const headline = lane.events.length > 0 ? derived.headline : (lane.summary?.lastEvent ?? "queued");
 
+  // Collapsed by default. A fan-out is five or six agents, and a full stat
+  // card each pushed the event stream off the screen entirely — the detail
+  // belongs to whichever lane you are actually looking at.
   return (
     <button
-      aria-pressed={selected}
-      className={cn(
-        "w-full rounded-xl border px-3 py-2.5 text-left transition-colors",
-        selected ? "border-primary/50 bg-primary/5" : "border-border/70 bg-card/60 hover:bg-muted/50",
-      )}
+      aria-expanded={selected}
+      className="vlane"
+      data-role={lane.role}
+      data-selected={selected ? "true" : "false"}
       onClick={onSelect}
       type="button"
     >
-      <div className="flex items-center justify-between gap-2">
-        <span className="flex min-w-0 items-center gap-1.5">
-          <span className="truncate font-medium text-sm">{lane.label}</span>
-          <span className="shrink-0 rounded bg-muted px-1 py-px font-mono text-[10px] text-muted-foreground uppercase">
-            {lane.role === "root" ? "root" : (lane.agentName ?? "scout")}
-          </span>
-        </span>
+      <div className="flex items-center gap-2">
+        <LaneDot lane={lane} />
+        <span className="min-w-0 flex-1 truncate font-medium text-[13px]">{lane.label}</span>
         {stats.truncated ? (
-          <span className="shrink-0 rounded bg-destructive/10 px-1.5 py-px font-medium text-[10px] text-destructive">
-            truncated
+          <span className="shrink-0 rounded-full bg-destructive/10 px-1.5 py-px font-medium text-[9px] text-destructive uppercase">
+            cut off
           </span>
         ) : null}
-      </div>
-
-      <div className="mt-1.5">
-        <StatusPill headline={headline} lane={lane} />
-      </div>
-
-      <dl className="mt-2 grid grid-cols-4 gap-1.5 text-[11px] tabular-nums">
-        <Stat label="steps" value={fmt(stats.steps)} />
-        <Stat label="tools" value={fmt(stats.toolCalls)} />
-        {lane.role === "specialist" ? (
-          <Stat highlight={stats.vendors > 0} label="found" value={fmt(stats.vendors)} />
-        ) : (
-          <Stat label="agents" value={fmt(stats.subagents)} />
-        )}
-        <Stat label="cost" value={formatUsd(stats.costUsd)} />
-      </dl>
-
-      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground tabular-nums">
-        {lane.summary?.model ? (
-          <span className="font-mono" title={lane.summary.model}>
-            {lane.summary.model.split("/").pop()}
-          </span>
-        ) : null}
-        <span>
-          {fmt(stats.inputTokens)} in / {fmt(stats.outputTokens)} out
+        <span className="shrink-0 text-[10px] text-muted-foreground tabular-nums">
+          {lane.role === "specialist" ? (
+            <>
+              <b className={cn("font-medium", stats.vendors > 0 && "text-primary")}>
+                {stats.vendors}
+              </b>{" "}
+              found
+            </>
+          ) : (
+            <>
+              <b className="font-medium">{stats.subagents}</b> agents
+            </>
+          )}
         </span>
-        {stats.durationMs > 0 ? <span>{ms(stats.durationMs)}</span> : null}
-        {stats.searches > 0 ? <span>{stats.searches} searches</span> : null}
-        {lane.attached ? <span className="text-sage">stream attached</span> : null}
-        {stats.failed > 0 ? <span className="text-destructive">{stats.failed} failed</span> : null}
+        <span className="w-12 shrink-0 text-right text-[10px] tabular-nums">
+          {formatUsd(stats.costUsd)}
+        </span>
       </div>
+
+      {selected ? (
+        <>
+          <p className="mt-1.5 truncate text-[11px] text-muted-foreground">{headline}</p>
+          <dl className="mt-1.5 grid grid-cols-4 gap-1.5 text-[11px] tabular-nums">
+            <Stat label="steps" value={fmt(stats.steps)} />
+            <Stat label="tools" value={fmt(stats.toolCalls)} />
+            <Stat label="searches" value={fmt(stats.searches)} />
+            <Stat label="tokens" value={fmt(stats.inputTokens + stats.outputTokens)} />
+          </dl>
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[10px] text-muted-foreground">
+            {lane.summary?.model ? (
+              <span className="font-mono" title={lane.summary.model}>
+                {lane.summary.model.split("/").pop()}
+              </span>
+            ) : null}
+            {stats.durationMs > 0 ? <span>{ms(stats.durationMs)}</span> : null}
+            {lane.attached ? <span className="text-sage">live stream</span> : null}
+            {stats.failed > 0 ? (
+              <span className="text-destructive">{stats.failed} failed</span>
+            ) : null}
+          </div>
+        </>
+      ) : null}
     </button>
   );
 });
+
+function LaneDot({ lane }: { readonly lane: Lane }) {
+  const tone =
+    lane.status === "failed"
+      ? "bg-destructive"
+      : lane.status === "live"
+        ? "bg-sage"
+        : lane.status === "done"
+          ? "bg-primary/40"
+          : "bg-muted-foreground/40";
+  return (
+    <span className="relative flex size-2 shrink-0">
+      {lane.status === "live" ? (
+        <span className={cn("absolute inline-flex size-full animate-ping rounded-full opacity-70", tone)} />
+      ) : null}
+      <span className={cn("relative inline-flex size-2 rounded-full", tone)} />
+    </span>
+  );
+}
 
 function Stat({
   label,
@@ -355,7 +352,10 @@ function EventLog({ rows }: { readonly rows: LogRow[] }) {
       </div>
       <div className="vrail-log">
         {shown.length === 0 ? (
-          <p className="px-1 py-2 text-[11px] text-muted-foreground">No events yet.</p>
+          <p className="px-2 py-2 text-[11px] text-muted-foreground leading-relaxed">
+            Every model step, tool call and result streams here as it happens, with the gap since
+            the previous one.
+          </p>
         ) : (
           shown.map((r) => (
             <div className="vrail-log-row" data-ok={r.ok === false ? "false" : "true"} key={r.key}>
@@ -436,74 +436,102 @@ export function ObservabilityRail({
     return { cost, tokens, vendors };
   }, [lanes, research]);
 
+  const liveCount = lanes.filter((l) => l.status === "live").length;
+
   return (
-    <aside className="vrail" data-variant={variant}>
-      <header className="flex items-baseline justify-between gap-2">
-        <h2 className="flex items-center gap-1.5 font-medium text-sm">
-          <ActivityIcon className="size-4 text-primary" />
-          Agent stack — live
-        </h2>
-        <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
-          {lanes.length} agent{lanes.length === 1 ? "" : "s"}
-        </span>
-      </header>
+    <aside className="vbento" data-variant={variant}>
+      {/* The picture. Always the first tile, always visible. */}
+      <section className="vtile vtile-figure vtile-wide">
+        <div className="vtile-head">
+          <span>
+            <b>Agent stack</b> — live
+          </span>
+          <span>
+            {lanes.length} agent{lanes.length === 1 ? "" : "s"}
+            {liveCount > 0 ? ` · ${liveCount} running` : ""}
+          </span>
+        </div>
+        <StackDiagram compact runtime={runtime} state={state} status={status} />
+        <PhaseStrip state={state} />
+      </section>
 
-      <StackDiagram compact runtime={runtime} state={state} status={status} />
-      <PhaseStrip state={state} />
+      {/* What it is costing, and on what. */}
+      <section className="vtile">
+        <div className="vtile-head">
+          <span>
+            <b>This session</b>
+          </span>
+          <span>{runtime?.provider ?? "Nebius Token Factory"}</span>
+        </div>
+        {totals.tokens > 0 || totals.cost > 0 ? (
+          <dl className="grid grid-cols-3 gap-2 text-center">
+            <Stat label="tokens" value={fmt(totals.tokens)} />
+            <Stat label="cost" value={formatUsd(totals.cost)} />
+            <Stat highlight={totals.vendors > 0} label="vendors" value={fmt(totals.vendors)} />
+          </dl>
+        ) : (
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            Tokens and cost appear here per agent as soon as Venus starts — a plan runs about
+            six agents.
+          </p>
+        )}
+        {runtime?.roles?.length ? (
+          <dl className="mt-0.5 space-y-0.5 border-t pt-1.5 text-[10px]">
+            {runtime.roles.map((r) => (
+              <div className="flex items-baseline gap-1.5" key={r.role} title={r.rationale}>
+                <dt className="w-[4.2rem] shrink-0 text-muted-foreground">{r.role}</dt>
+                <dd className="truncate font-mono text-muted-foreground">
+                  {r.model.split("/").pop()}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        ) : null}
+      </section>
 
-      <section className="flex flex-col gap-2">
-        <h3 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-          Agents
-        </h3>
-        {lanes.map((lane) => (
-          <LaneCard
-            key={lane.id}
-            lane={lane}
-            onSelect={() => {
-              setPinned(true);
-              setSelectedId(lane.id);
-            }}
-            selected={lane.id === selected?.id}
-          />
-        ))}
+      {/* One tile per agent in the tree. */}
+      <section className="vtile">
+        <div className="vtile-head">
+          <span>
+            <b>Agents</b>
+          </span>
+          <span>{lanes.length === 1 ? "root only" : `root + ${lanes.length - 1}`}</span>
+        </div>
+        <div className="vlanes">
+          {lanes.map((lane) => (
+            <LaneCard
+              key={lane.id}
+              lane={lane}
+              onSelect={() => {
+                setPinned(true);
+                setSelectedId(lane.id);
+              }}
+              selected={lane.id === selected?.id}
+            />
+          ))}
+        </div>
         {lanes.length === 1 ? (
-          <p className="rounded-xl border border-dashed px-3 py-2 text-[11px] text-muted-foreground leading-relaxed">
-            Venus delegates one research specialist per category once she has the brief. Each one
-            gets its own session, its own tool budget, and its own lane here.
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            Venus sends out one research specialist per category once she has the brief. Each gets
+            its own session, its own search budget, and its own tile here.
           </p>
         ) : null}
       </section>
 
-      <section className="flex min-h-0 flex-col gap-2">
-        <h3 className="flex items-center gap-1.5 font-medium text-muted-foreground text-xs uppercase tracking-wide">
-          <ChevronRightIcon className="size-3" />
-          {selected?.label ?? "log"}
-        </h3>
-        <EventLog rows={rows} />
-      </section>
-
-      <footer className="flex flex-col gap-1.5 border-t pt-2.5 text-[11px] text-muted-foreground">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 tabular-nums">
-          <span>{fmt(totals.tokens)} tokens</span>
-          <span>{formatUsd(totals.cost)}</span>
-          {totals.vendors > 0 ? <span>{totals.vendors} vendors recorded</span> : null}
-        </div>
-        <div className="flex flex-col gap-0.5">
-          <span className="text-[10px] uppercase tracking-wide opacity-70">
-            {runtime?.provider ?? "Nebius Token Factory"}
+      {/* The raw stream for whichever agent is selected. */}
+      <section className="vtile vtile-wide">
+        <div className="vtile-head">
+          <span>
+            <b>{selected?.label ?? "log"}</b> — event stream
           </span>
-          {runtime?.roles?.length ? (
-            runtime.roles.map((r) => (
-              <span className="flex items-baseline gap-1.5 truncate" key={r.role} title={r.rationale}>
-                <span className="w-[4.5rem] shrink-0 text-[10px] opacity-70">{r.role}</span>
-                <span className="truncate font-mono text-[10px]">{r.model.split("/").pop()}</span>
-              </span>
-            ))
-          ) : (
-            <span className="truncate">{(runtime?.model ?? "").split("/").pop()}</span>
-          )}
+          {selected?.summary?.model ? (
+            <span className="font-mono normal-case">
+              {selected.summary.model.split("/").pop()}
+            </span>
+          ) : null}
         </div>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <EventLog rows={rows} />
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
           {langsmithUrl ? (
             <a
               className="inline-flex items-center gap-1 text-primary hover:underline"
@@ -514,7 +542,13 @@ export function ObservabilityRail({
               Open trace in LangSmith <ExternalLinkIcon className="size-3" />
             </a>
           ) : (
-            <span title={runtime?.tracing ? "Waiting for the first span of this session" : "LANGSMITH_API_KEY not set"}>
+            <span
+              title={
+                runtime?.tracing
+                  ? "Waiting for the first span of this session"
+                  : "LANGSMITH_API_KEY not set"
+              }
+            >
               LangSmith {runtime?.tracing ? "· trace pending" : "· off"}
             </span>
           )}
@@ -526,11 +560,53 @@ export function ObservabilityRail({
               Full console <ExternalLinkIcon className="size-3" />
             </a>
           ) : null}
+          {sessionId ? (
+            <span className="truncate font-mono opacity-60">{sessionId.slice(-12)}</span>
+          ) : null}
         </div>
-        {sessionId ? (
-          <div className="truncate font-mono text-[10px] opacity-70">{sessionId}</div>
-        ) : null}
-      </footer>
+      </section>
     </aside>
+  );
+}
+
+/**
+ * The compact always-visible summary for screens with no room for the bento.
+ * A phone cannot show a conversation and a dashboard at once, so it shows
+ * that something is running, what it costs, and a way in.
+ */
+export function ObservabilityStrip({
+  lanes,
+  status,
+  onOpen,
+}: {
+  readonly lanes: Lane[];
+  readonly status: string;
+  readonly onOpen: () => void;
+}) {
+  const live = lanes.filter((l) => l.status === "live").length;
+  const cost = lanes.reduce((n, l) => n + (l.summary?.costUsd ?? 0), 0);
+  const vendors = lanes.reduce((n, l) => n + (l.summary?.vendorsRecorded ?? 0), 0);
+  const busy = status === "streaming" || status === "submitted" || live > 0;
+
+  return (
+    <button className="vstrip" onClick={onOpen} type="button">
+      <span className="relative flex size-2 shrink-0">
+        {busy ? (
+          <span className="absolute inline-flex size-full animate-ping rounded-full bg-rose opacity-70" />
+        ) : null}
+        <span className="relative inline-flex size-2 rounded-full bg-rose" />
+      </span>
+      <span className="min-w-0 flex-1 truncate text-left">
+        <b className="font-medium">
+          {lanes.length} agent{lanes.length === 1 ? "" : "s"}
+        </b>
+        {live > 0 ? <span className="text-muted-foreground"> · {live} running</span> : null}
+        {vendors > 0 ? (
+          <span className="text-muted-foreground"> · {vendors} vendors</span>
+        ) : null}
+      </span>
+      <span className="shrink-0 tabular-nums text-muted-foreground">{formatUsd(cost)}</span>
+      <ActivityIcon className="size-4 shrink-0 text-primary" />
+    </button>
   );
 }

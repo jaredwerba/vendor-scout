@@ -280,14 +280,14 @@ export function StackDiagram({
           </div>
         </div>
       </div>
+      {/* Counters live in the session tile beside this one; repeating them
+          under the diagram only cost vertical space the panel does not have. */}
       <div className="vstack-caption">
         <span className="vstack-dot" data-live={live ? "true" : "false"} />
         <span><b>{state.headline}</b> — {state.detail}</span>
-        <span>steps {state.counts.steps}</span>
-        <span>tools {state.counts.toolCalls}</span>
-        <span>specialists {state.counts.subagents}</span>
-        <span>tokens {fmt(state.counts.inputTokens)} in / {fmt(state.counts.outputTokens)} out</span>
-        {state.counts.failed ? <span className="text-destructive">failures {state.counts.failed}</span> : null}
+        {state.counts.failed ? (
+          <span className="text-destructive">failures {state.counts.failed}</span>
+        ) : null}
       </div>
     </div>
   );

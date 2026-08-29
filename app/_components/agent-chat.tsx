@@ -33,7 +33,7 @@ import { cn } from "@/lib/utils";
 import { AgentMessage } from "./agent-message";
 import { isDelegationPart } from "@/agent/lib/actions";
 import type { StackEvent, StackRuntime } from "./agent-stack";
-import { ObservabilityRail } from "./observability-rail";
+import { ObservabilityRail, ObservabilityStrip } from "./observability-rail";
 import { useAgentLanes } from "./use-agent-lanes";
 import { clearSavedSession, type CuratedPreview, saveSession } from "./venus-app";
 
@@ -544,6 +544,10 @@ export function AgentChat({
         </div>
       ) : null}
 
+      <div className="mx-auto w-full max-w-3xl shrink-0 px-4 pb-2 sm:px-6 lg:hidden">
+        <ObservabilityStrip lanes={lanes} onOpen={() => setSheetOpen(true)} status={agent.status} />
+      </div>
+
       {isEmpty ? null : (
         <Conversation className="min-h-0 flex-1" data-venus-chat="">
           <ConversationContent className="mx-auto w-full max-w-3xl gap-6 px-4 pt-6 pb-36 sm:px-6">
@@ -602,8 +606,9 @@ export function AgentChat({
       </div>
       </main>
 
-      {/* Permanent on desktop: the engineering half of the product. */}
-      <div className="hidden w-[26rem] shrink-0 lg:block">{rail}</div>
+      {/* Permanent on desktop: the engineering half of the product. Two tile
+          columns once the screen is wide enough to hold them. */}
+      <div className="hidden w-[25rem] shrink-0 lg:block xl:w-[29rem] 2xl:w-[41rem]">{rail}</div>
 
       {/* Below lg there is no room for two panes: the same rail as a sheet. */}
       {sheetOpen ? (

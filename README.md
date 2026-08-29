@@ -99,6 +99,7 @@ npm run eval:all                         # replies + scout + fast suite
 npm run eval:slow                        # budget discipline over a full planning turn
 npm run eval:report                      # push suite results to KV → /observe
 npm run pricing:refresh                  # regenerate the Token Factory price table
+node scripts/shot.mjs                    # render the UI to PNGs (needs: npm i -D playwright)
 ```
 
 Deploys: push to `main` auto-deploys production (git-connected) — `vercel deploy --prod --yes`
