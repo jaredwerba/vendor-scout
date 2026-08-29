@@ -28,7 +28,7 @@ export interface RoleSpec {
 
 /**
  * Measured on the 15 labelled vendor replies, 2026-08-29
- * (`npm run models:compare`). Accuracy first, then cost for the whole set:
+ * (`npm run models:compare`), one pass per model. Accuracy first, then cost:
  *
  *   deepseek-ai/DeepSeek-V4-Flash        100%   $0.0020   1570ms
  *   Qwen/Qwen3-235B-A22B-Instruct-2507   100%   $0.0023   1203ms
@@ -42,6 +42,14 @@ export interface RoleSpec {
  * And the cheapest per run (Qwen3-30B) got 73%, which on untrusted vendor
  * email means misfiled replies and follow-ups chasing someone who already
  * said yes.
+ *
+ * The sharpest lesson came from acting on it too fast. DeepSeek-V4-Flash won
+ * that sweep at 15/15, so the classifier was switched to it — and the very
+ * next run of the same 15 cases scored 11/15 with six schema failures. One
+ * pass over fifteen cases cannot separate two models near the top; it can
+ * only rule out the ones that are clearly worse. `models:compare` now runs
+ * several rounds and reports the worst round alongside the mean, and a
+ * candidate has to beat the incumbent repeatedly before it takes the job.
  */
 export const MODEL_ROLES: Record<ModelRole, RoleSpec> = {
   /**
@@ -89,14 +97,15 @@ export const MODEL_ROLES: Record<ModelRole, RoleSpec> = {
    * what `npm run models:compare` runs.
    */
   classifier: {
-    model: "deepseek-ai/DeepSeek-V4-Flash",
+    model: "Qwen/Qwen3-235B-A22B-Instruct-2507",
     env: "NEBIUS_CLASSIFIER_MODEL",
-    contextWindow: 1_048_576,
+    contextWindow: 262_144,
     rationale:
-      "Measured on the 15 labelled replies (npm run models:compare, 2026-08-29): 15/15 at " +
-      "$0.13 per 1k replies, tied with Qwen3-235B on accuracy and 16% cheaper. The set does not " +
-      "separate the two — it proves neither is worse — so the tiebreak is cost, plus one fewer " +
-      "model in the stack and a 1M window for long quoted email threads.",
+      "Structured output on untrusted email. Qwen has now scored 15/15 on the labelled set on " +
+      "three separate runs. DeepSeek-V4-Flash scored 15/15 in one sweep and then 11/15 with six " +
+      "schema failures on the very next run of the same cases — so the sweep was under-powered, " +
+      "not decisive. Reliability of the structured output matters more here than the 16% of a " +
+      "fraction of a cent that separates them.",
   },
 
   /**

@@ -44,12 +44,22 @@ const DEFAULT_CANDIDATES = [
 
 const candidates = process.argv.slice(2).filter((a) => !a.startsWith("-"));
 const models = candidates.length > 0 ? candidates : DEFAULT_CANDIDATES;
+/**
+ * One pass over fifteen cases cannot separate two models near the top — it
+ * can only rule out the clearly worse. Learned the hard way: DeepSeek-V4-Flash
+ * won a single-pass sweep at 15/15 and scored 11/15 with six schema failures
+ * on the very next run of the same cases.
+ */
+const ROUNDS = Number(process.env.COMPARE_ROUNDS ?? 3);
 
 interface Row {
   model: string;
   passed: number;
   n: number;
   score: number;
+  /** Worst single round — what this model does on a bad day. */
+  worstScore: number;
+  rounds: number[];
   inputTokens: number;
   outputTokens: number;
   costUsd: number;
@@ -73,7 +83,10 @@ for (const model of models) {
   let outputTokens = 0;
   let fallbacks = 0;
   const failed: string[] = [];
+  const roundScores: number[] = [];
 
+  for (let round = 0; round < ROUNDS; round += 1) {
+  let roundPassed = 0;
   for (const c of cases) {
     const t0 = Date.now();
     let intent = "error";
@@ -97,15 +110,19 @@ for (const model of models) {
     // that is a failure of this candidate, not a free pass.
     if (via === "heuristic") fallbacks += 1;
     const ok = intent === c.expected && via === "model";
-    if (!ok) failed.push(`${c.name}: ${intent}`);
+    if (ok) roundPassed += 1;
+    else failed.push(`r${round + 1} ${c.name}: ${intent}`);
     caseResults.push({
-      name: c.name,
+      name: ROUNDS > 1 ? `${c.name} (r${round + 1})` : c.name,
       expected: c.expected,
       got: intent,
       ok,
       note: via === "heuristic" ? "(schema not honoured — heuristic fallback)" : undefined,
     });
     process.stdout.write(ok ? "." : "x");
+  }
+  roundScores.push(roundPassed / cases.length);
+  process.stdout.write(` r${round + 1}=${roundPassed}/${cases.length}\n  `);
   }
 
   latencies.sort((a, b) => a - b);
@@ -114,8 +131,10 @@ for (const model of models) {
   rows.push({
     model,
     passed,
-    n: cases.length,
-    score: passed / cases.length,
+    n: cases.length * ROUNDS,
+    score: passed / (cases.length * ROUNDS),
+    worstScore: Math.min(...roundScores),
+    rounds: roundScores,
     inputTokens,
     outputTokens,
     costUsd,
@@ -125,21 +144,24 @@ for (const model of models) {
     failed,
   });
   console.log(
-    `\n  ${passed}/${cases.length} = ${((passed / cases.length) * 100).toFixed(0)}% · ` +
-      `${formatUsd(costUsd)} for the set · median ${latencies[Math.floor(latencies.length / 2)]}ms` +
+    `\n  ${passed}/${cases.length * ROUNDS} = ${((passed / (cases.length * ROUNDS)) * 100).toFixed(0)}% ` +
+      `across ${ROUNDS} rounds (worst ${(Math.min(...roundScores) * 100).toFixed(0)}%) · ` +
+      `${formatUsd(costUsd)} · median ${latencies[Math.floor(latencies.length / 2)]}ms` +
       (fallbacks ? ` · ${fallbacks} schema failures` : ""),
   );
 }
 
-rows.sort((a, b) => b.score - a.score || a.costUsd - b.costUsd);
+rows.sort((a, b) => b.worstScore - a.worstScore || b.score - a.score || a.costUsd - b.costUsd);
 
-console.log(`\n${"model".padEnd(40)}${"acc".padStart(6)}${"cost/set".padStart(11)}${"med ms".padStart(9)}${"  per 1k replies"}`);
+console.log(
+  `\n${"model".padEnd(40)}${"mean".padStart(6)}${"worst".padStart(7)}${"med ms".padStart(9)}${"  per 1k replies"}`,
+);
 for (const r of rows) {
-  const per1k = (r.costUsd / cases.length) * 1000;
+  const per1k = (r.costUsd / (cases.length * ROUNDS)) * 1000;
   console.log(
     r.model.padEnd(40) +
       `${(r.score * 100).toFixed(0)}%`.padStart(6) +
-      formatUsd(r.costUsd).padStart(11) +
+      `${(r.worstScore * 100).toFixed(0)}%`.padStart(7) +
       String(r.medianMs).padStart(9) +
       `  ${formatUsd(per1k)}`,
   );
@@ -147,7 +169,9 @@ for (const r of rows) {
 
 const incumbent = MODEL_ROLES.classifier.model;
 const best = rows[0];
-const cheapestPerfect = rows.filter((r) => r.score === 1).sort((a, b) => a.costUsd - b.costUsd)[0];
+// A candidate has to be perfect in EVERY round to be considered — one bad
+// round out of three is exactly the signal a single pass would have hidden.
+const cheapestPerfect = rows.filter((r) => r.worstScore === 1).sort((a, b) => a.costUsd - b.costUsd)[0];
 console.log(`\nincumbent: ${incumbent}`);
 if (cheapestPerfect) {
   console.log(
@@ -157,31 +181,35 @@ if (cheapestPerfect) {
     const inc = rows.find((r) => r.model === incumbent);
     const saving = inc ? (1 - cheapestPerfect.costUsd / inc.costUsd) * 100 : 0;
     console.log(
-      `→ set NEBIUS_CLASSIFIER_MODEL=${cheapestPerfect.model} for the same accuracy at ` +
-        `${saving.toFixed(0)}% less cost.`,
+      `→ ${cheapestPerfect.model} held 100% across all ${ROUNDS} rounds at ${saving.toFixed(0)}% ` +
+        "less cost. Re-run this sweep once more before switching; a model that wins one sweep " +
+        "and fails the next is the failure mode this harness exists to catch.",
     );
   } else {
     console.log("→ the incumbent is already the cheapest model at full accuracy. No change.");
   }
 } else if (best) {
-  console.log(`best: ${best.model} at ${(best.score * 100).toFixed(0)}% — nothing reached 100%.`);
+  console.log(
+    `best: ${best.model} at ${(best.score * 100).toFixed(0)}% mean / ` +
+      `${(best.worstScore * 100).toFixed(0)}% worst — nothing held 100% across every round.`,
+  );
 }
 
 if (traceConfigured() && rows.length > 0) {
   await saveEvalSummary({
     kind: "models",
-    name: `Classifier model comparison (${rows.length} candidates, ${cases.length} labelled replies)`,
+    name: `Classifier model comparison (${rows.length} candidates × ${ROUNDS} rounds × ${cases.length} labelled replies)`,
     ranAt: new Date().toISOString(),
     model: rows.map((r) => r.model).join(", "),
     judgeModel: null,
     n: rows.length,
-    passed: rows.filter((r) => r.score === 1).length,
+    passed: rows.filter((r) => r.worstScore === 1).length,
     score: best ? best.score : 0,
     cases: rows.map((r) => ({
       name: r.model,
       expected: "15/15",
-      got: `${r.passed}/${r.n} · ${formatUsd(r.costUsd)} · ${r.medianMs}ms`,
-      ok: r.score === 1,
+      got: `${r.passed}/${r.n} · worst round ${(r.worstScore * 100).toFixed(0)}% · ${formatUsd(r.costUsd)} · ${r.medianMs}ms`,
+      ok: r.worstScore === 1,
       note: r.failed.slice(0, 2).join(" | ") || undefined,
     })),
     langsmith: null,
