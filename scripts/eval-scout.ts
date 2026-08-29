@@ -306,22 +306,36 @@ for (const brief of selected) {
     // --- Judge: is it a real business? (sampled, to keep the eval affordable)
     const sample = list.slice(0, 4);
     let realCount = 0;
-    const reasons: string[] = [];
+    let inRegionCount = 0;
+    const notReal: string[] = [];
+    const outOfRange: string[] = [];
     for (const f of sample) {
       try {
         const v = await judgeVendor(f, brief.region);
-        if (v.real && v.serves_region) realCount += 1;
-        else reasons.push(`${f.name}: ${v.reason}`);
+        if (v.real) realCount += 1;
+        else notReal.push(`${f.name}: ${v.reason}`);
+        if (v.serves_region) inRegionCount += 1;
+        else outOfRange.push(`${f.name} (${f.location ?? "?"}): ${v.reason}`);
       } catch (error) {
-        reasons.push(`${f.name}: judge failed (${String((error as Error)?.message).slice(0, 60)})`);
+        notReal.push(`${f.name}: judge failed (${String((error as Error)?.message).slice(0, 60)})`);
       }
     }
+    // Two independent failures with very different severity: an invented
+    // vendor is a fabrication, a vendor 20 minutes past the radius is a
+    // judgement call. Scoring them as one number hid which was happening.
     note(
       realCount === sample.length,
       `${brief.id} · ${category} · real businesses (judge)`,
-      "all sampled vendors real & in-region",
+      "every sampled vendor is a real, operating business",
       `${realCount}/${sample.length}`,
-      reasons.slice(0, 2).join(" | ") || undefined,
+      notReal.slice(0, 2).join(" | ") || undefined,
+    );
+    note(
+      inRegionCount === sample.length,
+      `${brief.id} · ${category} · within travel radius (judge)`,
+      "every sampled vendor is inside the stated radius",
+      `${inRegionCount}/${sample.length}`,
+      outOfRange.slice(0, 2).join(" | ") || undefined,
     );
   }
 }

@@ -40,10 +40,13 @@ You have no shared history with the planner — the message is everything you kn
    `location` ("Rowley, MA") and `distance_note` ("~35 min from Methuen"), and refuses without
    them. Work out the real drive before you write it.
 
-   **If the vendor is outside the radius, do not record it at all** — however good they look.
-   A florist two hours away, a band in another state, a photographer in North Carolina: these
-   are not findings, they are noise the couple only discovers when an email has already gone
-   out. Go find someone closer instead.
+   **The radius is a hard limit, not a preference.** If the drive is longer than what they
+   said, do not record the vendor — however good they look, and however close to the line.
+   "About 75 minutes" against a stated hour is outside. A florist two hours away, a band in
+   another state, a photographer in North Carolina: these are not findings, they are noise the
+   couple only discovers when an email has already gone out. Go find someone closer instead,
+   and if a category is genuinely thin nearby, say so in your `coverage_note` — an honest gap
+   beats a vendor they cannot use.
 4. **Record each vendor the moment you have verified it** — call `record_vendor` *before* you
    start researching the next one. Never batch them up to the end. This matters: if your run is
    cut short, everything you already recorded still reaches the couple. A vendor you found but
