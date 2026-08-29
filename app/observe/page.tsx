@@ -1,14 +1,18 @@
 import Link from "next/link";
-import { type EvalSummary, getEvalSummary, listTraces, type TraceSummary, traceConfigured } from "@/agent/lib/trace";
-import { ObserveClient } from "./observe-client";
+import { type EvalSummary, listEvalSummaries, listTraces, type TraceSummary, traceConfigured } from "@/agent/lib/trace";
+import { ObserveConsole } from "./observe-client";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Observability — the visible half of the control plane. Where Venus's work is
- * traced (LangSmith + the KV trace store), what every recent session did, how
- * the last evals scored, and a replay of this browser's own session over the
- * agent-stack diagram.
+ * The engineering console.
+ *
+ * The app's own rail shows the current visitor their agents; this page shows
+ * *any* session's whole agent tree — Venus plus every research specialist —
+ * live if it is running, replayed from the trace store if it is not, with the
+ * eval results and the LangSmith link beside it. It is deliberately public:
+ * nothing the couple typed is ever written to the trace store (see the
+ * redaction rules in agent/lib/trace.ts), so there is nothing here to gate.
  */
 
 function Chip({ tone, children }: { readonly tone: "good" | "warn" | "muted"; readonly children: React.ReactNode }) {
@@ -99,7 +103,12 @@ function EvalCard({ e }: { readonly e: EvalSummary }) {
   );
 }
 
-export default async function ObservePage() {
+export default async function ObservePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ session?: string }>;
+}) {
+  const { session: initialSessionId } = await searchParams;
   const runtime = {
     model: (process.env.NEBIUS_MODEL ?? "").trim() || "Qwen/Qwen3-235B-A22B-Instruct-2507",
     provider: "Nebius Token Factory",
@@ -107,16 +116,14 @@ export default async function ObservePage() {
     project: process.env.LANGSMITH_PROJECT ?? "venus",
   };
   const kv = traceConfigured();
-  const [traces, evalReplies, evalEve] = await Promise.all([
-    kv ? listTraces(20).catch(() => [] as TraceSummary[]) : Promise.resolve([] as TraceSummary[]),
-    kv ? getEvalSummary("replies").catch(() => null) : Promise.resolve(null),
-    kv ? getEvalSummary("eve").catch(() => null) : Promise.resolve(null),
+  const [traces, evals] = await Promise.all([
+    kv ? listTraces(25).catch(() => [] as TraceSummary[]) : Promise.resolve([] as TraceSummary[]),
+    kv ? listEvalSummaries().catch(() => [] as EvalSummary[]) : Promise.resolve([] as EvalSummary[]),
   ]);
-  const evals = [evalReplies, evalEve].filter((e): e is EvalSummary => Boolean(e));
 
   return (
     <main className="min-h-dvh bg-background px-4 py-10 text-foreground sm:px-6">
-      <div className="mx-auto w-full max-w-3xl">
+      <div className="mx-auto w-full max-w-4xl">
         <header className="mb-8 flex flex-col items-center gap-2 text-center">
           <Link className="venus-script text-5xl text-primary leading-none" href="/">
             Venus
@@ -124,7 +131,9 @@ export default async function ObservePage() {
           <h1 className="venus-serif text-2xl">Under the hood</h1>
           <p className="max-w-md text-muted-foreground text-sm leading-relaxed">
             Every plan is an agent loop — plan, act, observe, decide — running on a model, tools,
-            and memory, under a control plane that traces and evaluates it. Here is Venus's.
+            and memory, under a control plane that traces and evaluates it. Venus fans out one
+            research specialist per category; each gets its own session, its own tool budget and
+            its own lane below.
           </p>
           <div className="mt-1 flex flex-wrap justify-center gap-1.5">
             <Chip tone="good">model · {runtime.provider}</Chip>
@@ -137,15 +146,22 @@ export default async function ObservePage() {
         </header>
 
         <section className="mb-10">
-          <h2 className="venus-serif mb-3 text-lg">Replay this browser's session</h2>
-          <ObserveClient runtime={runtime} />
+          <div className="mb-3 flex items-baseline justify-between">
+            <h2 className="venus-serif text-lg">Live agent tree</h2>
+            <span className="text-muted-foreground text-xs">root + every specialist</span>
+          </div>
+          <ObserveConsole
+            initialSessionId={initialSessionId ?? null}
+            runtime={runtime}
+            sessions={traces}
+          />
         </section>
 
         <section className="mb-10">
           <div className="mb-3 flex items-baseline justify-between">
             <h2 className="venus-serif text-lg">Evals</h2>
             <span className="text-muted-foreground text-xs">
-              <code>npm run eval:replies</code> · <code>npm run eval</code>
+              <code>npm run eval:all</code>
             </span>
           </div>
           {evals.length === 0 ? (
@@ -196,9 +212,16 @@ export default async function ObservePage() {
               LangSmith experiment.
             </li>
             <li>
+              <b className="text-foreground">Specialists</b> — each research child is a declared subagent
+              (<code>agent/subagents/scout</code>) with only search and <code>record_vendor</code>: it cannot email
+              anyone. It records each vendor as it verifies it, so a truncated run loses nothing, and
+              <code> get_research</code> reports a specialist that recorded zero as a failure rather than an
+              empty market.
+            </li>
+            <li>
               <b className="text-foreground">This page</b> — the diagram is the 2026 agent stack: control plane,
-              harness, tool plane, state, model plane, final outcome. It lights up from the same events the chat
-              streams.
+              harness, tool plane, state, model plane, final outcome. It lights up from the same event streams
+              the browser attaches to, one per agent.
             </li>
           </ul>
         </section>

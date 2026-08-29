@@ -1,0 +1,20 @@
+[
+  {
+    "id": "boston-boho",
+    "budget": 45000,
+    "region": "Methuen, Massachusetts (within ~1 hour, north of Boston)",
+    "message": "Hi Venus! Our budget is around $45,000 — plan our wedding for us.\n\nWe're Maya and Sam. September 2027, flexible by a few weeks. We're in Methuen, MA and would travel up to an hour — anywhere north of Boston or southern New Hampshire. About 110 guests. The vibe is boho and outdoorsy: a farm or a barn, string lights, wildflowers, nothing stuffy. We want a live band, documentary-style photography, and a videographer. Food should be family-style with a full bar. Must-have: the ceremony outdoors with a real rain plan. Dealbreaker: anything that feels like a hotel ballroom. Nothing is booked yet."
+  },
+  {
+    "id": "nyc-blacktie",
+    "budget": 120000,
+    "region": "New York City",
+    "message": "Hi Venus! Our budget is around $120,000 — plan our wedding for us.\n\nWe're Priya and Alex. Saturday, May 15 2027, firm. Manhattan or Brooklyn, we won't leave the city. 180 guests. Black-tie: ballroom or a landmark space, tall florals, a jazz trio for cocktails and a DJ after. Editorial photography. Plated dinner, full premium bar. Must-have: wheelchair accessible with a real elevator. Dealbreaker: anything outdoors. Nothing booked."
+  },
+  {
+    "id": "austin-backyard",
+    "budget": 18000,
+    "region": "Austin, Texas",
+    "message": "Hi Venus! Our budget is around $18,000 — plan our wedding for us.\n\nWe're Jess and Rowan. Late October 2027, flexible. Austin, TX — we'll drive up to 45 minutes. 55 guests, keeping it small. Relaxed backyard-party energy: taco truck, picnic tables, string lights, a friend's playlist or a cheap DJ. Photography matters more than flowers. Must-have: dog-friendly. Dealbreaker: anything with a minimum spend over $10k. Nothing booked."
+  }
+]

@@ -31,7 +31,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { AgentMessage } from "./agent-message";
-import { AgentStack, type StackEvent, type StackRuntime } from "./agent-stack";
+import { isDelegationPart } from "@/agent/lib/actions";
+import type { StackEvent, StackRuntime } from "./agent-stack";
+import { ObservabilityRail } from "./observability-rail";
+import { useAgentLanes } from "./use-agent-lanes";
 import { clearSavedSession, type CuratedPreview, saveSession } from "./venus-app";
 
 export interface SavedVenusSession {
@@ -295,21 +298,17 @@ export function AgentChat({
   const isBusy = agent.status === "submitted" || agent.status === "streaming";
   const isEmpty = agent.data.messages.length === 0;
 
-  // "Under the hood": the live agent-stack diagram, remembered per browser.
-  const [stackOpen, setStackOpen] = useState(false);
-  useEffect(() => {
-    try {
-      setStackOpen(localStorage.getItem("venus_stack_open") === "1");
-    } catch {}
-  }, []);
-  const toggleStack = () =>
-    setStackOpen((open) => {
-      const next = !open;
-      try {
-        localStorage.setItem("venus_stack_open", next ? "1" : "0");
-      } catch {}
-      return next;
-    });
+  // The observability rail is permanent on desktop. Below lg there is no room
+  // for two panes, so the same rail opens as a sheet from the header button.
+  const [sheetOpen, setSheetOpen] = useState(false);
+
+  // One lane per agent in the tree: Venus, plus a live attachment to every
+  // research specialist's own session stream (see use-agent-lanes.ts).
+  const { lanes, langsmithUrl, research } = useAgentLanes({
+    rootEvents: agent.events as readonly StackEvent[],
+    rootSessionId: agent.session?.sessionId,
+    status: agent.status,
+  });
 
   // Persist the resumable cursor + authoritative events so a refresh or a
   // closed tab never loses the wedding. Saved when a turn settles and on
@@ -355,12 +354,7 @@ export function AgentChat({
     for (const m of agent.data.messages) {
       for (const p of m.parts) {
         if (p.type !== "dynamic-tool") continue;
-        const input = (p.input ?? {}) as Record<string, unknown>;
-        const isDelegation =
-          typeof input.message === "string" &&
-          p.toolName !== "send_outreach" &&
-          p.toolMetadata?.eve?.inputRequest === undefined;
-        if (!isDelegation) continue;
+        if (!isDelegationPart(p)) continue;
         delegations++;
         if (
           p.state === "output-available" ||
@@ -437,8 +431,20 @@ export function AgentChat({
     </div>
   );
 
+  const rail = (
+    <ObservabilityRail
+      langsmithUrl={langsmithUrl}
+      lanes={lanes}
+      research={research}
+      runtime={runtime}
+      sessionId={agent.session?.sessionId ?? null}
+      status={agent.status}
+    />
+  );
+
   return (
-    <main className="relative flex h-dvh flex-col overflow-hidden bg-background text-foreground">
+    <div className="flex h-dvh overflow-hidden bg-background text-foreground">
+      <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
       {isEmpty ? <Petals /> : null}
       {isEmpty ? null : (
         <header className="flex h-14 shrink-0 items-center justify-between px-4">
@@ -448,13 +454,21 @@ export function AgentChat({
           </span>
           <span className="flex items-center gap-1">
             <button
-              aria-label="Under the hood — live agent stack"
-              aria-pressed={stackOpen}
+              className="hidden items-center gap-1.5 rounded-full px-3 py-1.5 text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground sm:flex"
+              onClick={startFresh}
+              type="button"
+            >
+              <RotateCcwIcon className="size-3.5" />
+              New session
+            </button>
+            <button
+              aria-label="Live agent stack"
+              aria-pressed={sheetOpen}
               className={cn(
-                "flex size-10 items-center justify-center rounded-full transition-colors hover:bg-muted hover:text-foreground",
-                stackOpen ? "text-primary" : "text-muted-foreground",
+                "flex size-10 items-center justify-center rounded-full transition-colors hover:bg-muted hover:text-foreground lg:hidden",
+                sheetOpen ? "text-primary" : "text-muted-foreground",
               )}
-              onClick={toggleStack}
+              onClick={() => setSheetOpen((o) => !o)}
               type="button"
             >
               <ActivityIcon className="size-5" />
@@ -498,17 +512,6 @@ export function AgentChat({
           </span>
         </header>
       )}
-
-      {!isEmpty && stackOpen ? (
-        <div className="mx-auto w-full max-w-3xl shrink-0 px-4 pt-2 sm:px-6">
-          <AgentStack
-            compact
-            events={agent.events as readonly StackEvent[]}
-            runtime={runtime}
-            status={agent.status}
-          />
-        </div>
-      ) : null}
 
       {!isEmpty && isBusy ? (
         <div className="mx-auto w-full max-w-3xl shrink-0 px-4 pt-2 sm:px-6">
@@ -597,7 +600,36 @@ export function AgentChat({
           <div className="w-full">{composer}</div>
         )}
       </div>
-    </main>
+      </main>
+
+      {/* Permanent on desktop: the engineering half of the product. */}
+      <div className="hidden w-[26rem] shrink-0 lg:block">{rail}</div>
+
+      {/* Below lg there is no room for two panes: the same rail as a sheet. */}
+      {sheetOpen ? (
+        <div className="fixed inset-0 z-30 lg:hidden">
+          <button
+            aria-label="Close the agent stack"
+            className="absolute inset-0 bg-foreground/20 backdrop-blur-[2px]"
+            onClick={() => setSheetOpen(false)}
+            type="button"
+          />
+          <div className="absolute inset-x-0 bottom-0 flex max-h-[82vh] flex-col rounded-t-3xl border-t bg-background shadow-2xl">
+            <div className="flex items-center justify-between px-4 pt-3 pb-1">
+              <span className="font-medium text-sm">Under the hood</span>
+              <button
+                className="rounded-full px-3 py-1 text-muted-foreground text-xs hover:bg-muted"
+                onClick={() => setSheetOpen(false)}
+                type="button"
+              >
+                Close
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-hidden">{rail}</div>
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
 

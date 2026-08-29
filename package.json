@@ -14,9 +14,13 @@
     "build:eve": "eve build",
     "dev:eve": "eve dev",
     "start:eve": "eve start",
-    "eval": "eve eval",
+    "eval": "eve eval --tag fast",
     "eval:report": "node --env-file=.env.local --import ./scripts/ts-resolve.mjs scripts/eval-report.ts",
-    "eval:replies": "node --env-file=.env.local --import ./scripts/ts-resolve.mjs scripts/eval-replies.ts"
+    "eval:replies": "node --env-file=.env.local --import ./scripts/ts-resolve.mjs scripts/eval-replies.ts",
+    "pricing:refresh": "node --env-file=.env.local --import ./scripts/ts-resolve.mjs scripts/refresh-pricing.ts",
+    "eval:scout": "node --env-file=.env.local --import ./scripts/ts-resolve.mjs scripts/eval-scout.ts",
+    "eval:all": "npm run eval:replies && npm run eval:scout && npm run eval",
+    "eval:slow": "eve eval --tag slow"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "^3.0.39",

@@ -2,6 +2,7 @@
 
 import { PauseIcon, PlayIcon, SkipBackIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { actionName, isSubagentAction } from "@/agent/lib/actions";
 
 /**
  * The agent stack, live. A faithful take on the "2026: Agent stack" diagram —
@@ -64,12 +65,13 @@ const TOOL_META: Record<string, { plane: StackNode; label: string; also?: StackN
   complete_milestone: { plane: "state", label: "countdown (KV) · done" },
   ask_question: { plane: "control", label: "human input (buttons)" },
   agent: { plane: "subagents", label: "specialist sub-agent" },
+  scout: { plane: "subagents", label: "research specialist" },
+  record_vendor: { plane: "state", label: "vendor recorded (KV)", also: "observe" },
+  get_research: { plane: "state", label: "research store · read" },
   load_skill: { plane: "context", label: "skill loaded" },
 };
 
-export function actionName(a: Any): string {
-  return String(a?.toolName ?? a?.name ?? a?.tool?.name ?? a?.skill ?? a?.kind ?? "action");
-}
+export { actionName };
 
 function toolMeta(name: string) {
   return TOOL_META[name] ?? { plane: "tool" as StackNode, label: name };
@@ -123,7 +125,7 @@ function fold(st: StackState, ev: StackEvent, inSub = false): void {
       st.tool = name;
       st.phase = "acting"; st.edge = "plan-act";
       st.active = sub(["act", meta.plane, ...(meta.also ? [meta.also] : [])]);
-      st.headline = name === "agent" ? "Delegating to a specialist" : `Acting · ${name}`;
+      st.headline = isSubagentAction(last) ? "Delegating to a specialist" : `Acting · ${name}`;
       st.detail = `${meta.label}${actions.length > 1 ? ` (+${actions.length - 1} more)` : ""}`;
       break;
     }
@@ -145,13 +147,10 @@ function fold(st: StackState, ev: StackEvent, inSub = false): void {
       st.headline = "Waiting on you"; st.detail = "buttons are up — your call decides the next loop";
       break;
     case "subagent.called":
-    case "subagent.started":
       st.counts.subagents += 1;
       st.phase = "acting"; st.active = ["subagents", "model"]; st.edge = "plan-act";
-      st.headline = `Specialist started · ${d.name ?? d.subagentName ?? "research"}`; st.detail = "fresh context, own loop, reports back";
-      break;
-    case "subagent.event":
-      if (d.event) fold(st, d.event as StackEvent, true);
+      st.headline = `Specialist started · ${d.subagentName ?? d.name ?? "research"}`;
+      st.detail = "fresh context, own loop, own live stream";
       break;
     case "subagent.completed":
       st.phase = "observing"; st.active = ["observe", "subagents"]; st.edge = "act-observe";
@@ -204,7 +203,7 @@ export function deriveStack(events: readonly StackEvent[]): StackState {
 /** Event types that mark a real change of phase (used for replay stepping). */
 const STEP_TYPES = new Set([
   "turn.started", "message.received", "step.started", "actions.requested", "action.result", "input.requested",
-  "subagent.called", "subagent.started", "subagent.completed", "step.completed", "message.completed",
+  "subagent.called", "subagent.completed", "step.completed", "message.completed",
   "turn.completed", "turn.failed", "step.failed", "session.failed", "session.waiting", "compaction.requested",
 ]);
 

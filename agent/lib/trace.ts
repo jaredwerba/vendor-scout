@@ -1,19 +1,39 @@
 /**
- * Observability store — a compact, queryable trace of every session, written
- * by the observe hook (agent/hooks/observe.ts) after each durable stream event
- * and read by /observe. Lives in Upstash Redis via REST, beside the roster,
- * because eve's own state is per-session and /observe needs to see across
- * sessions. LangSmith (agent/instrumentation.ts) holds the deep, span-level
- * trace; this is the glanceable one the app itself can show.
+ * Observability store — a compact, queryable trace of every session in the
+ * agent tree, written by the observe hook (agent/hooks/observe.ts) after each
+ * durable stream event and read by the app's live rail and by /observe.
  *
- * Keys: trace:index (zset, score = ms) · trace:session:<id> (JSON summary)
- *       trace:events:<id> (list, newest last, capped) · eval:<kind> (JSON)
+ * Lives in Upstash Redis via REST, beside the roster, because eve's own state
+ * is per-session and the console needs to see across sessions. LangSmith
+ * (agent/instrumentation.ts) holds the deep, span-level trace; this is the
+ * glanceable one the app itself can show, and the only one that survives
+ * without a LangSmith login.
+ *
+ * Two rules this store enforces:
+ *   1. The tree is explicit. A delegated specialist writes its own summary
+ *      and is linked to its root, so "what is each agent doing right now"
+ *      is a single read, not a reconstruction.
+ *   2. Nothing the couple typed is ever stored. /observe is public; message
+ *      text, vendor emails and search queries from the main conversation stay
+ *      out of KV entirely. What is stored is shape: types, names, counts,
+ *      timings, tokens, cost.
+ *
+ * Keys: trace:index (zset of ROOT ids, score = ms)
+ *       trace:session:<id> (JSON TraceSummary, roots and children)
+ *       trace:events:<id>  (list, newest last, capped)
+ *       trace:children:<rootId> (list of child session ids, call order)
+ *       trace:call:<callId> (callId -> child session id)
+ *       trace:langsmith:<id> (JSON {traceId})
+ *       eval:<kind> (JSON EvalSummary)
  */
+
+import { actionName, categoryFromBrief, isSubagentAction, readUsage } from "./actions";
+import { costFor } from "./pricing";
 
 const URL_BASE = process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_API_URL ?? "";
 const TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.KV_REST_API_TOKEN ?? "";
 const TTL_SECONDS = 60 * 60 * 24 * 30;
-const MAX_EVENTS = 400;
+const MAX_EVENTS = 600;
 
 export const traceConfigured = () => Boolean(URL_BASE && TOKEN);
 
@@ -31,11 +51,22 @@ async function redis(commands: Cmd[]): Promise<unknown[]> {
 }
 
 export type TraceStatus = "active" | "waiting" | "completed" | "failed";
+export type TraceRole = "root" | "specialist";
 
 export interface TraceSummary {
   id: string;
+  role: TraceRole;
+  /** "Venus" for the root; the research category for a specialist. */
+  label: string;
+  /** The declared subagent's tool name (e.g. "scout"), when this is a child. */
+  agentName: string | null;
+  rootSessionId: string;
+  parentSessionId: string | null;
+  callId: string | null;
   startedAt: string;
   updatedAt: string;
+  durationMs: number;
+  /** Redacted: never the couple's words. Budget line for the root, else null. */
   title: string | null;
   status: TraceStatus;
   turns: number;
@@ -45,8 +76,13 @@ export interface TraceSummary {
   failedActions: number;
   subagents: number;
   questions: number;
+  /** record_vendor calls that succeeded — partial progress, visible live. */
+  vendorsRecorded: number;
+  /** Steps that hit the output cap: findings may be missing, never silent. */
+  truncations: number;
   inputTokens: number;
   outputTokens: number;
+  cacheReadTokens: number;
   costUsd: number;
   model: string | null;
   lastTool: string | null;
@@ -55,7 +91,10 @@ export interface TraceSummary {
 }
 
 export interface TraceEntry {
+  /** Event time from eve's durable stamp (meta.at), not hook wall-clock. */
   t: string;
+  /** Milliseconds since the previous recorded entry in this session. */
+  dt?: number;
   type: string;
   seq?: number;
   tool?: string;
@@ -63,6 +102,7 @@ export interface TraceEntry {
   note?: string;
   ok?: boolean;
   tokens?: { in: number; out: number };
+  costUsd?: number;
 }
 
 export interface EvalCaseResult {
@@ -78,6 +118,7 @@ export interface EvalSummary {
   name: string;
   ranAt: string;
   model: string | null;
+  judgeModel?: string | null;
   n: number;
   passed: number;
   score: number; // 0..1
@@ -88,27 +129,68 @@ export interface EvalSummary {
 
 const key = (id: string) => `trace:session:${id}`;
 const evKey = (id: string) => `trace:events:${id}`;
+const childrenKey = (rootId: string) => `trace:children:${rootId}`;
 
 // Deltas arrive many times per second; the summary only needs boundaries.
 const SKIP = new Set(["message.appended", "reasoning.appended", "reasoning.completed"]);
 
-function fresh(id: string, now: string): TraceSummary {
+export interface SessionLineage {
+  callId?: string;
+  rootSessionId?: string;
+  sessionId?: string;
+}
+
+function fresh(id: string, now: string, parent?: SessionLineage | null): TraceSummary {
+  const isChild = Boolean(parent?.sessionId);
   return {
-    id, startedAt: now, updatedAt: now, title: null, status: "active",
-    turns: 0, steps: 0, toolCalls: 0, toolResults: 0, failedActions: 0, subagents: 0, questions: 0,
-    inputTokens: 0, outputTokens: 0, costUsd: 0, model: null, lastTool: null, lastEvent: null, tools: {},
+    id,
+    role: isChild ? "specialist" : "root",
+    label: isChild ? "specialist" : "Venus",
+    agentName: null,
+    rootSessionId: parent?.rootSessionId ?? parent?.sessionId ?? id,
+    parentSessionId: parent?.sessionId ?? null,
+    callId: parent?.callId ?? null,
+    startedAt: now,
+    updatedAt: now,
+    durationMs: 0,
+    title: null,
+    status: "active",
+    turns: 0, steps: 0, toolCalls: 0, toolResults: 0, failedActions: 0, subagents: 0,
+    questions: 0, vendorsRecorded: 0, truncations: 0,
+    inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, costUsd: 0,
+    model: null, lastTool: null, lastEvent: null, tools: {},
   };
 }
 
-// The runtime action shapes are eve-owned; read them defensively so a
-// protocol change degrades the trace instead of throwing inside a hook.
-// biome-ignore lint/suspicious/noExplicitAny: protocol projection
+// biome-ignore lint/suspicious/noExplicitAny: eve protocol projection
 type Any = any;
-export function actionName(a: Any): string {
-  return String(a?.toolName ?? a?.name ?? a?.tool?.name ?? a?.skill ?? a?.kind ?? "action");
+
+/**
+ * What may be written about a tool call. Vendor research is the product's
+ * visible work and safe to show; anything carrying the couple's words or a
+ * vendor's address is reduced to a shape.
+ */
+function describeAction(a: Any, role: TraceRole): string | undefined {
+  const name = actionName(a);
+  const input = (a?.input ?? {}) as Record<string, unknown>;
+  if (name === "web_search" && role === "specialist" && typeof input.query === "string") {
+    // A specialist's query is vendor research, not private: show it.
+    const extra = [input.time_range, input.topic].filter(Boolean).join(" · ");
+    return `"${input.query.slice(0, 90)}"${extra ? ` · ${extra}` : ""}`;
+  }
+  if (name === "web_search") {
+    return typeof input.query === "string" ? `query · ${input.query.length} chars` : undefined;
+  }
+  if (name === "record_vendor") {
+    return typeof input.name === "string" ? String(input.name).slice(0, 60) : undefined;
+  }
+  if (name === "send_outreach") return "vendor email (recipient redacted)";
+  if (isSubagentAction(a)) return categoryFromBrief(input.message) ?? undefined;
+  if (name === "ask_question") return "tappable options";
+  return undefined;
 }
 
-function apply(s: TraceSummary, ev: { type: string; data?: Any }, now: string, inSubagent = false): TraceEntry | null {
+function apply(s: TraceSummary, ev: { type: string; data?: Any }, now: string): TraceEntry | null {
   const d = ev.data ?? {};
   const seq = typeof d.sequence === "number" ? d.sequence : undefined;
   s.lastEvent = ev.type;
@@ -117,22 +199,53 @@ function apply(s: TraceSummary, ev: { type: string; data?: Any }, now: string, i
       s.status = "active";
       const m = d?.runtime?.model;
       s.model = typeof m === "string" ? m : (m?.id ?? m?.modelId ?? s.model ?? null);
+      if (d?.invocation?.kind === "subagent") {
+        s.role = "specialist";
+        s.agentName = String(d.invocation.name ?? "subagent");
+        s.parentSessionId = s.parentSessionId ?? (String(d.invocation.parentSessionId ?? "") || null);
+        s.callId = s.callId ?? (String(d.invocation.parentCallId ?? "") || null);
+        if (s.label === "specialist") s.label = s.agentName;
+      }
       return { t: now, type: ev.type, note: d?.runtime?.eve ? `eve ${d.runtime.eve}` : undefined };
     }
     case "turn.started":
       s.turns += 1; s.status = "active";
-      return { t: now, type: ev.type, seq, note: d.turnId };
-    case "message.received":
-      if (!s.title && typeof d.message === "string") s.title = d.message.slice(0, 90);
-      return { t: now, type: ev.type, seq, note: typeof d.message === "string" ? d.message.slice(0, 120) : undefined };
+      return { t: now, type: ev.type, seq };
+    case "message.received": {
+      // A specialist's inbound message is the research brief: its first line
+      // declares the category and becomes the lane label. The root's inbound
+      // message is the couple talking — never stored, only measured.
+      const text = typeof d.message === "string" ? d.message : "";
+      if (s.role === "specialist") {
+        const category = categoryFromBrief(text);
+        if (category) s.label = category;
+        return { t: now, type: ev.type, seq, note: category ? `brief · ${category}` : "brief received" };
+      }
+      if (!s.title) {
+        const budget = text.match(/\$[\d,]+/);
+        if (budget) s.title = `Budget ${budget[0]}`;
+      }
+      return { t: now, type: ev.type, seq, note: `${text.length} chars` };
+    }
     case "step.started":
       s.steps += 1;
       return { t: now, type: ev.type, seq, note: `step ${d.stepIndex ?? s.steps}` };
     case "step.completed": {
-      const u = d.usage ?? {};
-      const inTok = Number(u.inputTokens ?? 0), outTok = Number(u.outputTokens ?? 0);
-      s.inputTokens += inTok; s.outputTokens += outTok; s.costUsd += Number(u.costUsd ?? 0);
-      return { t: now, type: ev.type, seq, note: `finish: ${d.finishReason ?? "?"}`, tokens: { in: inTok, out: outTok } };
+      const u = readUsage(d.usage);
+      s.inputTokens += u.inputTokens;
+      s.outputTokens += u.outputTokens;
+      s.cacheReadTokens += u.cacheReadTokens;
+      const cost = Number(d.usage?.costUsd ?? 0) || costFor(s.model, u);
+      s.costUsd += cost;
+      const truncated = d.finishReason === "length";
+      if (truncated) s.truncations += 1;
+      return {
+        t: now, type: ev.type, seq,
+        note: truncated ? "TRUNCATED (hit the output cap)" : `finish: ${d.finishReason ?? "?"}`,
+        ok: !truncated,
+        tokens: { in: u.inputTokens, out: u.outputTokens },
+        costUsd: cost,
+      };
     }
     case "actions.requested": {
       const actions: Any[] = Array.isArray(d.actions) ? d.actions : [];
@@ -141,51 +254,65 @@ function apply(s: TraceSummary, ev: { type: string; data?: Any }, now: string, i
         const name = actionName(a);
         s.toolCalls += 1; s.tools[name] = (s.tools[name] ?? 0) + 1; s.lastTool = name;
         if (name === "ask_question") s.questions += 1;
-        last = { t: now, type: ev.type, seq, tool: name, note: inSubagent ? "inside specialist" : undefined };
+        last = { t: now, type: ev.type, seq, tool: name, note: describeAction(a, s.role) };
       }
       return last ?? { t: now, type: ev.type, seq };
     }
     case "action.result": {
       const name = actionName(d.result);
       const ok = d.status !== "failed" && !d.error && !d?.result?.isError;
-      s.toolResults += 1; if (!ok) s.failedActions += 1;
-      return { t: now, type: ev.type, seq, tool: name, ok, note: ok ? undefined : String(d?.error?.message ?? "failed") };
+      s.toolResults += 1;
+      if (!ok) s.failedActions += 1;
+      if (ok && name === "record_vendor") s.vendorsRecorded += 1;
+      // A specialist's result carries the child's whole token bill.
+      const usage = d?.result?.usage ? readUsage(d.result.usage) : null;
+      return {
+        t: now, type: ev.type, seq, tool: name, ok,
+        note: ok
+          ? (d.status === "rejected" ? "declined at the approval gate" : undefined)
+          : String(d?.error?.message ?? "failed").slice(0, 140),
+        tokens: usage ? { in: usage.inputTokens, out: usage.outputTokens } : undefined,
+      };
     }
     case "input.requested":
-      s.questions += Array.isArray(d.requests) ? d.requests.length : 1; s.status = "waiting";
+      s.questions += Array.isArray(d.requests) ? d.requests.length : 1;
+      s.status = "waiting";
       return { t: now, type: ev.type, seq, note: "waiting on the couple" };
     case "subagent.called":
       s.subagents += 1;
-      return { t: now, type: ev.type, seq, name: d.name ?? d.toolName, note: d.childSessionId };
-    case "subagent.started":
-      return { t: now, type: ev.type, name: d.subagentName };
+      return {
+        t: now, type: ev.type, seq,
+        name: String(d.subagentName ?? d.name ?? "specialist"),
+        note: d.childSessionId ? `child ${String(d.childSessionId).slice(-8)}` : undefined,
+      };
     case "subagent.completed":
       return { t: now, type: ev.type, name: d.subagentName, ok: true };
-    case "subagent.event": {
-      const inner = d.event;
-      if (!inner || SKIP.has(inner.type)) return null;
-      if (inner.type === "actions.requested" || inner.type === "action.result" || inner.type === "step.completed") {
-        const e = apply(s, inner, now, true);
-        return e ? { ...e, name: d.subagentName } : null;
-      }
-      return null;
+    case "message.completed": {
+      const truncated = d.finishReason === "length";
+      if (truncated) s.truncations += 1;
+      return {
+        t: now, type: ev.type, seq, ok: !truncated,
+        note: truncated ? "TRUNCATED reply" : `finish: ${d.finishReason ?? "?"}`,
+      };
     }
-    case "message.completed":
-      return { t: now, type: ev.type, seq, note: `finish: ${d.finishReason ?? "?"}` };
     case "turn.completed":
       return { t: now, type: ev.type, seq, ok: true };
     case "turn.cancelled":
+      s.status = "completed";
       return { t: now, type: ev.type, seq, note: "cancelled" };
     case "step.failed":
     case "turn.failed":
     case "session.failed":
       s.status = "failed";
-      return { t: now, type: ev.type, seq, ok: false, note: `${d.code ?? "error"}: ${String(d.message ?? "").slice(0, 160)}` };
+      return {
+        t: now, type: ev.type, seq, ok: false,
+        note: `${d.code ?? "error"}: ${String(d.message ?? "").slice(0, 160)}`,
+      };
     case "session.waiting":
       if (s.status !== "failed") s.status = "waiting";
       return { t: now, type: ev.type };
     case "session.completed":
-      s.status = "completed";
+      if (s.status !== "failed") s.status = "completed";
       return { t: now, type: ev.type };
     case "compaction.requested":
     case "compaction.completed":
@@ -196,25 +323,51 @@ function apply(s: TraceSummary, ev: { type: string; data?: Any }, now: string, i
 }
 
 const cache = new Map<string, TraceSummary>();
+const lastAt = new Map<string, number>();
 
 /** Called by the observe hook for every durable stream event. Never throws. */
-export async function recordTraceEvent(sessionId: string, event: { type: string; data?: unknown }): Promise<void> {
+export async function recordTraceEvent(
+  sessionId: string,
+  event: { type: string; data?: unknown; meta?: { at?: string } },
+  lineage?: SessionLineage | null,
+): Promise<void> {
   if (!traceConfigured() || !sessionId || SKIP.has(event.type)) return;
   try {
-    const now = new Date().toISOString();
+    // eve stamps meta.at when it writes the event to the durable stream, so
+    // this is the real event time even when the hook runs late or on replay.
+    const at = event.meta?.at ?? new Date().toISOString();
     let s = cache.get(sessionId);
     if (!s) {
       const [raw] = await redis([["GET", key(sessionId)]]);
-      s = typeof raw === "string" && raw ? (JSON.parse(raw) as TraceSummary) : fresh(sessionId, now);
+      s = typeof raw === "string" && raw ? (JSON.parse(raw) as TraceSummary) : fresh(sessionId, at, lineage);
       cache.set(sessionId, s);
     }
-    const entry = apply(s, event as { type: string; data?: unknown }, now);
-    s.updatedAt = now;
-    const cmds: Cmd[] = [
-      ["SET", key(sessionId), JSON.stringify(s), "EX", TTL_SECONDS],
-      ["ZADD", "trace:index", Date.now(), sessionId],
-    ];
+    if (lineage?.sessionId && !s.parentSessionId) {
+      s.parentSessionId = lineage.sessionId;
+      s.rootSessionId = lineage.rootSessionId ?? lineage.sessionId;
+      s.callId = lineage.callId ?? s.callId;
+      s.role = "specialist";
+    }
+    const entry = apply(s, event as { type: string; data?: unknown }, at);
+    s.updatedAt = at;
+    s.durationMs = Math.max(0, Date.parse(at) - Date.parse(s.startedAt));
+
+    const cmds: Cmd[] = [["SET", key(sessionId), JSON.stringify(s), "EX", TTL_SECONDS]];
+    if (s.role === "root") {
+      cmds.push(["ZADD", "trace:index", Date.parse(at) || Date.now(), sessionId]);
+    } else if (event.type === "session.started") {
+      // Link the child into its root's tree exactly once.
+      cmds.push(
+        ["RPUSH", childrenKey(s.rootSessionId), sessionId],
+        ["EXPIRE", childrenKey(s.rootSessionId), TTL_SECONDS],
+      );
+      if (s.callId) cmds.push(["SET", `trace:call:${s.callId}`, sessionId, "EX", TTL_SECONDS]);
+    }
     if (entry) {
+      const prev = lastAt.get(sessionId);
+      const ms = Date.parse(at);
+      if (prev && Number.isFinite(ms)) entry.dt = Math.max(0, ms - prev);
+      if (Number.isFinite(ms)) lastAt.set(sessionId, ms);
       cmds.push(
         ["RPUSH", evKey(sessionId), JSON.stringify(entry)],
         ["LTRIM", evKey(sessionId), -MAX_EVENTS, -1],
@@ -227,35 +380,86 @@ export async function recordTraceEvent(sessionId: string, event: { type: string;
   }
 }
 
+function parse<T>(raw: unknown): T | null {
+  try {
+    return typeof raw === "string" && raw ? (JSON.parse(raw) as T) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Root sessions, newest first. Children are reached through the tree. */
 export async function listTraces(limit = 20): Promise<TraceSummary[]> {
   if (!traceConfigured()) return [];
   const [ids] = (await redis([["ZREVRANGE", "trace:index", 0, Math.max(0, limit - 1)]])) as [string[] | null];
   if (!ids || ids.length === 0) return [];
   const [raws] = (await redis([["MGET", ...ids.map(key)]])) as [Array<string | null>];
-  return raws
-    .map((r) => { try { return r ? (JSON.parse(r) as TraceSummary) : null; } catch { return null; } })
-    .filter((s): s is TraceSummary => Boolean(s));
+  return raws.map((r) => parse<TraceSummary>(r)).filter((s): s is TraceSummary => Boolean(s));
 }
 
 export async function getTrace(id: string): Promise<TraceSummary | null> {
   if (!traceConfigured()) return null;
   const [raw] = await redis([["GET", key(id)]]);
-  return typeof raw === "string" && raw ? (JSON.parse(raw) as TraceSummary) : null;
+  return parse<TraceSummary>(raw);
 }
 
 export async function getTraceEvents(id: string, limit = MAX_EVENTS): Promise<TraceEntry[]> {
   if (!traceConfigured()) return [];
   const [raws] = (await redis([["LRANGE", evKey(id), -limit, -1]])) as [string[] | null];
-  return (raws ?? []).map((r) => { try { return JSON.parse(r) as TraceEntry; } catch { return null; } }).filter((e): e is TraceEntry => Boolean(e));
+  return (raws ?? []).map((r) => parse<TraceEntry>(r)).filter((e): e is TraceEntry => Boolean(e));
+}
+
+export interface TraceTree {
+  root: TraceSummary | null;
+  children: TraceSummary[];
+  langsmithTraceId: string | null;
+}
+
+/** The whole agent tree for one root session: Venus plus every specialist. */
+export async function getTraceTree(rootId: string): Promise<TraceTree> {
+  if (!traceConfigured()) return { root: null, children: [], langsmithTraceId: null };
+  const [rootRaw, childIds, lsRaw] = (await redis([
+    ["GET", key(rootId)],
+    ["LRANGE", childrenKey(rootId), 0, -1],
+    ["GET", `trace:langsmith:${rootId}`],
+  ])) as [string | null, string[] | null, string | null];
+  const ids = childIds ?? [];
+  let children: TraceSummary[] = [];
+  if (ids.length > 0) {
+    const [raws] = (await redis([["MGET", ...ids.map(key)]])) as [Array<string | null>];
+    children = raws.map((r) => parse<TraceSummary>(r)).filter((s): s is TraceSummary => Boolean(s));
+  }
+  const ls = parse<{ traceId?: string }>(lsRaw);
+  return { root: parse<TraceSummary>(rootRaw), children, langsmithTraceId: ls?.traceId ?? null };
+}
+
+/** Written by the OTel exporter on the first span of a session. */
+export async function saveLangSmithTraceId(sessionId: string, traceId: string): Promise<void> {
+  if (!traceConfigured() || !sessionId || !traceId) return;
+  await redis([["SET", `trace:langsmith:${sessionId}`, JSON.stringify({ traceId }), "EX", TTL_SECONDS]]);
 }
 
 export async function saveEvalSummary(summary: EvalSummary): Promise<void> {
   if (!traceConfigured()) throw new Error("trace store not configured (KV_REST_API_URL / KV_REST_API_TOKEN)");
-  await redis([["SET", `eval:${summary.kind}`, JSON.stringify(summary)]]);
+  await redis([
+    ["SET", `eval:${summary.kind}`, JSON.stringify(summary)],
+    ["SADD", "eval:kinds", summary.kind],
+  ]);
 }
 
 export async function getEvalSummary(kind: string): Promise<EvalSummary | null> {
   if (!traceConfigured()) return null;
   const [raw] = await redis([["GET", `eval:${kind}`]]);
-  return typeof raw === "string" && raw ? (JSON.parse(raw) as EvalSummary) : null;
+  return parse<EvalSummary>(raw);
+}
+
+export async function listEvalSummaries(): Promise<EvalSummary[]> {
+  if (!traceConfigured()) return [];
+  const [kinds] = (await redis([["SMEMBERS", "eval:kinds"]])) as [string[] | null];
+  const names = kinds && kinds.length > 0 ? kinds : ["replies", "suite"];
+  const [raws] = (await redis([["MGET", ...names.map((k) => `eval:${k}`)]])) as [Array<string | null>];
+  return raws
+    .map((r) => parse<EvalSummary>(r))
+    .filter((e): e is EvalSummary => Boolean(e))
+    .sort((a, b) => (a.kind < b.kind ? -1 : 1));
 }

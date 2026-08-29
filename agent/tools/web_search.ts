@@ -1,5 +1,6 @@
 import { defineTool } from "eve/tools";
 import { z } from "zod";
+import { countSearch, searchCapFor } from "../lib/search-budget";
 
 /**
  * Our own web search, replacing Eve's built-in `web_search` by filename.
@@ -52,7 +53,23 @@ export default defineTool({
       .optional()
       .describe("'news' searches recent news sources only; default 'general'."),
   }),
-  async execute({ query, max_results, include_images, time_range, topic }) {
+  async execute({ query, max_results, include_images, time_range, topic }, ctx) {
+    // Retrieval governance: a specialist gets a research budget, the root a
+    // larger one. Exhausting it is a normal outcome, not a failure — the
+    // model is told to conclude from what it already has.
+    const budget = countSearch(searchCapFor(Boolean(ctx.session.parent)));
+    if (budget.exhausted) {
+      return {
+        status: "cap_reached",
+        used: budget.used - 1,
+        cap: budget.cap,
+        note:
+          `Search budget for this agent is spent (${budget.cap} searches). Do NOT search again. ` +
+          "Finish with what you already found: record or report every vendor you verified, " +
+          "and say plainly which parts you could not cover.",
+      };
+    }
+
     if (!TAVILY_KEY) {
       return {
         status: "not_configured",
@@ -102,6 +119,8 @@ export default defineTool({
     return {
       status: "ok",
       query,
+      searches_used: budget.used,
+      searches_left: Math.max(0, budget.cap - budget.used),
       ...(time_range ? { time_range } : {}),
       results: (json.results ?? []).map((r) => ({
         title: r.title ?? "",

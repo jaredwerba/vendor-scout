@@ -85,8 +85,20 @@ if (process.env.LANGSMITH_API_KEY) {
         maxConcurrency: 2,
       },
     );
-    langsmith = { dataset: DATASET, experiment: exp.experimentName };
-    console.log(`LangSmith experiment: ${exp.experimentName}`);
+    // A run nobody can open is not observability: resolve the experiment's
+    // own project so /observe can deep-link straight into it.
+    let url: string | undefined;
+    try {
+      const project = await client.readProject({ projectName: exp.experimentName });
+      const web = (process.env.LANGSMITH_ENDPOINT ?? "https://api.smith.langchain.com")
+        .replace(/\/$/, "")
+        .replace("//api.", "//");
+      url = `${web}/o/${project.tenant_id}/projects/p/${project.id}`;
+    } catch {
+      // The experiment exists either way; only the link is missing.
+    }
+    langsmith = { dataset: DATASET, experiment: exp.experimentName, url };
+    console.log(`LangSmith experiment: ${exp.experimentName}${url ? ` → ${url}` : ""}`);
   } catch (error) {
     console.warn("LangSmith upload skipped:", (error as Error).message);
   }

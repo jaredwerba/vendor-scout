@@ -1,47 +1,127 @@
 import { registerOTel } from "@vercel/otel";
 import { defineInstrumentation } from "eve/instrumentation";
 import { LangSmithOTLPTraceExporter } from "langsmith/experimental/otel/exporter";
+import type { ReadableSpan } from "@opentelemetry/sdk-trace-base";
+import { saveLangSmithTraceId } from "./lib/trace";
 
 /**
- * LangSmith tracing. eve wraps every turn in an `ai.eve.turn` span with
- * `ai.streamText` / `ai.toolCall` children (model calls and tool executions),
- * and this file decides where those spans go. With LANGSMITH_API_KEY set they
- * are exported to LangSmith (project LANGSMITH_PROJECT, default "venus") via
- * OTLP; without it, telemetry stays local and nothing leaves the box.
+ * LangSmith tracing — the deep, span-level view under the app's own rail.
  *
- * The step.started callback stamps each model call with session/turn/step
- * and the Token Factory model so LangSmith can filter and group runs.
+ * eve wraps every turn in spans emitted through the AI SDK's GenAI-semconv
+ * OpenTelemetry integration: `invoke_agent {model}`, `chat {model}`,
+ * `execute_tool {tool}`. Two things stand between those spans and a usable
+ * LangSmith project, and both are handled here:
+ *
+ *  1. `LangSmithOTLPTraceExporter.export()` is a no-op unless LANGSMITH_TRACING
+ *     is truthy. A key alone buys nothing, so we check for both and say so
+ *     loudly when only one is present.
+ *  2. Because eve uses the *new* integration, our `runtimeContext` lands as
+ *     `ai.settings.context.*` attributes. The exporter only rewrites the
+ *     legacy `ai.telemetry.metadata.*` prefix, and its span-kind branches are
+ *     gated on `ai.operationId`, which these spans do not carry. Without the
+ *     transform below, every run arrives in LangSmith unlabelled and
+ *     unfilterable — no session, no agent role, no span kinds.
+ *
+ * The transform also captures each session's OTel trace id into KV, so the
+ * app can deep-link straight to the trace without querying the LangSmith API.
  */
+
 const MODEL = (process.env.NEBIUS_MODEL ?? "").trim() || "Qwen/Qwen3-235B-A22B-Instruct-2507";
+const PROJECT = process.env.LANGSMITH_PROJECT ?? "venus";
+
+const CONTEXT_PREFIX = "ai.settings.context.";
+
+/** eve/AI-SDK span name -> the run type LangSmith should show. */
+function spanKindFor(name: string): string | null {
+  if (name.startsWith("chat ") || name.startsWith("generate_content")) return "llm";
+  if (name.startsWith("execute_tool")) return "tool";
+  if (name.startsWith("invoke_agent") || name.startsWith("ai.eve")) return "chain";
+  return null;
+}
+
+const seenSessions = new Set<string>();
+
+function transformExportedSpan(span: ReadableSpan): ReadableSpan {
+  const attrs = span.attributes as Record<string, unknown>;
+
+  // 1. runtimeContext -> LangSmith run metadata.
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k.startsWith(CONTEXT_PREFIX)) {
+      const rest = k.slice(CONTEXT_PREFIX.length);
+      const target = rest.startsWith("langsmith.") ? rest : `langsmith.metadata.${rest}`;
+      if (attrs[target] === undefined) attrs[target] = v as never;
+    }
+  }
+
+  // 2. eve's own span attributes -> metadata, so a session is filterable
+  //    even on spans the step.started hook never touched.
+  const lift: Array<[string, string]> = [
+    ["eve.session.id", "langsmith.metadata.session_id"],
+    ["eve.turn.id", "langsmith.metadata.turn_id"],
+    ["eve.step.index", "langsmith.metadata.step"],
+    ["eve.channel.kind", "langsmith.metadata.channel"],
+    ["eve.agent.name", "langsmith.metadata.agent"],
+  ];
+  for (const [from, to] of lift) {
+    if (attrs[from] !== undefined && attrs[to] === undefined) attrs[to] = attrs[from] as never;
+  }
+
+  // 3. Span kind, which the built-in rules skip for these span names.
+  if (attrs["langsmith.span.kind"] === undefined) {
+    const kind = spanKindFor(span.name);
+    if (kind) attrs["langsmith.span.kind"] = kind;
+  }
+
+  // 4. Remember which LangSmith trace belongs to which eve session, once per
+  //    session, so /observe can link out without querying LangSmith.
+  const sessionId = String(attrs["langsmith.metadata.session_id"] ?? "");
+  if (sessionId && !seenSessions.has(sessionId)) {
+    seenSessions.add(sessionId);
+    void saveLangSmithTraceId(sessionId, span.spanContext().traceId).catch(() => {});
+  }
+
+  return span;
+}
 
 export default defineInstrumentation({
   recordInputs: true,
   recordOutputs: true,
   setup: ({ agentName }) => {
-    if (!process.env.LANGSMITH_API_KEY) {
+    const key = process.env.LANGSMITH_API_KEY;
+    const tracing = process.env.LANGSMITH_TRACING;
+    if (!key) {
       console.info("[venus/trace] LangSmith export off — set LANGSMITH_API_KEY to enable");
       return;
     }
+    if (!tracing || tracing === "false" || tracing === "0") {
+      // The exporter silently drops every span in this state; a dead
+      // observability pipeline that looks alive is worse than none.
+      console.warn(
+        "[venus/trace] LANGSMITH_API_KEY is set but LANGSMITH_TRACING is not — " +
+          "the LangSmith exporter drops every span. Set LANGSMITH_TRACING=true.",
+      );
+    }
     registerOTel({
       serviceName: agentName,
-      traceExporter: new LangSmithOTLPTraceExporter({
-        projectName: process.env.LANGSMITH_PROJECT ?? "venus",
-      }),
+      traceExporter: new LangSmithOTLPTraceExporter({ projectName: PROJECT, transformExportedSpan }),
     });
-    console.info(`[venus/trace] LangSmith export on → project ${process.env.LANGSMITH_PROJECT ?? "venus"}`);
+    console.info(`[venus/trace] LangSmith export on → project ${PROJECT}`);
   },
   events: {
     "step.started"(input) {
+      const parent = input.session.parent?.sessionId;
       return {
         runtimeContext: {
           "langsmith.metadata.session_id": input.session.id,
+          "langsmith.metadata.root_session_id": input.session.parent?.rootSessionId ?? input.session.id,
+          "langsmith.metadata.parent_session": parent ?? "",
+          "langsmith.metadata.role": parent ? "specialist" : "root",
           "langsmith.metadata.turn_id": input.turn.id,
           "langsmith.metadata.turn_sequence": input.turn.sequence,
           "langsmith.metadata.step": input.step.index,
           "langsmith.metadata.channel": input.channel.kind ?? "unknown",
           "langsmith.metadata.provider": "nebius-token-factory",
           "langsmith.metadata.model": MODEL,
-          "langsmith.metadata.parent_session": input.session.parent?.sessionId ?? "",
         },
       };
     },

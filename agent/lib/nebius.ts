@@ -16,6 +16,10 @@ export const DEFAULT_TOKEN_FACTORY_MODEL = "Qwen/Qwen3-235B-A22B-Instruct-2507";
 const tokenFactory = createOpenAICompatible({
   name: "token-factory",
   baseURL: TOKEN_FACTORY_BASE_URL,
+  // Ask for usage on the streamed final chunk. Without it every streamed turn
+  // reports zero tokens, so /observe showed 0 tokens and $0 for every session
+  // and there was no way to compare models on cost.
+  includeUsage: true,
   // Token Factory honours response_format json_schema (verified 2026-08-28).
   // Without this flag the AI SDK drops the schema on generateObject calls and
   // classifyReply silently falls back to keyword heuristics — the reply eval
@@ -37,4 +41,27 @@ export function tokenFactoryModel(modelId?: string) {
   // then 404s chat/completions because the id is not in the catalog.
   const id = raw.trim();
   return tokenFactory.chatModel(id.length > 0 ? id : DEFAULT_TOKEN_FACTORY_MODEL);
+}
+
+/**
+ * The research specialist's brain (agent/subagents/scout). Defaults to the
+ * root model; NEBIUS_SCOUT_MODEL swaps it in one line, which is the point of
+ * running on Token Factory — a model change is configuration, not a rewrite.
+ */
+export function scoutModel() {
+  return tokenFactoryModel(process.env.NEBIUS_SCOUT_MODEL);
+}
+
+/**
+ * The judge. Deliberately pinned away from the model under test so that
+ * swapping NEBIUS_MODEL never silently changes how results are graded.
+ */
+export const DEFAULT_JUDGE_MODEL = "deepseek-ai/DeepSeek-V4-Pro";
+
+export function judgeModelId(): string {
+  return (process.env.NEBIUS_JUDGE_MODEL ?? "").trim() || DEFAULT_JUDGE_MODEL;
+}
+
+export function judgeModel() {
+  return tokenFactoryModel(judgeModelId());
 }

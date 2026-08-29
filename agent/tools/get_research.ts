@@ -1,0 +1,67 @@
+import { defineTool } from "eve/tools";
+import { z } from "zod";
+import { countByCategory, listAllFindings, researchConfigured } from "../lib/research";
+import { getTraceTree } from "../lib/trace";
+
+/**
+ * Read back everything the specialists have recorded — plus an honest health
+ * report on each one.
+ *
+ * The point is that an empty category is never ambiguous. This joins the
+ * findings (agent/lib/research.ts) to the live trace (agent/lib/trace.ts), so
+ * the planner can tell "searched properly, nothing fits" from "that
+ * specialist was cut off mid-run" and react differently to each.
+ */
+export default defineTool({
+  description:
+    "Read everything your research specialists have recorded so far, with a per-specialist " +
+    "health check (how many vendors each recorded, and whether any was cut off). Call this " +
+    "after your scout calls return, before writing the three options.",
+  inputSchema: z.object({
+    category: z
+      .string()
+      .max(40)
+      .optional()
+      .describe("Limit to one category. Omit for everything."),
+  }),
+  async execute({ category }, ctx) {
+    if (!researchConfigured()) {
+      return { status: "not_configured", note: "No research store on this deployment." };
+    }
+    const rootSessionId = ctx.session.parent?.rootSessionId ?? ctx.session.id;
+    const [all, counts, tree] = await Promise.all([
+      listAllFindings(rootSessionId),
+      countByCategory(rootSessionId),
+      getTraceTree(rootSessionId).catch(() => ({ root: null, children: [], langsmithTraceId: null })),
+    ]);
+
+    const specialists = tree.children.map((c) => ({
+      category: c.label,
+      status: c.status,
+      searches: c.tools.web_search ?? 0,
+      vendors_recorded: c.vendorsRecorded,
+      truncated: c.truncations > 0,
+      failed_actions: c.failedActions,
+      note:
+        c.truncations > 0
+          ? "CUT OFF mid-run — its findings are incomplete. Re-run this category once with a narrower brief."
+          : c.vendorsRecorded === 0 && c.status !== "active"
+            ? "Recorded nothing. Either re-run this category once, or tell the couple it is still open."
+            : undefined,
+    }));
+
+    const findings = category ? { [category]: all[category] ?? [] } : all;
+    const total = Object.values(findings).reduce((n, list) => n + list.length, 0);
+    return {
+      status: "ok",
+      total_vendors: total,
+      counts,
+      specialists,
+      findings,
+      note:
+        total === 0
+          ? "Nothing recorded yet. If your specialists have returned, treat this as a failure to research, not as an empty market."
+          : undefined,
+    };
+  },
+});

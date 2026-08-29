@@ -5,6 +5,13 @@ import { AgentChat, type SavedVenusSession } from "./agent-chat";
 import type { StackRuntime } from "./agent-stack";
 
 const STORAGE_KEY = "venus_session_v1";
+/**
+ * How long a saved session keeps auto-resuming. Venus is a public demo: the
+ * next visitor on a shared machine should meet her fresh, not walk into
+ * someone else's half-planned wedding. The durable session server-side is
+ * untouched — /my-wedding and the archive still hold everything.
+ */
+const RESUME_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 export function loadSavedSession(): SavedVenusSession | null {
   try {
@@ -12,6 +19,11 @@ export function loadSavedSession(): SavedVenusSession | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as SavedVenusSession;
     if (!parsed?.session?.sessionId || !Array.isArray(parsed.events)) return null;
+    const savedAt = Date.parse(parsed.savedAt ?? "");
+    if (Number.isFinite(savedAt) && Date.now() - savedAt > RESUME_MAX_AGE_MS) {
+      clearSavedSession();
+      return null;
+    }
     return parsed;
   } catch {
     return null;
