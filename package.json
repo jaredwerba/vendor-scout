@@ -28,7 +28,8 @@
     "report": "node --env-file=.env.local --import ./scripts/ts-resolve.mjs scripts/report.ts",
     "simulate": "node --env-file=.env.local --import ./scripts/ts-resolve.mjs scripts/simulate.ts",
     "grade": "node --env-file=.env.local --import ./scripts/ts-resolve.mjs scripts/grade.ts",
-    "run:eve": "node --env-file=.env.local --import ./scripts/ts-resolve.mjs scripts/run-eve.ts"
+    "run:eve": "node --env-file=.env.local --import ./scripts/ts-resolve.mjs scripts/run-eve.ts",
+    "docs:log": "node --import ./scripts/ts-resolve.mjs scripts/decisions-doc.ts"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "^3.0.39",

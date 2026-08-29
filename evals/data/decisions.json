@@ -1,0 +1,122 @@
+[
+  {
+    "date": "2026-08-28",
+    "title": "Research children could email vendors",
+    "symptom": "Research was delegated with eve's built-in `agent` tool. Nothing looked wrong; the plans were good.",
+    "cause": "The built-in runs a copy of the ROOT agent — same instructions, same tools, including `send_outreach`. The capability was inherited rather than granted, so a researcher was one bad inference away from emailing a stranger.",
+    "change": "Made research a declared subagent (`agent/subagents/scout`) whose entire tool surface is web search plus `record_vendor`.",
+    "outcome": "The capability is absent rather than forbidden. A later run showed Venus still reaching for the built-in as well — 10 scout calls and 3 `agent` calls in one session — so the built-in was shadowed by an authored tool that refuses.",
+    "evidence": { "commits": ["93db25d", "3f67cfb"] },
+    "lesson": "A guarantee that depends on the model not using a tool it has is not a guarantee."
+  },
+  {
+    "date": "2026-08-28",
+    "title": "A truncated specialist lost everything it had found",
+    "symptom": "A research child returned all its findings in one closing JSON blob.",
+    "cause": "End-of-context arrays make every finding hostage to the last token. Worse, 'zero findings' was indistinguishable from 'nothing exists in this market'.",
+    "change": "`record_vendor` writes each vendor to KV the moment it is verified; `get_research` joins the findings to the live trace so the planner can tell a truncated specialist from an empty one, and re-runs only the first.",
+    "outcome": "Partial progress survives, and a specialist that records nothing is a detectable failure. Measured later at 3-4 vendors per specialist with zero truncations.",
+    "evidence": { "commits": ["93db25d"], "runs": ["wrun_41M16NZKKB0GJNG65GT0HQ5BGW"] },
+    "lesson": "Write findings down as they are found, not at the end."
+  },
+  {
+    "date": "2026-08-28",
+    "title": "Every cost computed to $0",
+    "symptom": "Token counts recorded correctly; every dollar figure was zero. Nothing errored.",
+    "cause": "Two silent misses. eve reports the model as `RuntimeIdentity.modelId`, not `runtime.model`, so the trace never learned which model it was watching — and it prefixes that id with the provider it routed through (`token-factory/Qwen/...`) while the price table keys on the bare catalog id.",
+    "change": "Read `modelId`; peel provider prefixes until one matches the table. Added `includeUsage: true`, without which streamed turns report zero tokens at all.",
+    "outcome": "Real per-step, per-agent, per-session cost. Across 28 traced sessions: median run $2.14, p90 $6.07, tail 2.8x median.",
+    "evidence": { "commits": ["5ddce55"] },
+    "lesson": "A number that is always zero looks like a quiet system, not a broken one."
+  },
+  {
+    "date": "2026-08-28",
+    "title": "The live view never attached, and reported zero specialists while five ran",
+    "symptom": "During a five-way fan-out the panel said 'specialists: 0', the browser never attached to a child stream, and the research eval decided nothing had been delegated and re-prompted twice.",
+    "cause": "Three features were built on `subagent.called`, which the eve 0.24.4 documentation promises on the parent's durable stream and the runtime never emits. Only `subagent.completed` arrives.",
+    "change": "Discover child sessions from the trace tree — each child writes its own summary linked by `ctx.session.parent` — and count delegations at `actions.requested`, where a subagent-call is actually visible.",
+    "outcome": "Lanes populate live. The eval stopped triple-running: one fan-out at ~$1.15 instead of three at $2.29 across 18 agents.",
+    "evidence": { "commits": ["0186cdf"] },
+    "lesson": "Verify that the event you built on is actually emitted, not merely documented."
+  },
+  {
+    "date": "2026-08-28",
+    "title": "A wedding inquiry addressed to a media company",
+    "symptom": "A caterer was recorded with the email `inquiries@hideseekmedia.com`, sourced from a WeddingWire page for a different business. Outreach runs live.",
+    "cause": "The scout's instructions already forbade directory sources and required a published address. It did it anyway.",
+    "change": "`record_vendor` refuses a source URL on any of 20 known directories, and an email whose domain shares nothing with the vendor's name or website. Free mail passes — a gmail address for a small florist proves nothing either way.",
+    "outcome": "Unit-tested against 12 real rows from that run: the three bad ones reject, all nine legitimate findings still pass. Every subsequent run: 100% own-site sources, zero foreign emails.",
+    "evidence": { "commits": ["b01a1d6", "425fa6a"], "tests": ["npm run test:guards"] },
+    "lesson": "When the model has already broken a written rule, repeating the rule is not a control. Move it into the tool — but only where the tool can actually check it."
+  },
+  {
+    "date": "2026-08-28",
+    "title": "A broken deploy, reported as verified",
+    "symptom": "Pushed a commit that failed every Vercel production build, and said it was verified.",
+    "cause": "The build was checked with `npx eve build 2>&1 | grep -i error`. The failure message contained neither 'error' nor 'warn', and the pipe discarded the non-zero exit status.",
+    "change": "`npm run verify` — typecheck, next build, eve build and the guard tests, chained with `&&` so any failure fails the command.",
+    "outcome": "No further broken deploys. Production never served the bad build.",
+    "evidence": { "commits": ["d0fac5b", "f007753"] },
+    "lesson": "`cmd | grep` verifies nothing: the exit status belongs to grep."
+  },
+  {
+    "date": "2026-08-29",
+    "title": "A cheaper classifier that fails 13% of its structured outputs",
+    "symptom": "A model sweep scored DeepSeek-V4-Flash 15/15 at 16% less cost, so the vendor-reply classifier was switched to it. The very next run of the same fifteen cases scored 11/15 with six schema failures.",
+    "cause": "One pass over fifteen cases cannot separate two models near the top; it can only rule out the clearly worse. And an accuracy sweep is structurally blind to schema failure — a call that never returns an object is not a wrong answer, it is no answer, and averaged into a score it reads as a tie.",
+    "change": "Reverted. `models:compare` now runs three rounds and ranks on the WORST round. Added `probe:schema`, which measures reliability of the shape as its own axis.",
+    "outcome": "Probe over 30 structured-output calls each: Qwen3-235B 30/30, DeepSeek-V4-Flash 26/30. Classifier back on Qwen, now 15/15 on three separate runs.",
+    "evidence": { "commits": ["dbb98c4", "6d34ad6", "a471c8d"] },
+    "lesson": "Correctness of the content and reliability of the shape are different axes. Measure both."
+  },
+  {
+    "date": "2026-08-29",
+    "title": "Ten of ten specialist sessions died",
+    "symptom": "Moving the specialist tier to a cheaper model produced 10/22 (45%) against a 46/50 baseline. Every child session failed and not one recorded a vendor.",
+    "cause": "Not only the model. The subagent carried an `outputSchema` added to guarantee a structured return, and eve escalates a schema the model cannot produce to `OUTPUT_SCHEMA_NOT_FULFILLED` — which fails the whole child session. Several specialists died before searching once. The model also reached for the final report instead of recording as it went, so there was no partial progress for the incremental design to protect.",
+    "change": "Reverted the model, and deleted the `outputSchema` entirely — it was redundant, since findings reach the planner through the KV research store and never through the child's return value.",
+    "outcome": "33/37, then 52/53 (98%) after the next fix.",
+    "evidence": { "commits": ["9d99cd0"], "runs": ["wrun_41M16HDBKG0GZGAQNQ1HDK14XR"] },
+    "lesson": "A structured return on a long-running sub-agent is a single point of failure with no upside when a durable store already holds the result."
+  },
+  {
+    "date": "2026-08-29",
+    "title": "A guardrail that caused a search-budget death spiral",
+    "symptom": "Three specialists under-recorded. The catering scout ran seven consecutive searches for a single drive time, spent its entire 25-search budget, and recorded one vendor.",
+    "cause": "I had required every vendor to state its drive time from the couple. There is no geocoder, and a web search cannot answer 'how long is the drive from A to B'.",
+    "change": "The town stays required — it is a fact readable off the vendor's site. The drive note is optional, and the scout is told explicitly never to search for one: place the town from what it already knows, or skip the vendor.",
+    "outcome": "33/37 to 52/53 (98%) — the best result measured. Radius judge 100% across all five categories, so the discipline held while the volume came back.",
+    "evidence": { "commits": ["d0a723a"], "runs": ["wrun_41M16NZKKB0GJNG65GT0HQ5BGW"] },
+    "lesson": "Asking a model for a fact its tools cannot reach turns a guardrail into a death spiral."
+  },
+  {
+    "date": "2026-08-29",
+    "title": "A page section that existed only in development",
+    "symptom": "The generations table rendered locally and was simply absent from the deployed page. Build passed, typecheck passed.",
+    "cause": "`readFileSync` against `new URL(..., import.meta.url)` finds nothing inside a bundled serverless function — the JSON is never traced into the output — and the try/catch around it turned that into a silently empty section.",
+    "change": "Imported the JSON as a module so the bundler carries it.",
+    "outcome": "Caught only by fetching the deployed page and asserting its content. Nothing in the local gate could have found it.",
+    "evidence": { "commits": ["a632e1e"] },
+    "lesson": "A local gate cannot see a production-only failure. Assert against the deployed artifact."
+  },
+  {
+    "date": "2026-08-29",
+    "title": "The dashboard reported a model that had been reverted hours earlier",
+    "symptom": "`/observe` publicly displayed 73% for reply understanding. The shipped configuration scores 100%.",
+    "cause": "The classifier was reverted but the eval was never re-run, so KV kept the losing model's summary. Nothing compares an eval's recorded model against the live routing.",
+    "change": "Re-ran the eval to correct the record.",
+    "outcome": "Back to 15/15, matching what is deployed. The structural fix — having the console flag a summary whose model no longer matches the routing — is recommended and not yet built.",
+    "evidence": { "commits": [] },
+    "lesson": "Observability that lies is worse than none, and this was the observability lying about itself."
+  },
+  {
+    "date": "2026-08-29",
+    "title": "The engineering panel wore another product's colours, below the fold",
+    "symptom": "The observability panel used teal, pale blue, periwinkle, navy and lime — none of which exist in the product. During a fan-out, six agent cards pushed the live event stream entirely off screen.",
+    "cause": "The diagram had been recreated from a reference architecture image, palette included, and the rendered page had never been looked at.",
+    "change": "Every plane takes a Venus hue through the same tokens as the rest of the app. The panel became a bento of tiles; lanes collapsed to one dense row each with only the selected one expanded.",
+    "outcome": "All five tiles visible at 1440x900 while the agent runs. Verified by screenshot, in development and again in production.",
+    "evidence": { "commits": ["4d43b34"] },
+    "lesson": "Typecheck, build and evals all pass happily on a panel that renders off the bottom of the screen."
+  }
+]
