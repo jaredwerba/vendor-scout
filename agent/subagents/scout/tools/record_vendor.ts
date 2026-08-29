@@ -1,7 +1,12 @@
 import { defineTool } from "eve/tools";
 import { z } from "zod";
 import { recordVendor, researchConfigured } from "../../../lib/research";
-import { directoryHost, emailLooksForeign, isContactFormOnly } from "../../../lib/vendor-guards";
+import {
+  directoryHost,
+  emailLooksForeign,
+  isContactFormOnly,
+  sourceIsMissing,
+} from "../../../lib/vendor-guards";
 
 export default defineTool({
   description:
@@ -92,6 +97,17 @@ export default defineTool({
           "Record the vendor's actual town and state — you read it on their site. If that town " +
           "is outside the radius the couple gave you, do not record them at all; find someone " +
           "closer. Do not search for a drive time.",
+      };
+    }
+
+    // A page that is definitively gone cannot be the source for a vendor the
+    // couple may be emailed about.
+    if (await sourceIsMissing(source)) {
+      return {
+        status: "rejected_dead_source",
+        note:
+          `${source} returns 404 — that page does not exist. Record the page you actually read ` +
+          "on their site (their homepage is fine), or skip this vendor if you cannot reach one.",
       };
     }
 

@@ -58,3 +58,37 @@ export function emailLooksForeign(
 }
 
 export const isContactFormOnly = (email: string) => /contact form/i.test(email);
+
+/**
+ * Does this page actually exist?
+ *
+ * A source URL that 404s is not a source — the eval caught a florist recorded
+ * against `/weddings-events` on their own domain, a page that is simply not
+ * there. Checking it here costs one request per recorded vendor and turns a
+ * finding nobody can verify into a rejection the scout can act on.
+ *
+ * Deliberately lenient: only a definitive 404/410 fails. A 403 is bot
+ * blocking, a timeout is the network, and neither means the page is gone —
+ * a guard that rejects on those would throw away real vendors, which is the
+ * more expensive mistake.
+ */
+export async function sourceIsMissing(url: string): Promise<boolean> {
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      redirect: "follow",
+      headers: {
+        "user-agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " +
+          "(KHTML, like Gecko) Chrome/128.0 Safari/537.36",
+        accept: "text/html,application/xhtml+xml",
+      },
+      signal: AbortSignal.timeout(10_000),
+    });
+    return res.status === 404 || res.status === 410;
+  } catch {
+    // Unreachable is not the same as gone. Let it through; the eval still
+    // reports reachability across the whole set.
+    return false;
+  }
+}

@@ -5,7 +5,12 @@
  *
  *   node --import ./scripts/ts-resolve.mjs scripts/test-vendor-guards.mjs
  */
-import { directoryHost, emailLooksForeign, isContactFormOnly } from "../agent/lib/vendor-guards.ts";
+import {
+  directoryHost,
+  emailLooksForeign,
+  isContactFormOnly,
+  sourceIsMissing,
+} from "../agent/lib/vendor-guards.ts";
 
 const cases = [
   // Caught by the scout eval (2026-08-29) — must be rejected.
@@ -24,6 +29,14 @@ const cases = [
   ["PASS", "Copper Penny Flowers", "https://www.copperpennyflowers.com", "contact form only", "https://www.copperpennyflowers.com"],
 ];
 
+// Caught by the scout eval (2026-08-29): a real florist in the right town,
+// recorded against a page on their own domain that simply does not exist.
+const LIVENESS = [
+  ["MISSING", "Flowers by Jamie Lynn", "https://flowersbyjamielynn.com/weddings-events"],
+  ["PRESENT", "Les Fleurs", "https://lesfleurs.com/wedding-florals"],
+  ["PRESENT", "LW Blooms", "https://www.lwblooms.com"],
+];
+
 let failures = 0;
 for (const [want, name, source, email, website] of cases) {
   const dir = directoryHost(source);
@@ -33,5 +46,13 @@ for (const [want, name, source, email, website] of cases) {
   if (!ok) failures += 1;
   console.log(`${ok ? "✓" : "✗"} want ${want.padEnd(6)} got ${got.padEnd(18)} ${name}`);
 }
+for (const [want, name, url] of LIVENESS) {
+  const gone = await sourceIsMissing(url);
+  const got = gone ? "MISSING" : "PRESENT";
+  const ok = got === want;
+  if (!ok) failures += 1;
+  console.log(`${ok ? "✓" : "✗"} want ${want.padEnd(7)} got ${got.padEnd(7)} ${name}`);
+}
+
 console.log(failures === 0 ? "\nvendor guards: all cases behave as intended" : `\nvendor guards: ${failures} MISMATCHES`);
 process.exit(failures === 0 ? 0 : 1);
