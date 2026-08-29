@@ -594,6 +594,15 @@ input[type="range"].venus-slider:focus-visible {
   padding: 0.75rem;
   color: var(--foreground);
 }
+/* Desktop gets room to breathe. The panel is the engineering half of the
+   product, so it should read as composed rather than packed. Mobile keeps
+   the tighter rhythm — there the constraint is real. */
+@media (min-width: 1280px) {
+  .vbento[data-variant="rail"] { gap: 0.62rem; padding: 0.85rem 0.95rem; }
+}
+@media (min-width: 1536px) {
+  .vbento[data-variant="rail"] { gap: 1rem; padding: 1.35rem 1.25rem; }
+}
 .vbento[data-variant="rail"] {
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -626,6 +635,13 @@ input[type="range"].venus-slider:focus-visible {
   background: var(--card);
   box-shadow: 0 1px 2px color-mix(in srgb, var(--foreground) 4%, transparent);
 }
+@media (min-width: 1280px) {
+  .vtile { gap: 0.52rem; padding: 0.8rem 0.9rem; border-radius: 1.2rem; }
+  .vtile-head { font-size: 0.64rem; letter-spacing: 0.1em; }
+}
+@media (min-width: 1536px) {
+  .vtile { gap: 0.7rem; padding: 1.1rem 1.2rem; }
+}
 .vtile-head {
   display: flex;
   align-items: baseline;
@@ -645,6 +661,10 @@ input[type="range"].venus-slider:focus-visible {
     linear-gradient(160deg, color-mix(in srgb, var(--rose) 8%, var(--card)), var(--card) 60%);
 }
 .vtile-figure .vstack { border: 0; background: transparent; padding: 0.25rem; }
+@media (min-width: 1280px) {
+  .vtile-figure { padding: 0.65rem; }
+  .vtile-figure .vstack { padding: 0.3rem; }
+}
 
 /* Plan → Act → Observe → Decide. */
 .vrail-phases { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.25rem; }
@@ -664,6 +684,10 @@ input[type="range"].venus-slider:focus-visible {
   background: color-mix(in srgb, var(--rose) 16%, var(--muted));
   color: var(--foreground);
   border-color: color-mix(in srgb, var(--rose) 30%, var(--border));
+}
+@media (min-width: 1280px) {
+  .vrail-phases { gap: 0.35rem; }
+  .vrail-phase { padding: 0.38rem 0.3rem; font-size: 0.68rem; border-radius: 0.8rem; }
 }
 .vrail-phase[data-state="active"] {
   background: var(--primary);
@@ -699,6 +723,17 @@ input[type="range"].venus-slider:focus-visible {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--rose) 25%, transparent);
 }
 .vlane[data-role="root"] { background: color-mix(in srgb, var(--accent) 45%, var(--card)); }
+/* Between lg and 2xl the panel is one column, so the vertical budget is the
+   scarce thing: more padding must be paid for by a shorter lane list, or the
+   event stream drops below the fold — which is exactly when it matters. */
+@media (min-width: 1280px) {
+  .vlanes { gap: 0.35rem; max-height: 6rem; }
+  .vlane { padding: 0.6rem 0.8rem; border-radius: 0.95rem; }
+}
+/* Two columns: the room is there, so the list can be long again. */
+@media (min-width: 1536px) {
+  .vlanes { max-height: 17rem; }
+}
 
 /* The raw event log — dense, monospaced, one line per event. */
 .vrail-log {
@@ -723,6 +758,15 @@ input[type="range"].venus-slider:focus-visible {
   white-space: nowrap;
 }
 .vrail-log-row:last-child { border-bottom: 0; }
+@media (min-width: 1280px) {
+  /* The log scrolls internally, so a shorter window at this breakpoint costs
+     nothing but keeps the whole panel on screen at 1440x900. */
+  .vrail-log { font-size: 0.66rem; max-height: 3.75rem; }
+  .vrail-log-row { padding: 0.22rem 0.7rem; gap: 0.55rem; }
+}
+@media (min-width: 1536px) {
+  .vrail-log { max-height: 15.5rem; }
+}
 .vrail-log-row[data-ok="false"] { background: color-mix(in srgb, var(--destructive) 9%, transparent); }
 .vrail-log-dt { color: var(--muted-foreground); text-align: right; font-variant-numeric: tabular-nums; }
 .vrail-log-type { color: var(--foreground); overflow: hidden; text-overflow: ellipsis; }
@@ -743,6 +787,10 @@ input[type="range"].venus-slider:focus-visible {
   font-size: 0.7rem;
 }
 
+@media (min-width: 1280px) {
+  .vrail-phases { gap: 0.35rem; }
+  .vrail-phase { padding: 0.38rem 0.3rem; font-size: 0.68rem; border-radius: 0.8rem; }
+}
 @media (prefers-reduced-motion: reduce) {
   .vrail-phase[data-state="active"] { animation: none; }
 }

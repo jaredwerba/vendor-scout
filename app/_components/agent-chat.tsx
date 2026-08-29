@@ -7,6 +7,7 @@ import {
   AlertCircleIcon,
   ClipboardListIcon,
   GitCompareIcon,
+  MailIcon,
   ImageIcon,
   MenuIcon,
   RotateCcwIcon,
@@ -34,6 +35,7 @@ import { cn } from "@/lib/utils";
 import { AgentMessage } from "./agent-message";
 import { isDelegationPart } from "@/agent/lib/actions";
 import type { StackEvent, StackRuntime } from "./agent-stack";
+import { MODEL_STORAGE_KEY, storedPlannerModel } from "./model-picker";
 import { ObservabilityRail, ObservabilityStrip } from "./observability-rail";
 import { useAgentLanes } from "./use-agent-lanes";
 import { clearSavedSession, type CuratedPreview, saveSession } from "./venus-app";
@@ -288,14 +290,28 @@ export function AgentChat({
   readonly runtime?: StackRuntime | null;
   readonly saved?: SavedVenusSession | null;
 }) {
-  const agent = useEveAgent(
-    saved
-      ? {
-          initialSession: saved.session,
-          initialEvents: saved.events as never,
-        }
-      : undefined,
-  );
+  // The planner's model is a per-visitor choice. It rides on a header that
+  // the channel validates against an allowlist; `headers` takes a function,
+  // so a change applies to the next request without remounting the agent.
+  const [plannerModel, setPlannerModel] = useState<string | null>(null);
+  useEffect(() => setPlannerModel(storedPlannerModel()), []);
+  const plannerModelRef = useRef<string | null>(null);
+  plannerModelRef.current = plannerModel;
+
+  const agent = useEveAgent({
+    headers: (): Record<string, string> =>
+      plannerModelRef.current ? { "x-venus-planner-model": plannerModelRef.current } : {},
+    initialSession: saved?.session,
+    initialEvents: saved?.events as never,
+  });
+
+  const choosePlannerModel = (id: string | null) => {
+    setPlannerModel(id);
+    try {
+      if (id) localStorage.setItem(MODEL_STORAGE_KEY, id);
+      else localStorage.removeItem(MODEL_STORAGE_KEY);
+    } catch {}
+  };
   const isBusy = agent.status === "submitted" || agent.status === "streaming";
   const isEmpty = agent.data.messages.length === 0;
 
@@ -436,6 +452,8 @@ export function AgentChat({
     <ObservabilityRail
       langsmithUrl={langsmithUrl}
       lanes={lanes}
+      onPlannerModel={choosePlannerModel}
+      plannerModel={plannerModel}
       research={research}
       runtime={runtime}
       sessionId={agent.session?.sessionId ?? null}
@@ -501,6 +519,12 @@ export function AgentChat({
                 <a className="flex cursor-pointer items-center gap-2.5" href="/observe">
                   <ActivityIcon className="size-4" />
                   Observability
+                </a>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <a className="flex cursor-pointer items-center gap-2.5" href="/outreach">
+                  <MailIcon className="size-4" />
+                  Every email I sent
                 </a>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>

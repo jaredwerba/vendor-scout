@@ -1,5 +1,6 @@
 import { eveChannel } from "eve/channels/eve";
 import { localDev, vercelOidc, type AuthFn } from "eve/channels/auth";
+import { MODEL_HEADER, sanitizeChoice } from "../lib/model-choice";
 
 /**
  * Public-link auth: Venus is open to anyone who has the URL. No access code,
@@ -38,13 +39,20 @@ async function underDailyRequestCap(): Promise<boolean> {
 }
 
 function publicLink(): AuthFn<Request> {
-  return async () => {
+  return async (request) => {
     if (!(await underDailyRequestCap())) return null; // cap exhausted -> 401
+    // The visitor may choose the planner's model. The value is carried on a
+    // header and validated against an allowlist here, at the boundary — a
+    // free-text model id from a browser is a footgun, and an unknown one
+    // would otherwise fall through to a silent default.
+    const attributes: Record<string, string> = {};
+    const requested = sanitizeChoice(request?.headers?.get(MODEL_HEADER));
+    if (requested) attributes.plannerModel = requested;
     return {
       authenticator: "public-link",
       principalId: "couple",
       principalType: "user",
-      attributes: {},
+      attributes,
     };
   };
 }

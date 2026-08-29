@@ -17,6 +17,7 @@ import {
   type StackRuntime,
   type StackState,
 } from "./agent-stack";
+import { ModelPicker } from "./model-picker";
 import type { Lane } from "./use-agent-lanes";
 
 /**
@@ -387,6 +388,9 @@ export interface ObservabilityRailProps {
   readonly sessionId?: string | null;
   /** "rail" sits beside the chat; "console" is the standalone /observe page. */
   readonly variant?: "rail" | "console";
+  /** Present only in the app, where a visitor may change the planner's model. */
+  readonly plannerModel?: string | null;
+  readonly onPlannerModel?: (id: string | null) => void;
 }
 
 export function ObservabilityRail({
@@ -397,6 +401,8 @@ export function ObservabilityRail({
   research,
   sessionId,
   variant = "rail",
+  plannerModel,
+  onPlannerModel,
 }: ObservabilityRailProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // Follow the newest specialist automatically until the reader picks one.
@@ -475,6 +481,12 @@ export function ObservabilityRail({
             six agents.
           </p>
         )}
+        {onPlannerModel ? (
+          <div className="border-t pt-1.5">
+            <p className="mb-1 text-[10px] text-muted-foreground">Planner model</p>
+            <ModelPicker onChange={onPlannerModel} value={plannerModel ?? null} />
+          </div>
+        ) : null}
         {runtime?.roles?.length ? (
           <dl className="mt-0.5 space-y-0.5 border-t pt-1.5 text-[10px]">
             {runtime.roles.map((r) => (
