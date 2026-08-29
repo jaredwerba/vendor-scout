@@ -22,6 +22,7 @@ import { generateObject } from "ai";
 import { z } from "zod";
 import { judgeModel, judgeModelId } from "../agent/lib/nebius.ts";
 import { listAllFindings, type VendorFinding } from "../agent/lib/research.ts";
+import { directoryHost, emailLooksForeign, isContactFormOnly } from "../agent/lib/vendor-guards.ts";
 import { getTraceTree, type EvalCaseResult, saveEvalSummary, traceConfigured } from "../agent/lib/trace.ts";
 
 interface Brief {
@@ -44,16 +45,25 @@ const model = (process.env.NEBIUS_MODEL ?? "").trim() || "Qwen/Qwen3-235B-A22B-I
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-/** A source URL that 404s is not a source. */
+/**
+ * A source URL that 404s is not a source. A 403 usually means the site blocks
+ * unknown user agents, not that the page is gone — treat it as reachable, and
+ * present as a browser so fewer sites bother.
+ */
 async function isLive(url: string): Promise<boolean> {
   try {
     const res = await fetch(url, {
       method: "GET",
       redirect: "follow",
-      headers: { "user-agent": "venus-eval/1.0" },
-      signal: AbortSignal.timeout(12_000),
+      headers: {
+        "user-agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " +
+          "(KHTML, like Gecko) Chrome/128.0 Safari/537.36",
+        accept: "text/html,application/xhtml+xml",
+      },
+      signal: AbortSignal.timeout(15_000),
     });
-    return res.status < 400;
+    return res.status < 400 || res.status === 403 || res.status === 405 || res.status === 429;
   } catch {
     return false;
   }
@@ -77,9 +87,14 @@ async function judgeVendor(f: VendorFinding, region: string) {
       `Website: ${f.website ?? "(none given)"}`,
       `Source: ${f.sourceUrl ?? "(none given)"}`,
       `Price signal: ${f.priceSignal ?? "(none)"}`,
-      "Is this a real, currently-operating business of that category, and would it plausibly " +
-        "serve that region? A generic directory listing, a placeholder, an invented-sounding " +
-        "name with no website, or a business in the wrong region should fail.",
+      "Two independent questions:",
+      "1. real — is this a real, currently-operating business of that category? A placeholder, " +
+        "an invented-sounding name with no website, or a defunct business fails.",
+      "2. serves_region — is the business located INSIDE the couple's stated travel radius? " +
+        "Reason about the actual drive: anything within the stated radius passes, including at " +
+        "the edge of it. Fail only when the business is clearly outside — a different state, or " +
+        "a drive well beyond what they said they would travel. Do not fail a business for being " +
+        "in a different town; that is the point of a radius.",
     ].join("\n"),
   });
   return object;
@@ -203,6 +218,29 @@ for (const brief of selected) {
       `${brief.id} · ${category} · contact path`,
       "every vendor has an email or 'contact form only'",
       `${contactable.length}/${list.length}`,
+    );
+
+    const fromDirectory = list.filter((f) => f.sourceUrl && directoryHost(f.sourceUrl));
+    note(
+      fromDirectory.length === 0,
+      `${brief.id} · ${category} · own-site sources`,
+      "no directory listings recorded as sources",
+      fromDirectory.length === 0 ? "clean" : `${fromDirectory.length} from directories`,
+      fromDirectory.map((f) => f.name).slice(0, 2).join(", ") || undefined,
+    );
+
+    const foreignEmails = list.filter(
+      (f) =>
+        f.inquiryEmail &&
+        !isContactFormOnly(f.inquiryEmail) &&
+        emailLooksForeign(f.inquiryEmail, f.website, f.name),
+    );
+    note(
+      foreignEmails.length === 0,
+      `${brief.id} · ${category} · emails belong to the vendor`,
+      "no addresses from unrelated domains",
+      foreignEmails.length === 0 ? "clean" : `${foreignEmails.length} suspicious`,
+      foreignEmails.map((f) => `${f.name}: ${f.inquiryEmail}`).slice(0, 2).join(" | ") || undefined,
     );
 
     const withSource = list.filter((f) => f.sourceUrl?.startsWith("https://"));

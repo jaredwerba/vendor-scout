@@ -19,8 +19,9 @@
     "eval:replies": "node --env-file=.env.local --import ./scripts/ts-resolve.mjs scripts/eval-replies.ts",
     "pricing:refresh": "node --env-file=.env.local --import ./scripts/ts-resolve.mjs scripts/refresh-pricing.ts",
     "eval:scout": "node --env-file=.env.local --import ./scripts/ts-resolve.mjs scripts/eval-scout.ts",
-    "eval:all": "npm run eval:replies && npm run eval:scout && npm run eval",
-    "eval:slow": "eve eval --tag slow"
+    "eval:all": "npm run test:guards && npm run eval:replies && npm run eval:scout && npm run eval",
+    "eval:slow": "eve eval --tag slow",
+    "test:guards": "node --import ./scripts/ts-resolve.mjs scripts/test-vendor-guards.mjs"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "^3.0.39",

@@ -1,20 +1,8 @@
 import { defineTool } from "eve/tools";
 import { z } from "zod";
 import { recordVendor, researchConfigured } from "../../../lib/research";
+import { directoryHost, emailLooksForeign, isContactFormOnly } from "../../../lib/vendor-guards";
 
-/**
- * Write down one verified vendor, immediately.
- *
- * This is the difference between research that survives and research that
- * evaporates. A specialist that returns everything in one closing message
- * loses the whole category to a truncated reply, a provider hiccup or a
- * cancelled turn — and loses it silently. Recording per vendor means partial
- * progress is real progress, and "recorded 0" is a signal the planner can act
- * on rather than an empty result it cannot distinguish from "found nothing".
- *
- * Findings are filed under the ROOT session, so the planner (and the live
- * console) can read them while the specialist is still working.
- */
 export default defineTool({
   description:
     "Record ONE verified vendor you just found. Call this immediately after verifying each " +
@@ -60,6 +48,37 @@ export default defineTool({
     // Findings belong to the wedding, not to this child session.
     const rootSessionId = ctx.session.parent?.rootSessionId ?? ctx.session.id;
     const images = (input.image_urls ?? []).filter((u) => u.startsWith("https://"));
+
+    const source = input.source_url ?? "";
+    const dir = source ? directoryHost(source) : null;
+    if (dir) {
+      return {
+        status: "rejected_directory_source",
+        note:
+          `That source is a ${dir.replace(/\.$/, "")} listing, not ${input.name}'s own site. ` +
+          "Open their actual website (search their name plus their town), take the email and " +
+          "price signal from there, and record it again with that URL. If they have no site of " +
+          "their own, skip them.",
+      };
+    }
+    if (!source.startsWith("https://") && !source.startsWith("http://")) {
+      return {
+        status: "rejected_missing_source",
+        note: "Record the URL on the vendor's own site where you read this. Every finding needs a source.",
+      };
+    }
+
+    const email = (input.inquiry_email ?? "").trim();
+    const isFormOnly = isContactFormOnly(email);
+    if (email && !isFormOnly && emailLooksForeign(email, input.website, input.name)) {
+      return {
+        status: "rejected_foreign_email",
+        note:
+          `"${email}" does not look like it belongs to ${input.name} — its domain matches ` +
+          "neither their name nor their website. A wedding inquiry sent there reaches the wrong " +
+          "business. Take the address from their own contact page, or record 'contact form only'.",
+      };
+    }
     try {
       const { total } = await recordVendor(rootSessionId, {
         category: input.category,
