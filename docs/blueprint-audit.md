@@ -135,11 +135,29 @@ So the classifier stayed on the incumbent, `models:compare` now runs three
 rounds and ranks on the worst one, and `probe:schema` is a permanent check for
 any role that depends on structured output.
 
-The scout keeps DeepSeek-V4-Flash despite that 13%, deliberately: its findings
-reach the planner through `record_vendor` and the KV research store, not
-through its returned object, so a failed final report costs the coverage note
-and nothing else. That resilience was designed for truncation and turns out to
-cover schema failure too — which is the argument for the pattern.
+The scout was moved to DeepSeek-V4-Flash on the same cost reasoning and then
+moved straight back, because `npm run eval:scout` said so: **10 of 10
+specialist sessions failed and not one recorded a vendor**, against 46/50 and
+3–4 vendors each on Qwen.
+
+The cause was not the model alone, and it is the more useful finding. The
+scout carried an `outputSchema` in `defineAgent`, added to guarantee a
+structured return. eve escalates a schema the model cannot produce to
+`OUTPUT_SCHEMA_NOT_FULFILLED`, which fails the **whole child session** — so a
+formatting problem became a total loss, several specialists dying before they
+had searched even once. Worse, the model reached for the final report instead
+of recording as it went, so there was no partial progress for the incremental
+design to protect.
+
+The schema was also redundant: findings reach the planner through
+`record_vendor` and the KV research store, which `get_research` reads, never
+through the child's return value. It bought nothing and could cost everything,
+so it is gone. A scout reports back in prose now, and the guarantee lives
+where it always actually lived — in the durable store.
+
+The lesson generalises past this model: **a structured return on a long-running
+sub-agent is a single point of failure with no upside when a durable store
+already holds the result.**
 
 The scout role is chosen on the reasoning the post used rather than a sweep —
 its cost is dominated by input tokens over a long tool loop, so input price and

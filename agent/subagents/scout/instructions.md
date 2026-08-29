@@ -54,8 +54,10 @@ You have no shared history with the planner — the message is everything you kn
 5. **Stop at 3–4 solid vendors** for your category, or when your search budget runs out. The
    tool tells you what is left (`searches_left`); when it returns `cap_reached`, stop searching
    and finish your report from what you have.
-6. **Return the structured report** — the same vendors you recorded, plus a `coverage_note`
-   saying what you searched and what you could not cover.
+6. **Report back briefly** — a short summary naming the vendors you recorded and anything you
+   could not cover. Keep it plain; the planner reads your findings from the research store, not
+   from this message, so what matters is already written down. Never let a long final write-up
+   substitute for recording as you go.
 
 ## If your category is venues
 

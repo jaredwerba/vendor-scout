@@ -90,12 +90,15 @@ export const MODEL_ROLES: Record<ModelRole, RoleSpec> = {
    * substitution Nebius's own production write-up made for the heavy tier.
    */
   scout: {
-    model: "deepseek-ai/DeepSeek-V4-Flash",
+    model: "Qwen/Qwen3-235B-A22B-Instruct-2507",
     env: "NEBIUS_SCOUT_MODEL",
-    contextWindow: 1_048_576,
+    contextWindow: 262_144,
     rationale:
-      "Cost is dominated by input tokens across 20-40 steps: $0.14/$0.28 vs $0.20/$0.60, and a " +
-      "1M window vs 262k for a long tool loop. Verified against the scout eval, not assumed.",
+      "Reverted from DeepSeek-V4-Flash after eval:scout: 10/10 specialist sessions failed and " +
+      "not one recorded a vendor, against 46/50 and 3-4 vendors each on Qwen. The cost case for " +
+      "the cheaper model was real; it just does not finish the job. Re-test any candidate with " +
+      "npm run eval:scout before it takes this role — the specialists are ~80% of a plan's cost, " +
+      "so the incentive to swap here is exactly why it needs the strictest evidence.",
   },
 
   /**

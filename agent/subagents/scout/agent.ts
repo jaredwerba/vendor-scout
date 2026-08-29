@@ -1,5 +1,4 @@
 import { defineAgent } from "eve";
-import { z } from "zod";
 import { contextWindowFor, modelFor } from "../../lib/models";
 
 /**
@@ -16,18 +15,6 @@ import { contextWindowFor, modelFor } from "../../lib/models";
  * the observability hook are re-authored under this directory.
  */
 
-const vendorSchema = z.object({
-  name: z.string().describe("Exact business name."),
-  website: z.string().nullable(),
-  inquiry_email: z.string().nullable().describe("Published address, or 'contact form only'."),
-  price_signal: z.string().nullable().describe("Published pricing, or 'not listed'."),
-  includes: z.string().nullable(),
-  style_fit: z.string().nullable(),
-  caveat: z.string().nullable(),
-  source_url: z.string().nullable(),
-  image_urls: z.array(z.string()).default([]),
-});
-
 export default defineAgent({
   description:
     "Researches ONE wedding-vendor category (venue, photography, catering, florals, music, " +
@@ -39,14 +26,19 @@ export default defineAgent({
   // quality. See agent/lib/models.ts.
   model: modelFor("scout"),
   modelContextWindowTokens: contextWindowFor("scout"),
-  // Task-mode default: even if the parent forgets to pass an outputSchema,
-  // the root gets a structured report instead of prose it has to parse.
-  outputSchema: z.object({
-    category: z.string(),
-    vendors: z.array(vendorSchema),
-    recorded: z.number().describe("How many record_vendor calls succeeded."),
-    coverage_note: z.string().describe("What was searched, and anything left uncovered."),
-  }),
+  // NO outputSchema, deliberately.
+  //
+  // It was here to guarantee a structured return, and it became the single
+  // most brittle thing in the specialist tier: eve escalates a schema the
+  // model cannot produce to OUTPUT_SCHEMA_NOT_FULFILLED, which fails the
+  // whole child session. A run with DeepSeek-V4-Flash killed 10 of 10
+  // specialists that way, several before they had searched even once.
+  //
+  // The guarantee was also redundant. Findings reach the planner through
+  // `record_vendor` and the KV research store, which `get_research` reads —
+  // never through the child's return value. So the schema bought nothing and
+  // could cost everything. A scout now reports back in prose, and what
+  // matters is already durably written down.
   // Same launch directive as the root: a couple mid-planning never hits a
   // meter. Runaway protection is the search budget (lib/search-budget.ts),
   // not a token gate that pauses a child nobody can answer.
