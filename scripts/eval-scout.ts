@@ -119,7 +119,20 @@ for (const brief of selected) {
       if (turn === 0) console.log(`session ${sessionId}`);
       const result = await response.result();
       status = result.status;
-      delegated += result.events.filter((e) => e.type === "subagent.called").length;
+      // eve 0.24.4 does not deliver `subagent.called` on the parent stream, so
+      // counting it here made this eval think nothing was delegated and
+      // re-prompt — triggering a whole extra fan-out per nudge. Count the
+      // delegation request instead, where it is actually observable.
+      delegated += result.events
+        .filter((e) => e.type === "actions.requested")
+        .reduce(
+          (n, e) =>
+            n +
+            (((e.data as { actions?: readonly unknown[] }).actions ?? []) as readonly {
+              kind?: string;
+            }[]).filter((a) => a?.kind === "subagent-call").length,
+          0,
+        );
       console.log(`  turn ${turn + 1}: ${status} · ${delegated} specialists so far`);
       if (delegated > 0 || status === "failed") break;
     }

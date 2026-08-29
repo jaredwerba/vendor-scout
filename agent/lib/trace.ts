@@ -257,6 +257,14 @@ function apply(s: TraceSummary, ev: { type: string; data?: Any }, now: string): 
         const name = actionName(a);
         s.toolCalls += 1; s.tools[name] = (s.tools[name] ?? 0) + 1; s.lastTool = name;
         if (name === "ask_question") s.questions += 1;
+        // `subagent.called` is not delivered on the parent's durable stream in
+        // eve 0.24.4 (only `subagent.completed` is), so count the delegation
+        // where it IS visible: the request itself.
+        if (isSubagentAction(a)) {
+          s.subagents += 1;
+          const category = categoryFromBrief((a?.input ?? {}).message);
+          if (category && a?.callId) pendingCallCategories.set(String(a.callId), category);
+        }
         last = { t: now, type: ev.type, seq, tool: name, note: describeAction(a, s.role) };
       }
       return last ?? { t: now, type: ev.type, seq };
@@ -282,7 +290,8 @@ function apply(s: TraceSummary, ev: { type: string; data?: Any }, now: string): 
       s.status = "waiting";
       return { t: now, type: ev.type, seq, note: "waiting on the couple" };
     case "subagent.called":
-      s.subagents += 1;
+      // Counted at actions.requested; this only enriches the log when eve
+      // does deliver it.
       return {
         t: now, type: ev.type, seq,
         name: String(d.subagentName ?? d.name ?? "specialist"),
@@ -327,6 +336,12 @@ function apply(s: TraceSummary, ev: { type: string; data?: Any }, now: string): 
 
 const cache = new Map<string, TraceSummary>();
 const lastAt = new Map<string, number>();
+/**
+ * callId -> research category, learned when the parent requests a delegation.
+ * The child never sees a clean `CATEGORY:` first line reliably, so this is how
+ * a specialist lane gets its real name instead of "specialist".
+ */
+const pendingCallCategories = new Map<string, string>();
 
 /** Called by the observe hook for every durable stream event. Never throws. */
 export async function recordTraceEvent(
@@ -356,6 +371,10 @@ export async function recordTraceEvent(
     s.durationMs = Math.max(0, Date.parse(at) - Date.parse(s.startedAt));
 
     const cmds: Cmd[] = [["SET", key(sessionId), JSON.stringify(s), "EX", TTL_SECONDS]];
+    for (const [callId, category] of pendingCallCategories) {
+      cmds.push(["SET", `trace:callcat:${callId}`, category, "EX", TTL_SECONDS]);
+    }
+    pendingCallCategories.clear();
     if (s.role === "root") {
       cmds.push(["ZADD", "trace:index", Date.parse(at) || Date.now(), sessionId]);
     } else if (event.type === "session.started") {
@@ -412,6 +431,9 @@ export async function getTraceEvents(id: string, limit = MAX_EVENTS): Promise<Tr
   return (raws ?? []).map((r) => parse<TraceEntry>(r)).filter((e): e is TraceEntry => Boolean(e));
 }
 
+const isGenericLabel = (label: string) =>
+  !label || label === "specialist" || label === "scout" || label === "subagent";
+
 export interface TraceTree {
   root: TraceSummary | null;
   children: TraceSummary[];
@@ -432,6 +454,17 @@ export async function getTraceTree(rootId: string): Promise<TraceTree> {
     const [raws] = (await redis([["MGET", ...ids.map(key)]])) as [Array<string | null>];
     children = raws.map((r) => parse<TraceSummary>(r)).filter((s): s is TraceSummary => Boolean(s));
   }
+  // Name each specialist lane from the category its delegation declared.
+  const unnamed = children.filter((c) => c.callId && isGenericLabel(c.label));
+  if (unnamed.length > 0) {
+    const cats = (await redis(
+      unnamed.map((c) => ["GET", `trace:callcat:${c.callId}`]),
+    )) as Array<string | null>;
+    unnamed.forEach((c, i) => {
+      if (typeof cats[i] === "string" && cats[i]) c.label = cats[i] as string;
+    });
+  }
+
   const ls = parse<{ traceId?: string }>(lsRaw);
   return { root: parse<TraceSummary>(rootRaw), children, langsmithTraceId: ls?.traceId ?? null };
 }

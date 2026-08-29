@@ -83,10 +83,14 @@ export type ResearchCategory = string;
 
 export function categoryFromBrief(message: unknown): string | null {
   if (typeof message !== "string") return null;
-  const line = message.split("\n", 1)[0] ?? "";
-  const m = line.match(/^\s*CATEGORY\s*:\s*(.+?)\s*$/i);
-  if (!m) return null;
-  return m[1].toLowerCase().slice(0, 40);
+  // The declaration is meant to be line 1, but the runtime may prepend a
+  // framing line to a delegated message, so scan the opening few lines
+  // rather than trusting the very first one.
+  for (const raw of message.split("\n", 6)) {
+    const m = raw.match(/^[\s>*_#-]*CATEGORY\s*[:\u2014-]\s*\*{0,2}([^*\n]+?)\*{0,2}\s*$/i);
+    if (m) return m[1].toLowerCase().slice(0, 40);
+  }
+  return null;
 }
 
 /** Normalized key for a category (KV keys, dedupe). */

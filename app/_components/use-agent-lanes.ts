@@ -218,16 +218,20 @@ export function useAgentLanes({
     };
 
     if (attachAll && rootSessionId) attach(rootSessionId);
+
+    // eve 0.24.4 does not deliver `subagent.called` on the parent's durable
+    // stream, so the child session ids mostly arrive through the trace tree
+    // (each child writes its own summary, linked by ctx.session.parent).
+    // Both sources are used: whichever names a child first wins.
     for (const d of delegations) {
-      // In the chat, a call the parent already collected is finished and its
-      // log lives in KV — no reason to hold a socket open for it.
       if (!attachAll && d.callId && settledCalls.has(d.callId)) continue;
       attach(d.childSessionId);
     }
-    if (attachAll) {
-      for (const c of tree?.children ?? []) attach(c.id);
+    for (const c of tree?.children ?? []) {
+      if (!attachAll && c.status !== "active") continue;
+      attach(c.id);
     }
-  }, [delegations, settledCalls, attachAll, rootSessionId, tree?.children?.length]);
+  }, [delegations, settledCalls, attachAll, rootSessionId, tree?.children]);
 
   // Close every attached stream when the rail unmounts.
   useEffect(() => {

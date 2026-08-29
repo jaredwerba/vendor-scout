@@ -120,6 +120,10 @@ function fold(st: StackState, ev: StackEvent, inSub = false): void {
       for (const a of actions) {
         st.counts.toolCalls += 1;
         if (actionName(a) === "ask_question") st.counts.questions += 1;
+        // eve 0.24.4 does not deliver `subagent.called` on the parent stream,
+        // only `subagent.completed`. The request is where a delegation is
+        // actually observable.
+        if (isSubagentAction(a)) st.counts.subagents += 1;
       }
       const meta = toolMeta(name);
       st.tool = name;
@@ -147,7 +151,6 @@ function fold(st: StackState, ev: StackEvent, inSub = false): void {
       st.headline = "Waiting on you"; st.detail = "buttons are up — your call decides the next loop";
       break;
     case "subagent.called":
-      st.counts.subagents += 1;
       st.phase = "acting"; st.active = ["subagents", "model"]; st.edge = "plan-act";
       st.headline = `Specialist started · ${d.subagentName ?? d.name ?? "research"}`;
       st.detail = "fresh context, own loop, own live stream";
