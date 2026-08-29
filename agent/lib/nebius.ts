@@ -43,25 +43,7 @@ export function tokenFactoryModel(modelId?: string) {
   return tokenFactory.chatModel(id.length > 0 ? id : DEFAULT_TOKEN_FACTORY_MODEL);
 }
 
-/**
- * The research specialist's brain (agent/subagents/scout). Defaults to the
- * root model; NEBIUS_SCOUT_MODEL swaps it in one line, which is the point of
- * running on Token Factory — a model change is configuration, not a rewrite.
- */
-export function scoutModel() {
-  return tokenFactoryModel(process.env.NEBIUS_SCOUT_MODEL);
-}
-
-/**
- * The judge. Deliberately pinned away from the model under test so that
- * swapping NEBIUS_MODEL never silently changes how results are graded.
- */
-export const DEFAULT_JUDGE_MODEL = "deepseek-ai/DeepSeek-V4-Pro";
-
-export function judgeModelId(): string {
-  return (process.env.NEBIUS_JUDGE_MODEL ?? "").trim() || DEFAULT_JUDGE_MODEL;
-}
-
-export function judgeModel() {
-  return tokenFactoryModel(judgeModelId());
-}
+// Per-role model selection lives in ./models.ts. These re-exports keep the
+// existing call sites working and give each one a name that says which job
+// it is asking for.
+export { modelFor, modelIdFor, contextWindowFor, MODEL_ROLES, modelRouting } from "./models";

@@ -1,5 +1,6 @@
 import { generateObject } from "ai";
 import { z } from "zod";
+import { modelFor } from "./models";
 import { tokenFactoryModel } from "./nebius";
 
 /**
@@ -53,11 +54,13 @@ export async function classifyReply(args: {
   vendorName: string;
   replyText: string;
   originalSubject?: string;
-}): Promise<{ intel: ReplyIntel; via: "model" | "heuristic" }> {
+  /** Override the classifier model — used by scripts/compare-models.ts. */
+  modelId?: string;
+}): Promise<{ intel: ReplyIntel; via: "model" | "heuristic"; usage?: { inputTokens: number; outputTokens: number } }> {
   const text = args.replyText.slice(0, 6000);
   try {
-    const { object } = await generateObject({
-      model: tokenFactoryModel(),
+    const { object, usage } = await generateObject({
+      model: args.modelId ? tokenFactoryModel(args.modelId) : modelFor("classifier"),
       schema: replyIntelSchema,
       prompt: [
         `A wedding vendor ("${args.vendorName}") replied to a couple's inquiry` +
@@ -95,7 +98,14 @@ export async function classifyReply(args: {
         text,
       ].join("\n\n"),
     });
-    return { intel: object, via: "model" };
+    return {
+      intel: object,
+      via: "model",
+      usage: {
+        inputTokens: Number(usage?.inputTokens ?? 0) || 0,
+        outputTokens: Number(usage?.outputTokens ?? 0) || 0,
+      },
+    };
   } catch {
     return { intel: heuristicIntel(text), via: "heuristic" };
   }

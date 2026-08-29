@@ -31,6 +31,12 @@ export interface StackRuntime {
   readonly provider?: string | null;
   readonly tracing?: boolean;
   readonly project?: string | null;
+  /** Which model serves which job — see agent/lib/models.ts. */
+  readonly roles?: readonly {
+    readonly role: string;
+    readonly model: string;
+    readonly rationale: string;
+  }[];
 }
 
 export interface StackState {

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { modelIdFor, modelRouting } from "@/agent/lib/models";
 import { type EvalSummary, listEvalSummaries, listTraces, type TraceSummary, traceConfigured } from "@/agent/lib/trace";
 import { ObserveConsole } from "./observe-client";
 
@@ -109,11 +110,13 @@ export default async function ObservePage({
   searchParams: Promise<{ session?: string }>;
 }) {
   const { session: initialSessionId } = await searchParams;
+  const routing = modelRouting();
   const runtime = {
-    model: (process.env.NEBIUS_MODEL ?? "").trim() || "Qwen/Qwen3-235B-A22B-Instruct-2507",
+    model: modelIdFor("planner"),
     provider: "Nebius Token Factory",
     tracing: Boolean(process.env.LANGSMITH_API_KEY),
     project: process.env.LANGSMITH_PROJECT ?? "venus",
+    roles: routing.map(({ role, model, rationale }) => ({ role, model, rationale })),
   };
   const kv = traceConfigured();
   const [traces, evals] = await Promise.all([
@@ -136,14 +139,46 @@ export default async function ObservePage({
             its own lane below.
           </p>
           <div className="mt-1 flex flex-wrap justify-center gap-1.5">
-            <Chip tone="good">model · {runtime.provider}</Chip>
-            <Chip tone="muted">{runtime.model}</Chip>
+            <Chip tone="good">model plane · {runtime.provider}</Chip>
+            <Chip tone="muted">{routing.length} models, one per job</Chip>
             <Chip tone={runtime.tracing ? "good" : "warn"}>
               {runtime.tracing ? `LangSmith tracing on · ${runtime.project}` : "LangSmith tracing off (no LANGSMITH_API_KEY)"}
             </Chip>
             <Chip tone={kv ? "good" : "warn"}>{kv ? "trace store: Upstash KV" : "trace store: not configured"}</Chip>
           </div>
         </header>
+
+        <section className="mb-10">
+          <div className="mb-3 flex items-baseline justify-between">
+            <h2 className="venus-serif text-lg">Model routing</h2>
+            <span className="text-muted-foreground text-xs">
+              <code>npm run models:compare</code>
+            </span>
+          </div>
+          <div className="overflow-x-auto rounded-2xl border bg-card/70 p-4">
+            <table className="w-full text-left text-xs">
+              <thead className="text-muted-foreground">
+                <tr>
+                  <th className="pb-1 pr-3 font-medium">job</th>
+                  <th className="pb-1 pr-3 font-medium">model</th>
+                  <th className="pb-1 font-medium">why</th>
+                </tr>
+              </thead>
+              <tbody>
+                {routing.map((r) => (
+                  <tr className="border-t align-top" key={r.role}>
+                    <td className="py-1.5 pr-3 font-medium">{r.role}</td>
+                    <td className="py-1.5 pr-3">
+                      <code>{r.model}</code>
+                      {r.overridden ? <span className="ml-1 text-muted-foreground">(env)</span> : null}
+                    </td>
+                    <td className="py-1.5 text-muted-foreground leading-relaxed">{r.rationale}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
 
         <section className="mb-10">
           <div className="mb-3 flex items-baseline justify-between">

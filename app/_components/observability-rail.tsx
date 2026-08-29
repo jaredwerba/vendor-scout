@@ -483,8 +483,20 @@ export function ObservabilityRail({
           <span>{formatUsd(totals.cost)}</span>
           {totals.vendors > 0 ? <span>{totals.vendors} vendors recorded</span> : null}
         </div>
-        <div className="truncate">
-          {runtime?.provider ?? "Nebius Token Factory"} · {(runtime?.model ?? "").split("/").pop()}
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[10px] uppercase tracking-wide opacity-70">
+            {runtime?.provider ?? "Nebius Token Factory"}
+          </span>
+          {runtime?.roles?.length ? (
+            runtime.roles.map((r) => (
+              <span className="flex items-baseline gap-1.5 truncate" key={r.role} title={r.rationale}>
+                <span className="w-[4.5rem] shrink-0 text-[10px] opacity-70">{r.role}</span>
+                <span className="truncate font-mono text-[10px]">{r.model.split("/").pop()}</span>
+              </span>
+            ))
+          ) : (
+            <span className="truncate">{(runtime?.model ?? "").split("/").pop()}</span>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           {langsmithUrl ? (

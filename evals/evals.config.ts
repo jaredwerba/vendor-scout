@@ -1,5 +1,5 @@
 import { defineEvalConfig } from "eve/evals";
-import { judgeModel } from "../agent/lib/nebius";
+import { modelFor } from "../agent/lib/models";
 
 /**
  * Shared eval defaults.
@@ -16,5 +16,5 @@ import { judgeModel } from "../agent/lib/nebius";
 export default defineEvalConfig({
   maxConcurrency: 2,
   timeoutMs: 240_000,
-  judge: { model: judgeModel() },
+  judge: { model: modelFor("judge") },
 });

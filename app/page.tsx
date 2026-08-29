@@ -1,4 +1,5 @@
 import { listCuratedWeddings } from "@/agent/lib/curated";
+import { modelIdFor, modelRouting } from "@/agent/lib/models";
 import { VenusApp } from "@/app/_components/venus-app";
 
 export const dynamic = "force-dynamic";
@@ -25,12 +26,15 @@ export default async function Page() {
     curatedPreview = null;
   }
 
-  // What the live agent-stack panel should say about the model and tracing.
+  // What the live agent-stack panel should say about the model plane. Venus
+  // runs a different model per job (agent/lib/models.ts), so the panel reports
+  // the routing rather than pretending there is one model.
   const runtime = {
-    model: (process.env.NEBIUS_MODEL ?? "").trim() || "Qwen/Qwen3-235B-A22B-Instruct-2507",
+    model: modelIdFor("planner"),
     provider: "Nebius Token Factory",
     tracing: Boolean(process.env.LANGSMITH_API_KEY),
     project: process.env.LANGSMITH_PROJECT ?? "venus",
+    roles: modelRouting().map(({ role, model, rationale }) => ({ role, model, rationale })),
   };
 
   return <VenusApp curatedPreview={curatedPreview} runtime={runtime} />;

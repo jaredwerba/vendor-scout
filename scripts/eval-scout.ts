@@ -20,7 +20,7 @@ import { readFileSync } from "node:fs";
 import { Client } from "eve/client";
 import { generateObject } from "ai";
 import { z } from "zod";
-import { judgeModel, judgeModelId } from "../agent/lib/nebius.ts";
+import { modelFor, modelIdFor } from "../agent/lib/models.ts";
 import { listAllFindings, type VendorFinding } from "../agent/lib/research.ts";
 import { directoryHost, emailLooksForeign, isContactFormOnly } from "../agent/lib/vendor-guards.ts";
 import { getTraceTree, type EvalCaseResult, saveEvalSummary, traceConfigured } from "../agent/lib/trace.ts";
@@ -43,7 +43,7 @@ const briefs = JSON.parse(
   readFileSync(new URL("../evals/data/briefs.json", import.meta.url), "utf8"),
 ) as Brief[];
 const selected = runAll ? briefs : briefs.slice(0, 1);
-const model = (process.env.NEBIUS_MODEL ?? "").trim() || "Qwen/Qwen3-235B-A22B-Instruct-2507";
+const model = modelIdFor("planner");
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -79,7 +79,7 @@ const verdictSchema = z.object({
 
 async function judgeVendor(f: VendorFinding, region: string) {
   const { object } = await generateObject({
-    model: judgeModel(),
+    model: modelFor("judge"),
     schema: verdictSchema,
     prompt: [
       "You are auditing a wedding-vendor research result. Judge only what is asserted here.",
@@ -343,7 +343,7 @@ for (const brief of selected) {
 const passed = results.filter((r) => r.ok).length;
 const score = results.length ? passed / results.length : 0;
 console.log(
-  `\nscout quality ${passed}/${results.length} = ${(score * 100).toFixed(0)}% · agent ${model} · judge ${judgeModelId()}`,
+  `\nscout quality ${passed}/${results.length} = ${(score * 100).toFixed(0)}% · agent ${model} · judge ${modelIdFor("judge")}`,
 );
 
 if (traceConfigured()) {
@@ -352,7 +352,7 @@ if (traceConfigured()) {
     name: "Research quality (scout specialists: coverage, contactability, live sources, real vendors)",
     ranAt: new Date().toISOString(),
     model,
-    judgeModel: judgeModelId(),
+    judgeModel: modelIdFor("judge"),
     n: results.length,
     passed,
     score,

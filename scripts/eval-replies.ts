@@ -11,6 +11,7 @@
 import { readFileSync } from "node:fs";
 import { classifyReply } from "../agent/lib/classify.ts";
 import { type EvalCaseResult, saveEvalSummary, traceConfigured } from "../agent/lib/trace.ts";
+import { modelIdFor } from "../agent/lib/models.ts";
 
 interface Case {
   name: string;
@@ -23,7 +24,7 @@ interface Case {
 const cases = JSON.parse(
   readFileSync(new URL("../evals/data/vendor-replies.json", import.meta.url), "utf8"),
 ) as Case[];
-const model = (process.env.NEBIUS_MODEL ?? "").trim() || "Qwen/Qwen3-235B-A22B-Instruct-2507";
+const model = modelIdFor("classifier");
 const DATASET = "venus-vendor-replies";
 
 async function classify(c: Case) {

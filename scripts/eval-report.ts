@@ -7,6 +7,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { type EvalCaseResult, saveEvalSummary, traceConfigured } from "../agent/lib/trace.ts";
+import { modelIdFor } from "../agent/lib/models.ts";
 
 const root = join(process.cwd(), ".eve", "evals");
 if (!existsSync(root)) { console.error("no .eve/evals runs found — run `npm run eval` first"); process.exit(1); }
@@ -31,7 +32,7 @@ const cases: EvalCaseResult[] = rows.map((r) => {
   };
 });
 const passed = cases.filter((c) => c.ok).length;
-const model = (process.env.NEBIUS_MODEL ?? "").trim() || "Qwen/Qwen3-235B-A22B-Instruct-2507";
+const model = modelIdFor("planner");
 console.log(`eve eval run ${latest}: ${passed}/${cases.length} passed`);
 if (!traceConfigured()) { console.log("KV not configured — not saved."); process.exit(0); }
 await saveEvalSummary({

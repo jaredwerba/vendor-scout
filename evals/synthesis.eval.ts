@@ -1,5 +1,5 @@
 import { defineEval } from "eve/evals";
-import { judgeModel } from "../agent/lib/nebius";
+import { modelFor } from "../agent/lib/models";
 
 /**
  * The money rule, end to end.
@@ -28,7 +28,7 @@ export default defineEval({
   timeoutMs: 900_000,
   // The judge is pinned away from the model under test on purpose: swapping
   // NEBIUS_MODEL must never change how the result is graded.
-  judge: { model: judgeModel() },
+  judge: { model: modelFor("judge") },
   async test(t) {
     await t.send(
       `Hi Venus! Our budget is around $${BUDGET.toLocaleString("en-US")} — plan our wedding for us.\n\n` +

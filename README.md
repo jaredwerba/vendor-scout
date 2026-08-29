@@ -41,6 +41,21 @@ Live: **https://vendor-scout-xi.vercel.app** — public, no sign-in.
 | Untrusted input | Vendor replies, web pages and scout reports are data, never instruction — asserted by injection cases in the reply eval. | `agent/lib/classify.ts`, `evals/data/vendor-replies.json` |
 | Evals | Fixed datasets, held constant across model swaps, with the **judge pinned away from the model under test**. | `evals/`, `scripts/eval-*.ts` |
 
+An honest audit against the blueprint — adopted, adapted, skipped, and the
+gaps that remain — is in [`docs/blueprint-audit.md`](docs/blueprint-audit.md).
+
+## Model routing
+
+One model per job, each chosen for what that job actually demands
+(`agent/lib/models.ts`), every one overridable by env:
+
+| Job | Model | Why |
+|---|---|---|
+| `planner` | Qwen3-235B-A22B-Instruct | Venus's voice and orchestration. ~15% of cost, 100% of what the couple reads. Held constant until an eval can measure the swap. |
+| `scout` | DeepSeek-V4-Flash | Cost is dominated by input tokens over 20–40 steps: $0.14/$0.28 vs $0.20/$0.60, and a 1M window vs 262k. |
+| `classifier` | chosen by `npm run models:compare` | Structured output on untrusted email, decided by measured accuracy on 15 labelled replies. |
+| `judge` | DeepSeek-V4-Pro | Pinned away from every other role so a model swap can never move the bar. |
+
 ## Architecture
 
 - `agent/` — the brain. `instructions.md` (persona + flow), `tools/` (one file per capability),

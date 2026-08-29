@@ -26,7 +26,7 @@ import { saveLangSmithTraceId } from "./lib/trace";
  * app can deep-link straight to the trace without querying the LangSmith API.
  */
 
-const MODEL = (process.env.NEBIUS_MODEL ?? "").trim() || "Qwen/Qwen3-235B-A22B-Instruct-2507";
+import { modelIdFor } from "./lib/models";
 const PROJECT = process.env.LANGSMITH_PROJECT ?? "venus";
 
 const CONTEXT_PREFIX = "ai.settings.context.";
@@ -121,7 +121,9 @@ export default defineInstrumentation({
           "langsmith.metadata.step": input.step.index,
           "langsmith.metadata.channel": input.channel.kind ?? "unknown",
           "langsmith.metadata.provider": "nebius-token-factory",
-          "langsmith.metadata.model": MODEL,
+          // Report the model that actually served this session's role, so a
+          // LangSmith trace never claims the planner's model for a scout run.
+          "langsmith.metadata.model": modelIdFor(parent ? "scout" : "planner"),
         },
       };
     },

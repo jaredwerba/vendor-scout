@@ -80,31 +80,60 @@ export default defineTool({
       };
     }
 
-    const res = await fetch("https://api.tavily.com/search", {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${TAVILY_KEY}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        query,
-        max_results: max_results ?? 6,
-        // "advanced" when freshness matters: Tavily re-ranks for relevance and
-        // honours the time window more tightly (2 credits instead of 1).
-        search_depth: time_range ? "advanced" : "basic",
-        include_answer: false,
-        include_images: include_images ?? false,
-        ...(time_range ? { time_range } : {}),
-        ...(topic ? { topic } : {}),
-      }),
+    const body = JSON.stringify({
+      query,
+      max_results: max_results ?? 6,
+      // "advanced" when freshness matters: Tavily re-ranks for relevance and
+      // honours the time window more tightly (2 credits instead of 1).
+      search_depth: time_range ? "advanced" : "basic",
+      include_answer: false,
+      include_images: include_images ?? false,
+      ...(time_range ? { time_range } : {}),
+      ...(topic ? { topic } : {}),
     });
 
-    if (!res.ok) {
-      const detail = await res.text().catch(() => "");
+    // Retry ONLY transient failures, with jitter. A 429 or a 5xx is the
+    // provider asking us to wait; a 4xx is us being wrong, and retrying it
+    // just spends the couple's search budget on the same mistake. A retried
+    // search also must not be charged twice against the budget — it was
+    // counted once, above.
+    let res: Response | null = null;
+    let lastError = "";
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      if (attempt > 0) {
+        const backoff = 400 * 2 ** (attempt - 1) + Math.floor(Math.random() * 250);
+        await new Promise((r) => setTimeout(r, backoff));
+      }
+      try {
+        res = await fetch("https://api.tavily.com/search", {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${TAVILY_KEY}`,
+            "content-type": "application/json",
+          },
+          body,
+          signal: AbortSignal.timeout(30_000),
+        });
+      } catch (error) {
+        // A timeout or a dropped socket is transient by definition.
+        lastError = String((error as Error)?.message ?? error).slice(0, 160);
+        res = null;
+        continue;
+      }
+      if (res.ok) break;
+      const transient = res.status === 429 || res.status >= 500;
+      if (!transient) break;
+      lastError = `HTTP ${res.status}`;
+    }
+
+    if (!res || !res.ok) {
+      const detail = res ? await res.text().catch(() => "") : lastError;
       return {
         status: "search_failed",
-        note: `Search provider returned ${res.status}. Try a reworded query, or fall back to web_fetch on known sites.`,
-        detail: detail.slice(0, 300),
+        note: res
+          ? `Search provider returned ${res.status}. Try a reworded query, or read a known site directly.`
+          : `Search provider unreachable after 3 attempts (${lastError}). Work with what you have.`,
+        detail: String(detail).slice(0, 300),
       };
     }
 

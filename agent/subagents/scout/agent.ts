@@ -1,6 +1,6 @@
 import { defineAgent } from "eve";
 import { z } from "zod";
-import { scoutModel } from "../../lib/nebius";
+import { contextWindowFor, modelFor } from "../../lib/models";
 
 /**
  * The research specialist.
@@ -34,11 +34,11 @@ export default defineAgent({
     "styling) against a couple's brief and budget, and returns 3-4 real, currently-operating " +
     "vendors with published contact details, price signals and source links. Reads the web " +
     "only — it never contacts a vendor.",
-  model: scoutModel(),
-  // Token Factory ids are not in the AI Gateway catalog, so compaction needs
-  // the window spelled out. 262144 = Qwen3-235B; a larger model just has room
-  // to spare.
-  modelContextWindowTokens: 262_144,
+  // A specialist runs a different model from the planner on purpose: its cost
+  // is dominated by input tokens across a long tool loop, not by prose
+  // quality. See agent/lib/models.ts.
+  model: modelFor("scout"),
+  modelContextWindowTokens: contextWindowFor("scout"),
   // Task-mode default: even if the parent forgets to pass an outputSchema,
   // the root gets a structured report instead of prose it has to parse.
   outputSchema: z.object({
