@@ -70,7 +70,7 @@ without the second) + `LANGSMITH_PROJECT`, `RESEND_API_KEY`, `RESEND_WEBHOOK_SEC
 ## Develop & test
 
 ```bash
-npm run typecheck && npm run build       # gates every deploy
+npm run verify                           # typecheck + next build + eve build + guard tests
 npm exec -- eve dev --no-ui --port 3111  # agent + API locally
 
 npm run eval                             # fast deterministic suite (eve evals)
