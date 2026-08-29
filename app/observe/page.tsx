@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { readFileSync } from "node:fs";
+import generationsData from "@/evals/data/generations.json";
 import { modelIdFor, modelRouting } from "@/agent/lib/models";
 import { fleetStats } from "@/agent/lib/report";
 import { formatUsd } from "@/agent/lib/pricing";
@@ -130,8 +130,10 @@ export default async function ObservePage({
 
   // Five configurations of the same agent against the same brief. Each row
   // names the session it was measured on; every one is open in the picker
-  // below. See evals/data/generations.json and `npm run report`.
-  let generations: Array<{
+  // below. Imported rather than read from disk — readFileSync silently finds
+  // nothing inside a bundled serverless function, and the section just
+  // vanished in production while rendering fine locally.
+  const generations = generationsData as Array<{
     gen: number;
     name: string;
     config: string;
@@ -139,14 +141,7 @@ export default async function ObservePage({
     sessionId: string | null;
     solved: string;
     exposed: string;
-  }> = [];
-  try {
-    generations = JSON.parse(
-      readFileSync(new URL("../../evals/data/generations.json", import.meta.url), "utf8"),
-    );
-  } catch {
-    generations = [];
-  }
+  }>;
 
   return (
     <main className="min-h-dvh bg-background px-4 py-10 text-foreground sm:px-6">
