@@ -1,5 +1,8 @@
 import Link from "next/link";
+import { readFileSync } from "node:fs";
 import { modelIdFor, modelRouting } from "@/agent/lib/models";
+import { fleetStats } from "@/agent/lib/report";
+import { formatUsd } from "@/agent/lib/pricing";
 import { type EvalSummary, listEvalSummaries, listTraces, type TraceSummary, traceConfigured } from "@/agent/lib/trace";
 import { ObserveConsole } from "./observe-client";
 
@@ -119,10 +122,31 @@ export default async function ObservePage({
     roles: routing.map(({ role, model, rationale }) => ({ role, model, rationale })),
   };
   const kv = traceConfigured();
-  const [traces, evals] = await Promise.all([
+  const [traces, evals, stats] = await Promise.all([
     kv ? listTraces(25).catch(() => [] as TraceSummary[]) : Promise.resolve([] as TraceSummary[]),
     kv ? listEvalSummaries().catch(() => [] as EvalSummary[]) : Promise.resolve([] as EvalSummary[]),
+    kv ? fleetStats(100).catch(() => null) : Promise.resolve(null),
   ]);
+
+  // Five configurations of the same agent against the same brief. Each row
+  // names the session it was measured on; every one is open in the picker
+  // below. See evals/data/generations.json and `npm run report`.
+  let generations: Array<{
+    gen: number;
+    name: string;
+    config: string;
+    scoutScore: string | null;
+    sessionId: string | null;
+    solved: string;
+    exposed: string;
+  }> = [];
+  try {
+    generations = JSON.parse(
+      readFileSync(new URL("../../evals/data/generations.json", import.meta.url), "utf8"),
+    );
+  } catch {
+    generations = [];
+  }
 
   return (
     <main className="min-h-dvh bg-background px-4 py-10 text-foreground sm:px-6">
@@ -147,6 +171,154 @@ export default async function ObservePage({
             <Chip tone={kv ? "good" : "warn"}>{kv ? "trace store: Upstash KV" : "trace store: not configured"}</Chip>
           </div>
         </header>
+
+        {stats && stats.toolCalls > 0 ? (
+          <section className="mb-10">
+            <div className="mb-3 flex items-baseline justify-between">
+              <h2 className="venus-serif text-lg">What {stats.sessions} traced runs say</h2>
+              <span className="text-muted-foreground text-xs">
+                <code>npm run report</code>
+              </span>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl border bg-card/70 p-4">
+                <p className="font-medium text-sm">Step reliability compounds</p>
+                <p className="mt-1 text-muted-foreground text-xs leading-relaxed">
+                  {stats.toolCalls.toLocaleString("en-US")} tool calls across every agent,{" "}
+                  {stats.failedActions} failed —{" "}
+                  <b className="text-foreground">
+                    {(stats.actionSuccess * 100).toFixed(1)}% per action
+                  </b>
+                  . What that survives if every step must land:
+                </p>
+                <dl className="mt-3 space-y-1.5">
+                  {stats.compounding.map((c) => (
+                    <div className="flex items-center gap-2 text-xs" key={c.steps}>
+                      <dt className="w-14 shrink-0 text-muted-foreground tabular-nums">
+                        {c.steps} steps
+                      </dt>
+                      <dd className="flex min-w-0 flex-1 items-center gap-2">
+                        <span className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
+                          <span
+                            className="block h-full rounded-full bg-primary"
+                            style={{ width: `${Math.max(1, c.probability * 100)}%` }}
+                          />
+                        </span>
+                        <span className="w-12 shrink-0 text-right tabular-nums">
+                          {(c.probability * 100).toFixed(1)}%
+                        </span>
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+                <p className="mt-3 text-muted-foreground text-xs leading-relaxed">
+                  A single research specialist runs 20–40 steps. This is the whole argument for
+                  recording each vendor as it is found rather than returning them at the end —
+                  and for surfacing a truncation instead of retrying it blindly.
+                  {stats.truncations > 0
+                    ? ` ${stats.truncations} truncations are visible in these traces rather than silent.`
+                    : ""}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border bg-card/70 p-4">
+                <p className="font-medium text-sm">Cost has long tails</p>
+                {stats.cost ? (
+                  <>
+                    <table className="mt-2 w-full text-left text-xs tabular-nums">
+                      <tbody>
+                        <tr className="border-b">
+                          <td className="py-1.5 text-muted-foreground">median run</td>
+                          <td className="py-1.5 text-right font-medium">
+                            {formatUsd(stats.cost.median)}
+                          </td>
+                        </tr>
+                        <tr className="border-b">
+                          <td className="py-1.5 text-muted-foreground">p90</td>
+                          <td className="py-1.5 text-right font-medium">
+                            {formatUsd(stats.cost.p90)}
+                          </td>
+                        </tr>
+                        <tr className="border-b">
+                          <td className="py-1.5 text-muted-foreground">worst</td>
+                          <td className="py-1.5 text-right font-medium">
+                            {formatUsd(stats.cost.max)}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="py-1.5 text-muted-foreground">tail ratio</td>
+                          <td className="py-1.5 text-right font-medium">
+                            {stats.cost.ratio.toFixed(1)}× median
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <p className="mt-3 text-muted-foreground text-xs leading-relaxed">
+                      The tail is not an expensive model. It is an agent that would not stop —
+                      the worst run here kept fanning out after its client had disconnected.
+                      That is what the per-session search budgets bound, and why cost is
+                      reported per agent rather than per plan.
+                    </p>
+                  </>
+                ) : (
+                  <p className="mt-2 text-muted-foreground text-xs">No costed runs yet.</p>
+                )}
+                <p className="mt-3 border-t pt-3 text-muted-foreground text-xs">
+                  {stats.agentSessions} agent sessions ·{" "}
+                  {stats.steps.toLocaleString("en-US")} model steps ·{" "}
+                  {formatUsd(stats.totalCostUsd)} of real inference
+                </p>
+              </div>
+            </div>
+          </section>
+        ) : null}
+
+        {generations.length > 0 ? (
+          <section className="mb-10">
+            <div className="mb-3 flex items-baseline justify-between">
+              <h2 className="venus-serif text-lg">Five generations of the same agent</h2>
+              <span className="text-muted-foreground text-xs">same brief every time</span>
+            </div>
+            <div className="space-y-3">
+              {generations.map((g) => (
+                <div className="rounded-2xl border bg-card/70 p-4" key={g.gen}>
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <p className="font-medium text-sm">
+                      <span className="text-muted-foreground">Gen {g.gen}</span> · {g.name}
+                    </p>
+                    {g.scoutScore ? (
+                      <Chip tone={g.scoutScore.includes("45%") ? "warn" : "good"}>
+                        {g.scoutScore}
+                      </Chip>
+                    ) : (
+                      <Chip tone="muted">not measured</Chip>
+                    )}
+                  </div>
+                  <p className="mt-1.5 text-muted-foreground text-xs leading-relaxed">{g.config}</p>
+                  <dl className="mt-2.5 grid gap-2 text-xs sm:grid-cols-2">
+                    <div>
+                      <dt className="font-medium">Solved</dt>
+                      <dd className="mt-0.5 text-muted-foreground leading-relaxed">{g.solved}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-medium">Exposed</dt>
+                      <dd className="mt-0.5 text-muted-foreground leading-relaxed">{g.exposed}</dd>
+                    </div>
+                  </dl>
+                  {g.sessionId ? (
+                    <Link
+                      className="mt-2 inline-block text-primary text-xs hover:underline"
+                      href={`/observe?session=${g.sessionId}`}
+                    >
+                      open the traced session →
+                    </Link>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         <section className="mb-10">
           <div className="mb-3 flex items-baseline justify-between">

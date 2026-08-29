@@ -1,0 +1,47 @@
+[
+  {
+    "gen": 1,
+    "name": "Prototype",
+    "config": "One model. Research delegated with eve's built-in `agent` tool. No trace store, no evals, no guards.",
+    "scoutScore": null,
+    "sessionId": null,
+    "solved": "Task completion. It produced three costed wedding visions and emailed real vendors.",
+    "exposed": "A research child was a copy of the root agent — it inherited `send_outreach`. Nothing measured whether the vendors were real, and nothing recorded what any sub-agent did."
+  },
+  {
+    "gen": 2,
+    "name": "Observed",
+    "config": "Declared `scout` subagent (search + record_vendor only). KV trace store, LangSmith, per-agent live console, fixed eval sets.",
+    "scoutScore": "29/33 (88%)",
+    "sessionId": null,
+    "solved": "Visibility. Every agent's steps, tools, tokens and cost became watchable live, and the first eval put a number on research quality.",
+    "exposed": "Two caterers recorded from directory listings, one with the email inquiries@hideseekmedia.com — a media company, from a page for a different business. Outreach is live: that inquiry reaches a stranger."
+  },
+  {
+    "gen": 3,
+    "name": "Governed",
+    "config": "Gen 2 plus tool-level refusals: directory sources, vendor-mismatched emails, missing locations, dead source URLs. Search budgets. Transient-only retries.",
+    "scoutScore": "46/50 (92%)",
+    "sessionId": "wrun_41M15R4Q6T0GYQ2MKAGXS5HD7F",
+    "solved": "Correctness the prompt could not hold. Every recorded vendor now has an own-site source and an address that belongs to it.",
+    "exposed": "Vendors outside the couple's travel radius — a band in Ohio, a photographer in North Carolina, 850 miles from a Massachusetts wedding."
+  },
+  {
+    "gen": 4,
+    "name": "Cheap (failed)",
+    "config": "Gen 3 with the specialist tier swapped to DeepSeek-V4-Flash — $0.14/$0.28 vs $0.20/$0.60, 1M context. Specialists are ~80% of a plan's cost.",
+    "scoutScore": "10/22 (45%)",
+    "sessionId": "wrun_41M16HDBKG0GZGAQNQ1HDK14XR",
+    "solved": "Nothing. Kept for the record because it is the generation most write-ups omit.",
+    "exposed": "10 of 10 specialist sessions failed with OUTPUT_SCHEMA_NOT_FULFILLED and not one recorded a vendor. The cause was not only the model: an `outputSchema` on the subagent turned a formatting failure into a failed child session. The one-line economics swap is real, but only over a harness that survives it."
+  },
+  {
+    "gen": 5,
+    "name": "Production",
+    "config": "Gen 3, outputSchema deleted (redundant with the research store), radius judged from town knowledge rather than searched for, models routed per role by measurement.",
+    "scoutScore": "52/53 (98%)",
+    "sessionId": "wrun_41M16NZKKB0GJNG65GT0HQ5BGW",
+    "solved": "Every category recorded 3-4 vendors: own-site sources, vendor-owned emails, stated towns, live URLs, photos on every venue, and 100% in-region across all five categories.",
+    "exposed": "One florist recorded against a page on their own domain that 404s — real business, dead source. Now refused at record time."
+  }
+]

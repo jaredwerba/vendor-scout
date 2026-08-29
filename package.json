@@ -24,7 +24,8 @@
     "test:guards": "node --import ./scripts/ts-resolve.mjs scripts/test-vendor-guards.mjs",
     "verify": "npm run typecheck && npm run build && npm run build:eve && npm run test:guards",
     "models:compare": "node --env-file=.env.local --import ./scripts/ts-resolve.mjs scripts/compare-models.ts",
-    "probe:schema": "node --env-file=.env.local --import ./scripts/ts-resolve.mjs scripts/probe-structured-output.ts"
+    "probe:schema": "node --env-file=.env.local --import ./scripts/ts-resolve.mjs scripts/probe-structured-output.ts",
+    "report": "node --env-file=.env.local --import ./scripts/ts-resolve.mjs scripts/report.ts"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "^3.0.39",

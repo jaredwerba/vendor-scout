@@ -441,6 +441,11 @@ export interface TraceTree {
 }
 
 /** The whole agent tree for one root session: Venus plus every specialist. */
+/** Older summaries predate some counters; read them as 0 rather than NaN. */
+export function readCount(n: unknown): number {
+  return Number.isFinite(Number(n)) ? Number(n) : 0;
+}
+
 export async function getTraceTree(rootId: string): Promise<TraceTree> {
   if (!traceConfigured()) return { root: null, children: [], langsmithTraceId: null };
   const [rootRaw, childIds, lsRaw] = (await redis([
