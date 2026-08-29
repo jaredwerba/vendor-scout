@@ -142,6 +142,10 @@ export function useAgentLanes({
   const [tree, setTree] = useState<TreeResponse | null>(null);
   const [nonce, setNonce] = useState(0);
   const abortsRef = useRef(new Map<string, AbortController>());
+  // Sessions already streamed to completion. This must outlive the effect:
+  // the tree poll changes `tree.children` every few seconds, so a per-run Set
+  // would re-attach every finished specialist on every poll.
+  const doneRef = useRef(new Set<string>());
 
   // The parent stream: owned by the caller in the chat, attached here in the
   // console. Either way, everything downstream reads one array.
@@ -184,7 +188,7 @@ export function useAgentLanes({
   // --- Live attach, one connection per agent, capped.
   useEffect(() => {
     const aborts = abortsRef.current;
-    const done = new Set<string>();
+    const done = doneRef.current;
 
     const attach = (sessionId: string) => {
       if (!sessionId || aborts.has(sessionId) || done.has(sessionId)) return;
