@@ -298,6 +298,11 @@ const LaneCard = memo(function LaneCard({
       </dl>
 
       <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground tabular-nums">
+        {lane.summary?.model ? (
+          <span className="font-mono" title={lane.summary.model}>
+            {lane.summary.model.split("/").pop()}
+          </span>
+        ) : null}
         <span>
           {fmt(stats.inputTokens)} in / {fmt(stats.outputTokens)} out
         </span>
