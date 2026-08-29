@@ -1,16 +1,34 @@
-import { disableTool } from "eve/tools";
+import { defineTool } from "eve/tools";
+import { z } from "zod";
 
 /**
- * Disables eve's built-in `agent` tool.
+ * Shadows eve's built-in `agent` tool so it can never be used.
  *
  * The built-in delegates to a *copy of the root agent*: same instructions,
  * same tools — including `send_outreach`. That is exactly the capability the
- * scout subagent exists to remove, and a live run showed Venus reaching for
- * both (10 `scout` calls and 3 `agent` calls in one session), which quietly
- * put research children back in front of the send button.
+ * scout subagent exists to remove, and a live production run showed Venus
+ * reaching for both paths in one session (10 `scout` calls and 3 `agent`
+ * calls), quietly putting research children back in front of the send button.
  *
- * An authored root tool takes priority over the built-in, so this file makes
- * `scout` (agent/subagents/scout) the only way to delegate: a researcher with
- * no ability to contact anyone.
+ * `disableTool()` is not available here — it only covers eve's authored
+ * framework tools — but an authored root tool takes priority over the
+ * built-in, so this refusal is what the model gets instead. Research and
+ * outreach never share a context.
  */
-export default disableTool();
+export default defineTool({
+  description:
+    "DEPRECATED — do not call. Use `scout` to delegate research. This tool does nothing.",
+  inputSchema: z.object({
+    message: z.string().optional(),
+  }),
+  execute() {
+    return {
+      status: "unavailable",
+      note:
+        "Generic delegation is disabled in this agent. Use the `scout` tool for research: it " +
+        "is a specialist with its own search budget that records each vendor as it finds one, " +
+        "and it cannot contact anyone. Re-issue this as a `scout` call with `CATEGORY: <category>` " +
+        "on the first line.",
+    };
+  },
+});
