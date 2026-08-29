@@ -80,12 +80,32 @@ export async function getProjectRef(): Promise<ProjectRef | null> {
   }
 }
 
-/** The run URL for one OTel trace id, or null if we cannot build a real one. */
-export async function traceUrl(traceId: string | null | undefined): Promise<string | null> {
-  if (!traceId) return null;
+/**
+ * The run URL for one LangSmith run id, or null if we cannot build a real one.
+ *
+ * Verifies the run exists before handing back a link. The previous version
+ * built a URL from the OTel trace id and never checked it, so every "Open
+ * trace in LangSmith" button led to a 404 — a broken link is worse than a
+ * disabled one, because it looks like the tracing is working.
+ */
+export async function traceUrl(runId: string | null | undefined): Promise<string | null> {
+  if (!runId) return null;
   const ref = await getProjectRef();
   if (!ref) return null;
-  return `${webHost()}/o/${ref.tenantId}/projects/p/${ref.id}/r/${traceId}?poll=true`;
+  if (!(await runExists(runId))) return null;
+  return `${webHost()}/o/${ref.tenantId}/projects/p/${ref.id}/r/${runId}?poll=true`;
+}
+
+async function runExists(runId: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${apiHost()}/api/v1/runs/${runId}`, {
+      headers: { "x-api-key": process.env.LANGSMITH_API_KEY ?? "" },
+      signal: AbortSignal.timeout(6000),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }
 
 /** The project URL — useful even when a specific trace id is not known yet. */

@@ -6,6 +6,7 @@ import {
   ActivityIcon,
   AlertCircleIcon,
   ClipboardListIcon,
+  GitCompareIcon,
   ImageIcon,
   MenuIcon,
   RotateCcwIcon,
@@ -500,6 +501,12 @@ export function AgentChat({
                 <a className="flex cursor-pointer items-center gap-2.5" href="/observe">
                   <ActivityIcon className="size-4" />
                   Observability
+                </a>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <a className="flex cursor-pointer items-center gap-2.5" href="/compare">
+                  <GitCompareIcon className="size-4" />
+                  V1 → V2 compare
                 </a>
               </DropdownMenuItem>
               <DropdownMenuSeparator />

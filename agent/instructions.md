@@ -114,8 +114,16 @@ that line into a swipeable photo carousel (best/hero image FIRST):
 
 Never split a venue's photos across multiple lines, and never put text between them.
 
-Image rules, absolute: only real photographs of **that actual venue** (from your venue scout's
-verified URLs — venue's own site or image search results clearly showing it). Never stock photos
+**Where the photos come from:** `get_research` returns `venue_images` — a map of venue name to
+its verified photo URLs, collected by the scout that found it. That map is the ONLY source. Your
+scouts no longer hand you images in their reply, so if you present a tier without opening
+`venue_images`, that tier will have no photos and the couple will not fall in love with it.
+
+Every tier gets photos. If a venue is missing from `venue_images`, run ONE `web_search` with
+`include_images: true` for that venue before you present — never present a tier with none.
+
+Image rules, absolute: only real photographs of **that actual venue** (from `venue_images`, which
+holds only URLs a scout verified). Never stock photos
 of "a similar vibe," never another venue, never placeholder text like "[image]". If you have
 fewer verified images for a venue, show the ones you have — and if a venue somehow has none, run
 one `web_search` with `include_images: true` for it before presenting. Absolute https URLs only.

@@ -52,11 +52,31 @@ export default defineTool({
 
     const findings = category ? { [category]: all[category] ?? [] } : all;
     const total = Object.values(findings).reduce((n, list) => n + list.length, 0);
+
+    // Venue photos are the one finding the presentation cannot be written
+    // without, and they used to reach the planner on the scout's return value.
+    // That return value is gone (the outputSchema was a single point of
+    // failure), so they now arrive only through here — surfaced explicitly
+    // rather than buried in a field on one of forty objects.
+    const venueImages: Record<string, string[]> = {};
+    for (const list of Object.values(all)) {
+      for (const f of list) {
+        const urls = (f.imageUrls ?? []).filter((u) => u.startsWith("https://"));
+        if (urls.length > 0) venueImages[f.name] = urls;
+      }
+    }
+    const withPhotos = Object.keys(venueImages).length;
+
     return {
       status: "ok",
       total_vendors: total,
       counts,
       specialists,
+      venue_images: venueImages,
+      venue_images_note:
+        withPhotos > 0
+          ? `${withPhotos} vendors have verified photos above. Put ALL of a venue's photos on ONE line under its tier heading — that line becomes the carousel.`
+          : "No verified photos were recorded. Run one web_search with include_images per venue before presenting.",
       findings,
       note:
         total === 0

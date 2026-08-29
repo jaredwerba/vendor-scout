@@ -1,0 +1,124 @@
+{
+  "v1": {
+    "label": "V1",
+    "dates": "2026-07-15 to 2026-08-28",
+    "commit": "adacb10",
+    "modelPlane": "Vercel AI Gateway · anthropic/claude-sonnet-5",
+    "delegation": "The eve built-in `agent` tool, with an outputSchema",
+    "findings": "The child agent sent all vendors in one final message",
+    "observability": "None",
+    "evaluation": "None",
+    "guards": "Instructions only",
+    "score": "Not measurable"
+  },
+  "v2": {
+    "label": "V2",
+    "dates": "2026-08-28 to 2026-08-29",
+    "commit": "0bc4d98",
+    "modelPlane": "Nebius Token Factory · one model for each job",
+    "delegation": "A declared `scout` subagent. Its tools are web search and record_vendor",
+    "findings": "The scout records each vendor immediately in Redis",
+    "observability": "A trace of each agent, LangSmith, and a live console",
+    "evaluation": "Three fixed data sets and five scripts",
+    "guards": "The record_vendor tool refuses bad data",
+    "score": "52/53 (98%)"
+  },
+  "changes": [
+    {
+      "id": "delegation",
+      "title": "The research agents could send email",
+      "complex": true,
+      "old": "V1 delegated research with the eve built-in `agent` tool. This tool starts a copy of the root agent. The copy gets the same tools as the root agent. One of those tools sends email to a vendor.",
+      "new": "V2 uses a declared subagent. Its name is `scout`. Its tools are web search and `record_vendor`, and nothing else. V2 also disables the built-in `agent` tool.",
+      "why": "A rule in the instructions does not remove a tool. The research agent kept the ability to send email. Only the absence of the tool prevents the action.",
+      "result": "The scout cannot send email. A later run showed the planner used both delegation paths: 10 `scout` calls and 3 `agent` calls. V2 disabled the built-in tool after that run.",
+      "star": {
+        "situation": "V1 produced good plans. No fault was visible. The research agents inherited every tool of the root agent, and one of those tools sends email to a real vendor.",
+        "task": "Remove the ability to send email from the research agents. Do not remove the ability from the planner.",
+        "action": "Move research into a declared subagent with two tools. Shadow the built-in `agent` tool with a tool that refuses.",
+        "result": "The research agents have no email tool. The guarantee does not depend on the model."
+      }
+    },
+    {
+      "id": "findings",
+      "title": "A cut-off agent lost all of its work",
+      "complex": true,
+      "old": "V1 asked the child agent to send all vendors in one final message. The message used an outputSchema.",
+      "new": "V2 records each vendor immediately with `record_vendor`. The planner reads the records with `get_research`.",
+      "why": "One final message makes every vendor depend on the last token. A cut-off message loses all of them. Zero vendors also looks the same as an empty market.",
+      "result": "Work continues after a fault. A count of zero is now a fault that the planner can see. Measured: 3 to 4 vendors for each agent, and no cut-off agents.",
+      "star": {
+        "situation": "The child agent sent its vendors in one message at the end of its work. A cut-off message lost all of them.",
+        "task": "Keep the work of an agent that stops early.",
+        "action": "Add a `record_vendor` tool. The agent calls it after it verifies each vendor. Add `get_research` to read the records and to report the condition of each agent.",
+        "result": "A cut-off agent keeps every vendor that it found before the fault. The planner runs one more agent for a category with zero vendors."
+      }
+    },
+    {
+      "id": "outputschema",
+      "title": "The structured answer stopped the tool calls",
+      "complex": true,
+      "old": "V1 and early V2 put an outputSchema on the child agent.",
+      "new": "V2 has no outputSchema on the scout.",
+      "why": "eve changes a schema fault into a failed session. A schema also blocks the tool calls of some models. The research is in Redis, so the answer of the agent is not necessary.",
+      "result": "The score moved from 10/22 (45%) to 52/53 (98%). All 10 agents failed with the schema. No agent failed after removal.",
+      "star": {
+        "situation": "V2 changed the scout model to a less expensive model. All 10 scout sessions failed. No agent recorded a vendor. The score was 10/22.",
+        "task": "Find the cause. The less expensive model was one possible cause. The schema was another.",
+        "action": "Read the trace of each failed session. Each session ended with OUTPUT_SCHEMA_NOT_FULFILLED. Some sessions failed before the first web search. Remove the outputSchema and return to the first model.",
+        "result": "The score moved to 52/53. A later paper (arXiv 2606.25605) describes the same fault: a schema and tool calls together stop some open-weight models from calling tools."
+      }
+    },
+    {
+      "id": "guards",
+      "title": "An email went to the wrong company",
+      "complex": true,
+      "old": "V1 told the agent to use the web site of the vendor. V1 did not check the result.",
+      "new": "V2 refuses a source URL from a directory site. V2 also refuses an email address that does not agree with the name or the web site of the vendor.",
+      "why": "The instructions already forbade both faults. The model made both faults. A rule that the model can ignore is not a control.",
+      "result": "All later runs show 100% own-site sources and zero incorrect addresses. A test holds 12 real records from the run with the fault.",
+      "star": {
+        "situation": "The system recorded a caterer with the email address inquiries@hideseekmedia.com. That address belongs to a media company. The source was a directory page for a different company. The system sends email to real vendors.",
+        "task": "Prevent an email to a company that the couple did not choose.",
+        "action": "Add two refusals to `record_vendor`. The first refuses 20 known directory hosts. The second refuses an address whose domain does not agree with the vendor. Free mail addresses pass, because a small florist with a gmail address is normal.",
+        "result": "The three bad records are refused. All nine good records still pass. Later runs record no directory sources and no incorrect addresses."
+      }
+    },
+    {
+      "id": "observability",
+      "title": "Nobody could see what the agents did",
+      "complex": false,
+      "old": "V1 had no trace store, no hook, and no instrumentation. The work of a child agent was not visible.",
+      "new": "V2 writes a trace of each agent to Redis. V2 sends spans to LangSmith. The app shows a live view of each agent.",
+      "why": "You cannot correct a fault that you cannot see. Each fault in this list was found in a trace.",
+      "result": "The console shows each agent, its model, its steps, its tools, its tokens, and its cost."
+    },
+    {
+      "id": "cost",
+      "title": "Every cost was zero",
+      "complex": false,
+      "old": "V1 showed no cost. V2 showed a cost of $0.00 for every agent.",
+      "new": "V2 reads the model identifier from the correct field. V2 removes the provider prefix before it reads the price table.",
+      "why": "eve reports the model in `RuntimeIdentity.modelId`. The code read `runtime.model`. The trace also adds a provider prefix to the identifier. The price table uses the identifier without the prefix.",
+      "result": "Cost is now correct for each step and each agent. The middle run costs $2.14. The most expensive run costs $6.07."
+    },
+    {
+      "id": "evals",
+      "title": "No measurement of quality",
+      "complex": false,
+      "old": "V1 had no evaluation. A change to the instructions had no measurable result.",
+      "new": "V2 has three fixed data sets and five scripts. The judge model is different from the model under test.",
+      "why": "A fixed data set makes a change measurable. A judge that is also the model under test moves the standard with the model.",
+      "result": "Reply understanding: 15/15. Research quality: 52/53. Schema reliability: 30/30 for the model in use."
+    },
+    {
+      "id": "models",
+      "title": "One model for all work",
+      "complex": false,
+      "old": "V1 used one model for all work: anthropic/claude-sonnet-5 through the Vercel AI Gateway.",
+      "new": "V2 uses Nebius Token Factory. V2 selects a model for each job: planner, scout, classifier, and judge.",
+      "why": "Each job has different requirements. A change of model must be a change of configuration, not a change of code.",
+      "result": "Two model changes were tested and refused. The measurements showed a 13% schema fault rate for one model, and 10 failed sessions for the other."
+    }
+  ]
+}

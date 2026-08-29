@@ -41,6 +41,12 @@ function spanKindFor(name: string): string | null {
 
 const seenSessions = new Set<string>();
 
+/** An 8-byte OTel span id as the UUID LangSmith uses for the run. */
+export function langsmithRunId(spanId: string): string {
+  const hex = (spanId ?? "").padStart(16, "0").slice(-16);
+  return `00000000-0000-0000-${hex.slice(0, 4)}-${hex.slice(4)}`;
+}
+
 function transformExportedSpan(span: ReadableSpan): ReadableSpan {
   const attrs = span.attributes as Record<string, unknown>;
 
@@ -72,12 +78,23 @@ function transformExportedSpan(span: ReadableSpan): ReadableSpan {
     if (kind) attrs["langsmith.span.kind"] = kind;
   }
 
-  // 4. Remember which LangSmith trace belongs to which eve session, once per
-  //    session, so /observe can link out without querying LangSmith.
+  // 4. Remember which LangSmith RUN belongs to which eve session.
+  //
+  //    Not the OTel trace id. LangSmith derives a run id from the OTel SPAN
+  //    id, zero-padded into a UUID — a real one looks like
+  //    00000000-0000-0000-2c13-12a1be0cc1a4, where the last 16 hex digits are
+  //    the 8-byte span id. Storing the 32-character trace id produced a link
+  //    that always 404'd, and the 404 was invisible from this side because
+  //    nothing here ever fetches it.
+  //
+  //    Only the root span (no parent) becomes the run a deep link should open.
   const sessionId = String(attrs["langsmith.metadata.session_id"] ?? "");
-  if (sessionId && !seenSessions.has(sessionId)) {
+  const parentSpanId =
+    (span as { parentSpanContext?: { spanId?: string } }).parentSpanContext?.spanId ??
+    (span as { parentSpanId?: string }).parentSpanId;
+  if (sessionId && !parentSpanId && !seenSessions.has(sessionId)) {
     seenSessions.add(sessionId);
-    void saveLangSmithTraceId(sessionId, span.spanContext().traceId).catch(() => {});
+    void saveLangSmithTraceId(sessionId, langsmithRunId(span.spanContext().spanId)).catch(() => {});
   }
 
   return span;
