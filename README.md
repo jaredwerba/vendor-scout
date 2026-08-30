@@ -54,8 +54,8 @@ One model per job, each chosen for what that job actually demands
 | Job | Model | Why |
 |---|---|---|
 | `planner` | Qwen3-235B-A22B-Instruct | Venus's voice and orchestration. ~15% of cost, 100% of what the couple reads. Held constant until an eval can measure the swap. |
-| `scout` | DeepSeek-V4-Flash | Cost is dominated by input tokens over 20–40 steps: $0.14/$0.28 vs $0.20/$0.60, and a 1M window vs 262k. |
-| `classifier` | DeepSeek-V4-Flash | Measured: 15/15 at $0.13 per 1k replies, tied on accuracy with Qwen3-235B and 16% cheaper (`npm run models:compare`). |
+| `scout` | Qwen3-235B-A22B-Instruct | Cost here is dominated by input tokens over a long tool loop, which argued for DeepSeek-V4-Flash ($0.14/$0.28 vs $0.20/$0.60, 1M window vs 262k). It was tried and reverted: `npm run eval:scout` returned 10 of 10 specialist sessions failed with not one vendor recorded, against 46/50 on Qwen. |
+| `classifier` | Qwen3-235B-A22B-Instruct | DeepSeek-V4-Flash won a single sweep and was reverted 13 minutes later: it scored 11/15 with six schema failures on the re-run, and `npm run probe:schema` put it at 4/30 structured-output failures against Qwen's 0/30. |
 | `judge` | DeepSeek-V4-Pro | Pinned away from every other role so a model swap can never move the bar. |
 
 ## Architecture

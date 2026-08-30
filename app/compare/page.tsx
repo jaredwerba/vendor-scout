@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
 import comparison from "@/evals/data/v1-v2.json";
 
 export const dynamic = "force-dynamic";
@@ -25,10 +26,38 @@ interface Change {
   star?: { situation: string; task: string; action: string; result: string };
 }
 
-const { v1, v2, changes } = comparison as unknown as {
+interface Lever {
+  name: string;
+  kind: "measured" | "design" | "arithmetic" | "list-price";
+  mechanism: string;
+  numbers?: string[];
+}
+
+interface Economics {
+  framing: string;
+  headline: { claim: string; mechanism: string; source: string };
+  levers: Lever[];
+  limits: string[];
+}
+
+const { v1, v2, changes, economics } = comparison as unknown as {
   v1: Record<string, string>;
   v2: Record<string, string>;
   changes: Change[];
+  economics: Economics;
+};
+
+/**
+ * `measured` means a number came out of a run. `design` means the lever is
+ * real but this repo has no number for it. The distinction is the point: a
+ * page that presents both as one thing is the failure mode this project is
+ * about.
+ */
+const KIND_LABEL: Record<Lever["kind"], string> = {
+  measured: "measured",
+  design: "design, not measured",
+  arithmetic: "computed",
+  "list-price": "list price",
 };
 
 const ROWS: Array<{ key: string; label: string }> = [
@@ -116,6 +145,71 @@ export default function ComparePage() {
           <p className="mt-2 text-muted-foreground text-xs">
             V1 is commit <code>{v1.commit}</code>. V2 is commit <code>{v2.commit}</code>.
           </p>
+        </section>
+
+        {/* Economics: which levers moved cost, and what cannot be claimed. */}
+        <section className="mb-10">
+          <h2 className="venus-serif mb-1 text-lg">Economics</h2>
+          <p className="mb-4 max-w-2xl text-muted-foreground text-sm leading-relaxed">
+            {economics.framing}
+          </p>
+
+          <div className="mb-5 rounded-2xl border border-primary/30 bg-primary/5 p-5">
+            <p className="mb-1 font-medium text-[11px] text-primary uppercase tracking-[0.18em]">
+              The largest movement
+            </p>
+            <p className="venus-serif text-lg leading-snug">{economics.headline.claim}</p>
+            <p className="mt-2 text-sm leading-relaxed">{economics.headline.mechanism}</p>
+            <p className="mt-2 font-mono text-[11px] text-muted-foreground">
+              {economics.headline.source}
+            </p>
+          </div>
+
+          <ol className="space-y-3">
+            {economics.levers.map((lever, i) => (
+              <li className="rounded-2xl border bg-card/70 p-5" key={lever.name}>
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                  <span className="font-mono text-muted-foreground text-xs">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <h3 className="font-medium">{lever.name}</h3>
+                  <Badge
+                    className="ml-auto"
+                    variant={lever.kind === "measured" ? "default" : "outline"}
+                  >
+                    {KIND_LABEL[lever.kind]}
+                  </Badge>
+                </div>
+                <p className="mt-2 text-sm leading-relaxed">{lever.mechanism}</p>
+                {lever.numbers?.length ? (
+                  <ul className="mt-3 space-y-1.5 border-border/70 border-l-2 pl-3">
+                    {lever.numbers.map((n) => (
+                      <li
+                        className="text-muted-foreground text-sm leading-relaxed tabular-nums"
+                        key={n}
+                      >
+                        {n}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </li>
+            ))}
+          </ol>
+
+          <div className="mt-5 rounded-2xl border border-dashed bg-muted/30 p-5">
+            <h3 className="mb-2 font-medium text-sm">What this comparison cannot claim</h3>
+            <ul className="space-y-2">
+              {economics.limits.map((limit) => (
+                <li
+                  className="text-muted-foreground text-sm leading-relaxed before:mr-2 before:text-muted-foreground/60 before:content-['—']"
+                  key={limit}
+                >
+                  {limit}
+                </li>
+              ))}
+            </ul>
+          </div>
         </section>
 
         {/* Each change: old, new, why, result. */}

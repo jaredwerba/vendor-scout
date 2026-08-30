@@ -99,8 +99,8 @@
       "complex": false,
       "old": "V1 showed no cost. V2 showed a cost of $0.00 for every agent.",
       "new": "V2 reads the model identifier from the correct field. V2 removes the provider prefix before it reads the price table.",
-      "why": "eve reports the model in `RuntimeIdentity.modelId`. The code read `runtime.model`. The trace also adds a provider prefix to the identifier. The price table uses the identifier without the prefix.",
-      "result": "Cost is now correct for each step and each agent. The middle run costs $2.14. The most expensive run costs $6.07."
+      "why": "eve reports the model in `RuntimeIdentity.modelId`. The code read `runtime.model`. The trace also adds a provider prefix to the identifier, and the price table uses the identifier without the prefix. A later fault was larger: on the OpenAI-compatible wire `prompt_tokens` already contains `cached_tokens`, and the code added the two together.",
+      "result": "Cost became a real number for each step, each agent and each session. It was then wrong. Across 28 traced sessions the middle run showed $2.14 and the 90th percentile showed $6.07 — both inflated by about 1.9x, because cached input tokens were billed twice. One real traced plan reported $1.50 and actually cost $0.80."
     },
     {
       "id": "evals",
@@ -120,5 +120,106 @@
       "why": "Each job has different requirements. A change of model must be a change of configuration, not a change of code.",
       "result": "Two model changes were tested and refused. The measurements showed a 13% schema fault rate for one model, and 10 failed sessions for the other."
     }
-  ]
+  ],
+  "economics": {
+    "framing": "Every economic gain in this project came from the harness, not from the model. No cost fell because a bigger model was chosen, and the two attempts to fall back to a cheaper model were both measured and refused. The largest single movement in the reported cost was an accounting fix.",
+    "headline": {
+      "claim": "One real traced plan: $1.50 reported, $0.80 actual — 47% lower, with no change of model.",
+      "mechanism": "Token Factory serves a repeated prompt prefix from cache, measured at 90.7% of all input tokens across 33 agents. On the OpenAI-compatible wire `prompt_tokens` already contains `cached_tokens`, and the cost function added the two together, so every cached token was billed twice.",
+      "source": "docs/engineering-log.md · run wrun_41M16NZKKB0GJNG65GT0HQ5BGW"
+    },
+    "levers": [
+      {
+        "name": "Correct the accounting before optimising it",
+        "kind": "measured",
+        "mechanism": "`prompt_tokens` includes `cached_tokens` on the OpenAI-compatible wire. Adding them double-billed every cached token. Cost is now recomputed from stored tokens on read, so the whole history is corrected rather than only what happens next.",
+        "numbers": [
+          "$1.50 reported to $0.80 actual on one traced plan, 47% lower",
+          "~1.9x inflation on every cost this project published before 2026-08-29",
+          "verified on the wire: a 2,024-token prompt reported 2,016 cached"
+        ]
+      },
+      {
+        "name": "Prefix caching is the dominant cost term",
+        "kind": "measured",
+        "mechanism": "Research re-sends a growing transcript at every step, so almost all billed input is cache-served. The cache hit rate, not the token count, is what explains the bill.",
+        "numbers": [
+          "90.7% of all input tokens across 33 agents served from cache",
+          "cached reads are still charged at the full prompt rate, on purpose"
+        ]
+      },
+      {
+        "name": "A model registry that let two cheap swaps be refused",
+        "kind": "measured",
+        "mechanism": "Four independent roles, four env vars, resolution through one function. A swap is one line of configuration, which is what makes an eval able to veto it.",
+        "numbers": [
+          "scout on DeepSeek-V4-Flash: 10 of 10 specialist sessions failed, no vendor recorded, against 46/50 on Qwen",
+          "classifier on DeepSeek-V4-Flash: 4 of 30 structured-output calls failed (13%) against Qwen's 0 of 30",
+          "that classifier swap lasted 13 minutes before the re-run reverted it",
+          "the price gap being refused: $0.14/$0.28 against $0.20/$0.60 per million tokens"
+        ]
+      },
+      {
+        "name": "Price per token does not predict price per task",
+        "kind": "measured",
+        "mechanism": "A sweep over 15 labelled replies priced each candidate's real token usage. The cheapest model per token was the most expensive per run, because output volume is what you pay for; the cheapest per run was the least accurate.",
+        "numbers": [
+          "Nemotron-3.5-Lightning: cheapest per token at $0.06/$0.24, most expensive per run at $0.0077, and 5.5x the incumbent's median latency",
+          "Qwen3-30B: cheapest run in the field at $0.0013, and 73% accuracy on untrusted email",
+          "the incumbent: 100% at $0.0023 and 1203ms"
+        ]
+      },
+      {
+        "name": "Round trips, not tools, are what research costs",
+        "kind": "measured",
+        "mechanism": "A traced scout spent most of its wall clock deciding what to call next, and every extra round trip re-reads a transcript that has grown since the last one. Batching is now part of the tool signature rather than a request in the prompt, because a request in a prompt is something a model can quietly stop honouring.",
+        "numbers": [
+          "166 seconds of a 220-second scout run spent deciding what to call next, 27 running the tools",
+          "up to 4 queries per call, charged to the budget as 4 searches, not as 1 call"
+        ]
+      },
+      {
+        "name": "Retrieval budgets, counted in queries",
+        "kind": "design",
+        "mechanism": "Each session carries its own durable search counter. Hitting the cap returns a normal result telling the model to conclude from what it has. A call refused at the cap never reaches the provider, and a retry of a transient failure is not charged again.",
+        "numbers": [
+          "25 searches for a specialist, 40 for the planner",
+          "the mis-count that forced the fix: 30 calls reported against a cap of 25, of which only 25 happened"
+        ]
+      },
+      {
+        "name": "The price table doubles as an allowlist",
+        "kind": "design",
+        "mechanism": "A model id absent from the generated catalog stops the process with a did-you-mean, rather than falling back silently. Every number here is attributed to a named model, so a silent fallback would not break a run — it would publish a false attribution.",
+        "numbers": [
+          "31 models in the generated snapshot, refreshed from GET /v1/models?verbose=true",
+          "the escape hatch is explicit, and says cost will then report as $0"
+        ]
+      },
+      {
+        "name": "Not having to run it twice",
+        "kind": "design",
+        "mechanism": "A tool call per finding instead of one closing JSON array. Partial progress survives a truncation, an empty result becomes a detectable failure rather than a plausible answer, and the planner re-runs only the specialist that was cut off.",
+        "numbers": [
+          "a silent specialist is reported as stalled after 5 minutes, not left as active"
+        ]
+      },
+      {
+        "name": "What is deliberately not bounded",
+        "kind": "design",
+        "mechanism": "Per-session token limits are off by product decision: a couple mid-plan must never hit a meter. Nothing cancels a durable session when the client walks away. This is where the cost tail comes from, and it is a choice rather than an oversight.",
+        "numbers": [
+          "an abandoned run reached 18 agents on its own",
+          "the search budgets bound it; nothing cancels it"
+        ]
+      }
+    ],
+    "limits": [
+      "V1's cost cannot be stated at all. At commit adacb10 there was no pricing, no trace store and no report — `agent/lib` held six files, none of them about cost. So \"V2 is N% cheaper\" is not a sentence this project is entitled to. The V1 to V2 delta is a delta in measurability: V1 could not have produced a cost figure, and V2 produced one and then caught it being wrong by 1.9x.",
+      "The $2.14 and $6.07 figures were recorded before the double-billing fix and have not been re-run. They are about 1.9x too high. They are left in place, marked, rather than quietly divided — the arithmetic is not the point, the staleness is.",
+      "No cost figure here has ever been checked against an invoice. Every one is list price multiplied by measured tokens, and cached reads are charged at the full rate on purpose, so these numbers err high.",
+      "\"About 15% of cost for the planner, about 80% for the specialists\" is asserted in code comments and never measured. No script in this repo computes a cost share per role.",
+      "Only one side of the LangGraph comparison exists on disk so far, so no head-to-head cost number is available yet."
+    ]
+  }
 }
