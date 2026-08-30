@@ -5,7 +5,7 @@ import {
   ChevronRightIcon,
   ExternalLinkIcon,
 } from "lucide-react";
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { actionName, actionOutcome, actionStatus, readCount, toolRuns } from "@/agent/lib/actions";
 import { agentCost, cacheHitRate, formatUsd } from "@/agent/lib/pricing";
 import type { TraceEntry } from "@/agent/lib/trace";
@@ -18,6 +18,11 @@ import {
   type StackState,
 } from "./agent-stack";
 import { ModelPicker } from "./model-picker";
+import {
+  clockEventsFrom,
+  deriveResearchClock,
+  formatElapsed,
+} from "@/agent/lib/research-clock";
 import type { Lane } from "./use-agent-lanes";
 
 /**
@@ -403,6 +408,12 @@ export interface ObservabilityRailProps {
   /** Present only in the app, where a visitor may change the planner's model. */
   readonly plannerModel?: string | null;
   readonly onPlannerModel?: (id: string | null) => void;
+  /**
+   * Timestamp of the couple's most recent send. Used only when the stream has
+   * not stamped `message.received` yet — the last context before specialists
+   * fan out is what starts the research clock.
+   */
+  readonly lastUserSentAt?: number | null;
 }
 
 export function ObservabilityRail({
@@ -415,6 +426,7 @@ export function ObservabilityRail({
   variant = "rail",
   plannerModel,
   onPlannerModel,
+  lastUserSentAt,
 }: ObservabilityRailProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // Follow the newest specialist automatically until the reader picks one.
@@ -461,6 +473,31 @@ export function ObservabilityRail({
   }, [lanes, research]);
 
   const liveCount = lanes.filter((l) => l.status === "live").length;
+  const stillRunning =
+    status === "streaming" ||
+    status === "submitted" ||
+    lanes.some((l) => l.status === "live" || l.status === "pending");
+  const derivedClock = useMemo(() => {
+    const root = lanes.find((l) => l.role === "root") ?? lanes[0];
+    const firstChild = lanes.find((l) => l.role === "specialist");
+    const parsed = firstChild?.summary?.startedAt
+      ? Date.parse(firstChild.summary.startedAt)
+      : Number.NaN;
+    return deriveResearchClock(clockEventsFrom(root?.events, root?.entries), {
+      fallbackUserAt: lastUserSentAt ?? null,
+      fallbackStartAt: Number.isFinite(parsed) ? parsed : null,
+      stillRunning,
+    });
+  }, [lanes, lastUserSentAt, stillRunning]);
+  // A later send must not move the start. Capture the first real boundary.
+  const frozenStart = useRef<number | null>(null);
+  const frozenEnd = useRef<number | null>(null);
+  if (derivedClock.startedAt !== null) frozenStart.current ??= derivedClock.startedAt;
+  if (derivedClock.endedAt !== null) frozenEnd.current ??= derivedClock.endedAt;
+  const clock = {
+    startedAt: frozenStart.current,
+    endedAt: frozenEnd.current,
+  };
 
   return (
     <aside className="vbento" data-variant={variant}>
@@ -604,7 +641,72 @@ export function ObservabilityRail({
           ) : null}
         </div>
       </section>
+
+      <section className="vtile vtile-wide">
+        <div className="vtile-head">
+          <span>
+            <b>Time &amp; Cost</b>
+          </span>
+          <span>
+            {clock.startedAt
+              ? stillRunning && !clock.endedAt
+                ? "live"
+                : "done"
+              : "waiting"}
+          </span>
+        </div>
+        <TimeCostTile
+          costUsd={totals.cost}
+          endedAt={clock.endedAt}
+          running={stillRunning && !clock.endedAt}
+          startedAt={clock.startedAt}
+        />
+      </section>
     </aside>
+  );
+}
+
+function TimeCostTile({
+  startedAt,
+  endedAt,
+  running,
+  costUsd,
+}: {
+  readonly startedAt: number | null;
+  readonly endedAt: number | null;
+  readonly running: boolean;
+  readonly costUsd: number;
+}) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!startedAt || endedAt || !running) return;
+    const id = window.setInterval(() => setNow(Date.now()), 250);
+    return () => window.clearInterval(id);
+  }, [startedAt, endedAt, running]);
+
+  if (!startedAt) {
+    return (
+      <p className="text-[11px] text-muted-foreground leading-relaxed">
+        Starts when you send the last details of the day, just before the specialists go out to
+        research.
+      </p>
+    );
+  }
+
+  const elapsed = Math.max(0, (endedAt ?? now) - startedAt);
+  return (
+    <div className="vclock">
+      <div>
+        <p className="vclock-figure venus-serif">{formatElapsed(elapsed)}</p>
+        <p className="text-[10px] text-muted-foreground">
+          {endedAt ? "brief to three visions" : "since your brief"}
+        </p>
+      </div>
+      <div className="text-right">
+        <p className="vclock-figure venus-serif">{formatUsd(costUsd)}</p>
+        <p className="text-[10px] text-muted-foreground">this session</p>
+      </div>
+    </div>
   );
 }
 

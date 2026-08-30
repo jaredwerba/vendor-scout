@@ -302,6 +302,112 @@ tr:last-child td {
   }
 }
 
+/* The obvious carousel: arrows, dots, a counter, and a peek of the next photo. */
+.venus-carousel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin: 0.6rem 0 1rem;
+  outline: none;
+}
+.venus-carousel-chrome {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+.venus-carousel-chrome span:last-child {
+  letter-spacing: 0.04em;
+  text-transform: none;
+  font-variant-numeric: tabular-nums;
+  color: var(--foreground);
+  font-weight: 600;
+}
+.venus-carousel-frame {
+  position: relative;
+}
+.venus-carousel-track {
+  display: flex;
+  gap: 0.55rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  border-radius: 16px;
+  cursor: grab;
+  padding: 0 2.4rem;
+}
+.venus-carousel-track::-webkit-scrollbar {
+  display: none;
+}
+.venus-carousel-slide {
+  flex: 0 0 82%;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+  margin: 0;
+}
+.venus-carousel-slide img,
+.venus-carousel-slide > div > img {
+  width: 100%;
+  height: 230px;
+  max-height: 230px;
+  object-fit: cover;
+  display: block;
+  margin: 0;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px -18px rgba(60, 47, 47, 0.5);
+}
+.venus-carousel-nav {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  background: color-mix(in srgb, var(--card) 88%, transparent);
+  color: var(--foreground);
+  box-shadow: 0 6px 18px -10px rgba(60, 47, 47, 0.55);
+  transform: translateY(-50%);
+}
+.venus-carousel-nav[data-dir="prev"] { left: 0.2rem; }
+.venus-carousel-nav[data-dir="next"] { right: 0.2rem; }
+.venus-carousel-nav:hover {
+  background: var(--card);
+}
+.venus-carousel-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.35rem;
+}
+.venus-carousel-dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  padding: 0;
+  border-radius: 999px;
+  border: 0;
+  background: color-mix(in srgb, var(--muted-foreground) 35%, transparent);
+}
+.venus-carousel-dot.is-active {
+  width: 1.1rem;
+  background: var(--primary);
+}
+@media (min-width: 640px) {
+  .venus-carousel-slide { flex-basis: 62%; }
+  .venus-carousel-slide img,
+  .venus-carousel-slide > div > img {
+    height: 280px;
+    max-height: 280px;
+  }
+}
+
 /* The budget slider: visible rose-ringed thumb on every engine, 22px touch target. */
 input[type="range"].venus-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
@@ -774,6 +880,19 @@ input[type="range"].venus-slider:focus-visible {
 .vrail-log-note { color: var(--muted-foreground); overflow: hidden; text-overflow: ellipsis; }
 .vrail-log-tok { color: var(--muted-foreground); text-align: right; font-variant-numeric: tabular-nums; }
 
+.vclock {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  align-items: end;
+}
+.vclock-figure {
+  font-size: 1.55rem;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
 /* The always-visible strip below lg, where a two-pane layout will not fit. */
 .vstrip {
   display: flex;
@@ -877,6 +996,120 @@ input[type="range"].venus-slider:focus-visible {
 .veco-axis { stroke: color-mix(in srgb, var(--muted-foreground) 30%, transparent); }
 .veco-tick { fill: var(--muted-foreground); font-size: 8px; font-variant-numeric: tabular-nums; }
 .veco-dot-label { fill: var(--foreground); font-size: 8.5px; }
+.veco-dot-num {
+  font-size: 9px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.veco-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+.veco-table th {
+  font-family: var(--font-sans);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  border-bottom: 1px solid var(--border);
+  padding: 0.45rem 0.5rem;
+  text-align: left;
+}
+.veco-table td {
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  padding: 0.55rem 0.5rem;
+  vertical-align: top;
+}
+.veco-table tr { scroll-margin-top: 4.5rem; }
+.veco-table tr:last-child td { border-bottom: 0; }
+.veco-table-num {
+  color: var(--primary);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  width: 1.6rem;
+}
+.veco-table-model { font-weight: 550; display: block; }
+.veco-table-note {
+  display: block;
+  margin-top: 0.15rem;
+  color: var(--muted-foreground);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.vsection { scroll-margin-top: 4.5rem; }
+
+.vsitemap {
+  margin-bottom: 2rem;
+  padding: 0.9rem 1rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 1.15rem;
+  background: color-mix(in srgb, var(--card) 92%, transparent);
+}
+.vsitemap-kicker {
+  margin: 0.55rem 0 0.35rem;
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+.vsitemap-kicker:first-child { margin-top: 0; }
+.vsitemap-top,
+.vsitemap-changes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.vsitemap-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.vsitemap-top a,
+.vsitemap-changes a {
+  color: inherit;
+  text-decoration: none;
+}
+.vsitemap-top a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--background);
+  font-size: 0.78rem;
+}
+.vsitemap-top a:hover,
+.vsitemap-changes a:hover {
+  border-color: color-mix(in srgb, var(--rose) 45%, var(--border));
+  background: color-mix(in srgb, var(--rose) 8%, var(--card));
+}
+.vsitemap-changes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.vsitemap-changes a {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem 0.55rem;
+  padding: 0.32rem 0.45rem;
+  border-radius: 0.55rem;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+.vsitemap-num {
+  font-family: var(--font-mono, ui-monospace), monospace;
+  font-size: 0.68rem;
+  color: var(--muted-foreground);
+}
+.vsitemap-note {
+  color: var(--muted-foreground);
+  font-size: 0.72rem;
+}
 
 /* --- stacked round-trip bar --------------------------------------------- */
 .veco-stack { display: flex; height: 2rem; border-radius: 0.6rem; overflow: hidden; background: color-mix(in srgb, var(--muted) 60%, transparent); }

@@ -126,43 +126,44 @@ function Cache({ data }: { readonly data: Charts["cache"] }) {
 /**
  * Cost against accuracy, bubble size for latency.
  *
- * This is the chart that carries the argument: the cheapest model per token
- * sits bottom-right — the worst corner — and the cheapest run of all scored
- * 73% on untrusted email.
+ * Names used to sit on the plot and collide (two 100% models almost share a
+ * point). The plot now carries only numbered dots; the aligned table under it
+ * is the reading, and each row is a jump target from the page sitemap.
  */
 function Sweep({ data }: { readonly data: Charts["sweep"] }) {
-  const W = 340;
-  const H = 232;
-  const L = 40;
-  const R = 12;
-  const T = 14;
-  const B = 34;
+  const W = 560;
+  const H = 260;
+  const L = 52;
+  const R = 28;
+  const T = 22;
+  const B = 44;
   const costs = data.rows.map((d) => d.cost);
   const minCost = Math.min(...costs);
   const maxCost = Math.max(...costs);
   const msList = data.rows.map((d) => d.ms);
   const minMs = Math.min(...msList);
   const maxMs = Math.max(...msList);
+  const span = maxCost - minCost || 1;
 
-  const x = (c: number) => L + ((c - minCost) / (maxCost - minCost)) * (W - L - R);
+  const x = (c: number) => L + ((c - minCost) / span) * (W - L - R);
   const y = (a: number) => H - B - ((a - 70) / 30) * (H - B - T);
-  const rad = (ms: number) => 6 + ((ms - minMs) / (maxMs - minMs)) * 10;
+  const rad = (ms: number) => 11 + ((ms - minMs) / (maxMs - minMs || 1)) * 8;
 
   return (
-    <div className="veco-card veco-wide">
+    <div className="veco-card veco-wide vsection" id="model-sweep">
       <p className="veco-label">Price per token does not predict price per task</p>
       <div className="overflow-x-auto">
         <svg
+          aria-label="Scatter of accuracy against cost per set for five candidate models. Each numbered point matches a row in the table below. The cheapest model per token, Nemotron-3.5-Lightning, is both the least accurate of the cheap options and the most expensive per run."
           className="w-full min-w-[320px]"
           role="img"
           viewBox={`0 0 ${W} ${H}`}
-          aria-label="Scatter of accuracy against cost per set for five candidate models. The cheapest model per token, Nemotron-3.5-Lightning, is both the least accurate of the cheap options and the most expensive per run."
         >
           <title>Accuracy against cost per set, five candidates</title>
           {[70, 80, 90, 100].map((a) => (
             <g key={a}>
               <line className="veco-axis" x1={L} x2={W - R} y1={y(a)} y2={y(a)} strokeWidth="0.5" />
-              <text className="veco-tick" textAnchor="end" x={L - 6} y={y(a) + 3}>
+              <text className="veco-tick" textAnchor="end" x={L - 8} y={y(a) + 3}>
                 {a}%
               </text>
             </g>
@@ -170,7 +171,7 @@ function Sweep({ data }: { readonly data: Charts["sweep"] }) {
           {data.rows.map((d, i) => {
             const cx = x(d.cost);
             const cy = y(d.accuracy);
-            const flip = cx > W - 90;
+            const r = rad(d.ms);
             return (
               <g
                 className="veco-dot"
@@ -181,35 +182,64 @@ function Sweep({ data }: { readonly data: Charts["sweep"] }) {
                   cx={cx}
                   cy={cy}
                   fill="var(--primary)"
-                  fillOpacity={d.note ? 0.85 : 0.4}
-                  r={rad(d.ms)}
+                  fillOpacity={d.note ? 0.92 : 0.7}
+                  r={r}
                   stroke="var(--primary)"
                   strokeWidth="1"
                 />
                 <text
-                  className="veco-dot-label"
-                  textAnchor={flip ? "end" : "start"}
-                  x={cx + (flip ? -rad(d.ms) - 5 : rad(d.ms) + 5)}
-                  y={cy + 3}
+                  className="veco-dot-num"
+                  fill="var(--primary-foreground)"
+                  textAnchor="middle"
+                  x={cx}
+                  y={cy + 3.5}
                 >
-                  {d.model}
+                  {i + 1}
                 </text>
               </g>
             );
           })}
           <line className="veco-axis" x1={L} x2={W - R} y1={H - B} y2={H - B} strokeWidth="1" />
-          <text className="veco-tick" textAnchor="start" x={L} y={H - B + 14}>
+          <text className="veco-tick" textAnchor="start" x={L} y={H - B + 16}>
             ${minCost.toFixed(4)}
           </text>
-          <text className="veco-tick" textAnchor="end" x={W - R} y={H - B + 14}>
+          <text className="veco-tick" textAnchor="end" x={W - R} y={H - B + 16}>
             ${maxCost.toFixed(4)}
           </text>
-          <text className="veco-tick" textAnchor="middle" x={(L + W - R) / 2} y={H - B + 26}>
+          <text className="veco-tick" textAnchor="middle" x={(L + W - R) / 2} y={H - B + 32}>
             cost per 15-reply set →
           </text>
         </svg>
       </div>
-      <p className="veco-caption">{data.caption}</p>
+      <table className="veco-table">
+        <caption className="sr-only">
+          Model sweep: accuracy, cost per 15-reply set, and median latency
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">#</th>
+            <th scope="col">Model</th>
+            <th scope="col">Accuracy</th>
+            <th scope="col">Cost / set</th>
+            <th scope="col">Latency</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.rows.map((d, i) => (
+            <tr id={`model-${i + 1}`} key={d.model}>
+              <td className="veco-table-num">{i + 1}</td>
+              <td>
+                <span className="veco-table-model">{d.model}</span>
+                {d.note ? <span className="veco-table-note">{d.note}</span> : null}
+              </td>
+              <td className="tabular-nums">{d.accuracy}%</td>
+              <td className="tabular-nums">${d.cost.toFixed(4)}</td>
+              <td className="tabular-nums">{d.ms.toLocaleString("en-US")} ms</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="veco-caption">{data.caption} Numbered points match the table.</p>
       <p className="veco-source">{data.source}</p>
     </div>
   );

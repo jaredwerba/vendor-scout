@@ -97,6 +97,56 @@ function Star({ star }: { readonly star: NonNullable<Change["star"]> }) {
   );
 }
 
+const PAGE_SECTIONS = [
+  { id: "architectures", label: "The two architectures" },
+  { id: "economics", label: "Economics" },
+  { id: "model-sweep", label: "Model sweep" },
+  { id: "levers", label: "The ten levers" },
+  { id: "changes", label: "The changes" },
+  { id: "faults", label: "What the faults have in common" },
+] as const;
+
+function CompareSitemap() {
+  return (
+    <nav aria-label="On this page" className="vsitemap">
+      <p className="vsitemap-kicker">On this page</p>
+      <ol className="vsitemap-top">
+        {PAGE_SECTIONS.map((s, i) => (
+          <li key={s.id}>
+            <a href={`#${s.id}`}>
+              <span className="vsitemap-num">{String(i + 1).padStart(2, "0")}</span>
+              {s.label}
+            </a>
+          </li>
+        ))}
+      </ol>
+      <p className="vsitemap-kicker">The model sweep</p>
+      <ol className="vsitemap-changes">
+        {economics.charts.sweep.rows.map((row, i) => (
+          <li key={row.model}>
+            <a href={`#model-${i + 1}`}>
+              <span className="vsitemap-num">{String(i + 1).padStart(2, "0")}</span>
+              {row.model}
+              {row.note ? <span className="vsitemap-note">{row.note}</span> : null}
+            </a>
+          </li>
+        ))}
+      </ol>
+      <p className="vsitemap-kicker">The changes</p>
+      <ol className="vsitemap-changes">
+        {changes.map((c, i) => (
+          <li key={c.id}>
+            <a href={`#${c.id}`}>
+              <span className="vsitemap-num">{String(i + 1).padStart(2, "0")}</span>
+              {c.title}
+            </a>
+          </li>
+        ))}
+      </ol>
+    </nav>
+  );
+}
+
 export default function ComparePage() {
   return (
     <main className="min-h-dvh bg-background text-foreground">
@@ -112,8 +162,10 @@ export default function ComparePage() {
           </p>
         </header>
 
+        <CompareSitemap />
+
         {/* The two states, side by side. */}
-        <section className="mb-10">
+        <section className="mb-10 vsection" id="architectures">
           <h2 className="venus-serif mb-3 text-lg">The two architectures</h2>
           <div className="overflow-x-auto rounded-2xl border bg-card/70">
             <table className="w-full text-left text-sm">
@@ -149,7 +201,7 @@ export default function ComparePage() {
         </section>
 
         {/* Economics: which levers moved cost, and what cannot be claimed. */}
-        <section className="mb-10">
+        <section className="mb-10 vsection" id="economics">
           <h2 className="venus-serif mb-1 text-lg">Economics</h2>
           <p className="mb-4 max-w-2xl text-muted-foreground text-sm leading-relaxed">
             {economics.framing}
@@ -157,9 +209,9 @@ export default function ComparePage() {
 
           <EconomicsDashboard charts={economics.charts} />
 
-          <ol className="space-y-3">
+          <ol className="space-y-3 vsection" id="levers">
             {economics.levers.map((lever, i) => (
-              <li className="rounded-2xl border bg-card/70 p-5" key={lever.name}>
+              <li className="rounded-2xl border bg-card/70 p-5" id={`lever-${String(i + 1).padStart(2, "0")}`} key={lever.name}>
                 <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                   <span className="font-mono text-muted-foreground text-xs">
                     {String(i + 1).padStart(2, "0")}
@@ -205,7 +257,7 @@ export default function ComparePage() {
         </section>
 
         {/* Each change: old, new, why, result. */}
-        <section className="mb-10">
+        <section className="mb-10 vsection" id="changes">
           <h2 className="venus-serif mb-1 text-lg">The changes</h2>
           <p className="mb-4 text-muted-foreground text-sm leading-relaxed">
             Each item shows the old approach and the new approach. It gives the reason for the
@@ -213,7 +265,7 @@ export default function ComparePage() {
           </p>
           <div className="space-y-4">
             {changes.map((c, i) => (
-              <article className="rounded-2xl border bg-card/70 p-5" key={c.id}>
+              <article className="vsection rounded-2xl border bg-card/70 p-5" id={c.id} key={c.id}>
                 <div className="flex items-baseline gap-2">
                   <span className="font-mono text-muted-foreground text-xs">
                     {String(i + 1).padStart(2, "0")}
@@ -253,7 +305,7 @@ export default function ComparePage() {
           </div>
         </section>
 
-        <section className="mb-10 rounded-2xl border bg-card/60 p-5">
+        <section className="mb-10 rounded-2xl border bg-card/60 p-5 vsection" id="faults">
           <h2 className="venus-serif mb-2 text-lg">What the faults have in common</h2>
           <p className="text-sm leading-relaxed">
             No fault in this list stopped the system. There was no crash and no failed build. The
