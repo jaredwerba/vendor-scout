@@ -3,121 +3,45 @@
   "title": "RunResult",
   "description": "What any wedding-research system under test must emit for one brief, so that two implementations on different stacks can be graded by identical code. Approach A (eve + Vercel) and Approach B (LangGraph + Nebius) both write this; scripts/grade.ts is the only thing that scores it.",
   "type": "object",
-  "required": [
-    "system",
-    "briefId",
-    "startedAt",
-    "wallClockMs",
-    "agents",
-    "findings"
-  ],
+  "required": ["system", "briefId", "startedAt", "wallClockMs", "agents", "findings"],
   "properties": {
     "system": {
       "type": "string",
       "description": "Identifier of the implementation under test, e.g. 'eve-vercel' or 'langgraph-nebius'."
     },
-    "systemVersion": {
-      "type": "string"
-    },
-    "briefId": {
-      "type": "string",
-      "description": "Key from evals/data/briefs.json \u2014 the fixed set both systems run."
-    },
-    "runId": {
-      "type": "string",
-      "description": "Session or thread id, so a score can be traced back to the run that produced it."
-    },
-    "traceUrl": {
-      "type": "string",
-      "description": "Deep link to the trace (LangSmith)."
-    },
-    "startedAt": {
-      "type": "string",
-      "format": "date-time"
-    },
-    "wallClockMs": {
-      "type": "integer",
-      "description": "End to end, including specialist fan-out."
-    },
-    "status": {
-      "type": "string",
-      "enum": [
-        "completed",
-        "waiting",
-        "failed",
-        "timeout"
-      ]
-    },
+    "systemVersion": { "type": "string" },
+    "briefId": { "type": "string", "description": "Key from evals/data/briefs.json — the fixed set both systems run." },
+    "runId": { "type": "string", "description": "Session or thread id, so a score can be traced back to the run that produced it." },
+    "traceUrl": { "type": "string", "description": "Deep link to the trace (LangSmith)." },
+    "startedAt": { "type": "string", "format": "date-time" },
+    "wallClockMs": { "type": "integer", "description": "End to end, including specialist fan-out." },
+    "status": { "type": "string", "enum": ["completed", "waiting", "failed", "timeout"] },
     "agents": {
       "type": "array",
       "description": "Every agent that ran, root first. One entry per agent session/thread.",
       "items": {
         "type": "object",
-        "required": [
-          "label",
-          "role",
-          "steps",
-          "toolCalls",
-          "costUsd"
-        ],
+        "required": ["label", "role", "steps", "toolCalls", "costUsd"],
         "properties": {
-          "id": {
-            "type": "string"
-          },
-          "label": {
-            "type": "string",
-            "description": "Venus, or the research category."
-          },
-          "role": {
-            "type": "string",
-            "enum": [
-              "root",
-              "specialist"
-            ]
-          },
-          "model": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string"
-          },
-          "steps": {
-            "type": "integer"
-          },
-          "toolCalls": {
-            "type": "integer"
-          },
-          "failedActions": {
-            "type": "integer"
-          },
-          "searches": {
-            "type": "integer"
-          },
-          "vendorsRecorded": {
-            "type": "integer"
-          },
-          "truncations": {
-            "type": "integer"
-          },
-          "inputTokens": {
-            "type": "integer"
-          },
-          "outputTokens": {
-            "type": "integer"
-          },
-          "costUsd": {
-            "type": "number"
-          },
-          "durationMs": {
-            "type": "integer"
-          },
+          "id": { "type": "string" },
+          "label": { "type": "string", "description": "Venus, or the research category." },
+          "role": { "type": "string", "enum": ["root", "specialist"] },
+          "model": { "type": "string" },
+          "status": { "type": "string" },
+          "steps": { "type": "integer" },
+          "toolCalls": { "type": "integer" },
+          "failedActions": { "type": "integer" },
+          "refusedActions": { "type": "integer" },
+          "searches": { "type": "integer" },
+          "vendorsRecorded": { "type": "integer" },
+          "truncations": { "type": "integer" },
+          "inputTokens": { "type": "integer" },
+          "outputTokens": { "type": "integer" },
+          "costUsd": { "type": "number" },
+          "durationMs": { "type": "integer" },
           "corpusHits": {
             "type": "integer",
             "description": "Vendors reused from the cross-session corpus rather than re-researched. 0 for a system without one."
-          },
-          "refusedActions": {
-            "type": "integer",
-            "description": "Guard refusals: the tool worked and declined the input on purpose."
           }
         }
       }
@@ -129,81 +53,21 @@
         "type": "array",
         "items": {
           "type": "object",
-          "required": [
-            "name",
-            "category"
-          ],
+          "required": ["name", "category"],
           "properties": {
-            "name": {
-              "type": "string"
-            },
-            "category": {
-              "type": "string"
-            },
-            "website": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "inquiryEmail": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "priceSignal": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "includes": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "styleFit": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "caveat": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "sourceUrl": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "location": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "distanceNote": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "imageUrls": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "fromCorpus": {
-              "type": "boolean",
-              "description": "Reused rather than freshly researched."
-            }
+            "name": { "type": "string" },
+            "category": { "type": "string" },
+            "website": { "type": ["string", "null"] },
+            "inquiryEmail": { "type": ["string", "null"] },
+            "priceSignal": { "type": ["string", "null"] },
+            "includes": { "type": ["string", "null"] },
+            "styleFit": { "type": ["string", "null"] },
+            "caveat": { "type": ["string", "null"] },
+            "sourceUrl": { "type": ["string", "null"] },
+            "location": { "type": ["string", "null"] },
+            "distanceNote": { "type": ["string", "null"] },
+            "imageUrls": { "type": "array", "items": { "type": "string" } },
+            "fromCorpus": { "type": "boolean", "description": "Reused rather than freshly researched." }
           }
         }
       }

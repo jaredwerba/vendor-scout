@@ -12,7 +12,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { Client } from "eve/client";
 import type { AgentFacts, FindingFacts, RunResult } from "../evals/harness/types.ts";
 import { listAllFindings } from "../agent/lib/research.ts";
-import { getTraceTree, readCount } from "../agent/lib/trace.ts";
+import { getTraceTree, readCount, toolRuns } from "../agent/lib/trace.ts";
 import { traceUrl } from "../agent/lib/langsmith.ts";
 
 interface Brief {
@@ -121,7 +121,9 @@ const agents: AgentFacts[] = [tree.root, ...tree.children]
     toolCalls: readCount(s.toolCalls),
     failedActions: readCount(s.failedActions),
     refusedActions: readCount(s.refusedActions),
-    searches: readCount(s.tools?.web_search),
+    // Searches performed, not calls requested: a call refused at the budget
+    // cap never reached Tavily, and the A/B grader compares this number.
+    searches: toolRuns(s, "web_search"),
     vendorsRecorded: readCount(s.vendorsRecorded),
     truncations: readCount(s.truncations),
     inputTokens: readCount(s.inputTokens),

@@ -54,6 +54,19 @@ export default defineTool({
       .describe("'news' searches recent news sources only; default 'general'."),
   }),
   async execute({ query, max_results, include_images, time_range, topic }, ctx) {
+    // The key check comes first: a call that can never reach Tavily must not
+    // spend the budget. With no key, counting first burned all 25 on calls
+    // that did nothing and then reported the cap as spent.
+    if (!TAVILY_KEY) {
+      return {
+        status: "not_configured",
+        note:
+          "Web search is not configured on this deployment (missing TAVILY_API_KEY). " +
+          "Tell the couple you currently can't search the web, and answer only from " +
+          "pages you can fetch directly or information they provide. Do not guess.",
+      };
+    }
+
     // Retrieval governance: a specialist gets a research budget, the root a
     // larger one. Exhausting it is a normal outcome, not a failure — the
     // model is told to conclude from what it already has.
@@ -67,16 +80,6 @@ export default defineTool({
           `Search budget for this agent is spent (${budget.cap} searches). Do NOT search again. ` +
           "Finish with what you already found: record or report every vendor you verified, " +
           "and say plainly which parts you could not cover.",
-      };
-    }
-
-    if (!TAVILY_KEY) {
-      return {
-        status: "not_configured",
-        note:
-          "Web search is not configured on this deployment (missing TAVILY_API_KEY). " +
-          "Tell the couple you currently can't search the web, and answer only from " +
-          "pages you can fetch directly or information they provide. Do not guess.",
       };
     }
 

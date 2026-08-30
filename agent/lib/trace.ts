@@ -33,6 +33,8 @@ import {
   actionStatus,
   categoryFromBrief,
   isSubagentAction,
+  isSuccessStatus,
+  readCount,
   readUsage,
 } from "./actions";
 import { costFor } from "./pricing";
@@ -96,8 +98,12 @@ export interface TraceSummary {
   model: string | null;
   lastTool: string | null;
   lastEvent: string | null;
+  /** Calls *requested*, per tool. A capped call is requested and never runs. */
   tools: Record<string, number>;
+  /** Of those, the ones the tool itself declined. See `toolRuns`. */
+  toolsRefused: Record<string, number>;
 }
+
 
 export interface TraceEntry {
   /** Event time from eve's durable stamp (meta.at), not hook wall-clock. */
@@ -149,7 +155,8 @@ export interface SessionLineage {
   sessionId?: string;
 }
 
-function fresh(id: string, now: string, parent?: SessionLineage | null): TraceSummary {
+/** Exported for scripts/test-trace-fold.mjs: the fold must be assertable. */
+export function fresh(id: string, now: string, parent?: SessionLineage | null): TraceSummary {
   const isChild = Boolean(parent?.sessionId);
   return {
     id,
@@ -167,17 +174,18 @@ function fresh(id: string, now: string, parent?: SessionLineage | null): TraceSu
     turns: 0, steps: 0, toolCalls: 0, toolResults: 0, failedActions: 0, refusedActions: 0, subagents: 0,
     questions: 0, vendorsRecorded: 0, truncations: 0,
     inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, costUsd: 0,
-    model: null, lastTool: null, lastEvent: null, tools: {},
+    model: null, lastTool: null, lastEvent: null, tools: {}, toolsRefused: {},
   };
 }
 
 // biome-ignore lint/suspicious/noExplicitAny: eve protocol projection
 type Any = any;
 
-/** Older summaries predate some counters; read them as 0 rather than NaN. */
-export function readCount(n: unknown): number {
-  return Number.isFinite(Number(n)) ? Number(n) : 0;
-}
+// `readCount` and `toolRuns` live in ./actions with the rest of the shared
+// protocol reading, so a client component can use them without pulling the KV
+// store into the browser bundle. Re-exported: every existing caller imports
+// them from here.
+export { readCount, toolRuns } from "./actions";
 
 /**
  * What may be written about a tool call. Vendor research is the product's
@@ -204,7 +212,14 @@ function describeAction(a: Any, role: TraceRole): string | undefined {
   return undefined;
 }
 
-function apply(s: TraceSummary, ev: { type: string; data?: Any }, now: string): TraceEntry | null {
+/**
+ * Fold one event into the running summary and return the log row.
+ *
+ * Exported so scripts/test-trace-fold.mjs can assert on it. Two rounds of
+ * review found bugs here that every existing test was structurally unable
+ * to see, because nothing ever called this with a realistic event.
+ */
+export function apply(s: TraceSummary, ev: { type: string; data?: Any }, now: string): TraceEntry | null {
   const d = ev.data ?? {};
   const seq = typeof d.sequence === "number" ? d.sequence : undefined;
   s.lastEvent = ev.type;
@@ -290,24 +305,38 @@ function apply(s: TraceSummary, ev: { type: string; data?: Any }, now: string): 
       const soft = actionStatus(d);
       const ok = outcome === "success";
 
-      s.toolResults += 1;
-      if (outcome === "failed") s.failedActions += 1;
-      if (outcome === "refused") s.refusedActions = readCount(s.refusedActions) + 1;
-      // Anything the guards refused is not a vendor. Counted by outcome
-      // rather than by an exact status literal, so a new success status does
-      // not silently zero the number get_research re-runs categories on.
-      if (name === "record_vendor" && ok) s.vendorsRecorded += 1;
+      // Every counter is read through readCount: a summary deserialized from
+      // KV predates whichever field was added last, and `undefined + 1` is
+      // NaN, which persists as null and silently stops the metric.
+      s.toolResults = readCount(s.toolResults) + 1;
+      if (outcome === "failed") s.failedActions = readCount(s.failedActions) + 1;
+      if (outcome === "refused") {
+        s.refusedActions = readCount(s.refusedActions) + 1;
+        if (!s.toolsRefused) s.toolsRefused = {};
+        s.toolsRefused[name] = readCount(s.toolsRefused[name]) + 1;
+      }
+      // Counted only on a status this codebase recognises as a success.
+      // `actionOutcome` reads an unrecognised status as success so a new tool
+      // does not render red on arrival, but that default is wrong here: an
+      // unknown status would inflate the number get_research decides re-runs
+      // on, and a silent gap in the plan is worse than a visible duplicate.
+      if (name === "record_vendor" && ok && (!soft || isSuccessStatus(soft))) {
+        s.vendorsRecorded = readCount(s.vendorsRecorded) + 1;
+      }
 
       const usage = d?.result?.usage ? readUsage(d.result.usage) : null;
       return {
         t: now, type: ev.type, seq, tool: name, ok,
+        // A failed row must never be blank: the reason is the only thing that
+        // makes it actionable. A successful row carries no note at all —
+        // "recorded" on every green record_vendor row is noise.
         note:
-          outcome === "failed" && d?.error?.message
-            ? String(d.error.message).slice(0, 140)
-            : soft && soft !== "ok"
-              ? soft
-              : d.status === "rejected"
-                ? "declined at the approval gate"
+          d.status === "rejected"
+            ? "declined at the approval gate"
+            : outcome === "failed"
+              ? String(d?.error?.message ?? soft ?? "").slice(0, 140) || "failed"
+              : outcome === "refused"
+                ? soft || "refused"
                 : undefined,
         tokens: usage ? { in: usage.inputTokens, out: usage.outputTokens } : undefined,
       };

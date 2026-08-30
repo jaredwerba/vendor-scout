@@ -6,7 +6,7 @@ import {
   ExternalLinkIcon,
 } from "lucide-react";
 import { memo, useEffect, useMemo, useState } from "react";
-import { actionName, actionOutcome, actionStatus } from "@/agent/lib/actions";
+import { actionName, actionOutcome, actionStatus, readCount, toolRuns } from "@/agent/lib/actions";
 import { cacheHitRate, costFor, formatUsd } from "@/agent/lib/pricing";
 import type { TraceEntry } from "@/agent/lib/trace";
 import { cn } from "@/lib/utils";
@@ -186,15 +186,16 @@ function laneStats(lane: Lane, derived: StackState): LaneStats {
   return {
     steps: Math.max(derived.counts.steps, s?.steps ?? 0),
     toolCalls: Math.max(derived.counts.toolCalls, s?.toolCalls ?? 0),
-    searches: s?.tools?.web_search ?? 0,
+    // Searches performed, not calls requested — see toolRuns.
+    searches: toolRuns(s, "web_search"),
     vendors: s?.vendorsRecorded ?? 0,
     inputTokens: Math.max(derived.counts.inputTokens, s?.inputTokens ?? 0),
     outputTokens: Math.max(derived.counts.outputTokens, s?.outputTokens ?? 0),
     // Recomputed: stored costs written before the cache fix double-billed
     // cached reads and are ~1.9x too high.
     costUsd: s ? costFor(s.model, s) || s.costUsd || 0 : 0,
-    failed: Math.max(derived.counts.failed, s?.failedActions ?? 0),
-    refused: Number(s?.refusedActions) || 0,
+    failed: Math.max(derived.counts.failed, readCount(s?.failedActions)),
+    refused: Math.max(derived.counts.refused, readCount(s?.refusedActions)),
     truncated: (s?.truncations ?? 0) > 0,
     durationMs: s?.durationMs ?? 0,
     subagents: Math.max(derived.counts.subagents, s?.subagents ?? 0),

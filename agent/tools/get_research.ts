@@ -1,7 +1,7 @@
 import { defineTool } from "eve/tools";
 import { z } from "zod";
 import { countByCategory, listAllFindings, researchConfigured } from "../lib/research";
-import { getTraceTree, isStalled, readCount, STALL_AFTER_MS } from "../lib/trace";
+import { getTraceTree, isStalled, readCount, STALL_AFTER_MS, toolRuns } from "../lib/trace";
 
 /**
  * Read back everything the specialists have recorded — plus an honest health
@@ -38,13 +38,18 @@ export default defineTool({
     const specialists = tree.children.map((c) => {
       const stalled = isStalled(c);
       const refused = readCount(c.refusedActions);
-      const settled = c.status !== "active" && !stalled;
+      // "Settled" means finished, not merely not-running. A specialist parked
+      // on an input gate is `waiting`, and telling the planner it gave up
+      // makes it fan out a duplicate for a scout that is only paused.
+      const settled = c.status === "completed" || c.status === "failed";
       return {
         category: c.label,
         // A specialist that has gone silent is reported as stalled rather than
         // as active, so a hang cannot hold the plan hostage waiting for it.
         status: stalled ? "stalled" : c.status,
-        searches: c.tools.web_search ?? 0,
+        // Searches performed, not calls requested: a call refused at the
+        // budget cap never reached Tavily.
+        searches: toolRuns(c, "web_search"),
         vendors_recorded: c.vendorsRecorded,
         refused,
         truncated: c.truncations > 0,
@@ -59,11 +64,11 @@ export default defineTool({
           : settled && refused >= 3 && c.vendorsRecorded === 0
             ? "Everything it tried to record was REFUSED — directory sources, addresses that do not " +
               "belong to the vendor, or a missing town. Re-run it and tell it to open each vendor's own site."
-            : c.truncations > 0
-            ? "CUT OFF mid-run — its findings are incomplete. Re-run this category once with a narrower brief."
-            : c.vendorsRecorded === 0 && settled
-              ? "Recorded nothing. Either re-run this category once, or tell the couple it is still open."
-              : undefined,
+            : settled && c.truncations > 0
+              ? "CUT OFF mid-run — its findings are incomplete. Re-run this category once with a narrower brief."
+              : settled && c.vendorsRecorded === 0
+                ? "Recorded nothing. Either re-run this category once, or tell the couple it is still open."
+                : undefined,
       };
     });
 

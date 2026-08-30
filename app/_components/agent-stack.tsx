@@ -2,7 +2,7 @@
 
 import { PauseIcon, PlayIcon, SkipBackIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { actionName, actionOutcome, isSubagentAction } from "@/agent/lib/actions";
+import { actionName, actionOutcome, actionStatus, isSubagentAction } from "@/agent/lib/actions";
 
 /**
  * The agent stack, live. A faithful take on the "2026: Agent stack" diagram —
@@ -48,7 +48,7 @@ export interface StackState {
   tool: string | null;
   counts: {
     turns: number; steps: number; toolCalls: number; toolResults: number; subagents: number;
-    questions: number; inputTokens: number; outputTokens: number; failed: number;
+    questions: number; inputTokens: number; outputTokens: number; failed: number; refused: number;
   };
   lastType: string | null;
   seen: number;
@@ -86,7 +86,7 @@ function toolMeta(name: string) {
 function initial(): StackState {
   return {
     active: [], edge: null, phase: "idle", headline: "Waiting for you", detail: "nothing running", tool: null,
-    counts: { turns: 0, steps: 0, toolCalls: 0, toolResults: 0, subagents: 0, questions: 0, inputTokens: 0, outputTokens: 0, failed: 0 },
+    counts: { turns: 0, steps: 0, toolCalls: 0, toolResults: 0, subagents: 0, questions: 0, inputTokens: 0, outputTokens: 0, failed: 0, refused: 0 },
     lastType: null, seen: 0,
   };
 }
@@ -142,15 +142,30 @@ function fold(st: StackState, ev: StackEvent, inSub = false): void {
     case "action.result": {
       const name = actionName(d.result);
       // Shared with the trace store: a tool that reports its own failure in the
-      // payload must not render as a green, successful call here.
-      const ok = actionOutcome(d) === "success";
-      st.counts.toolResults += 1; if (!ok) st.counts.failed += 1;
+      // payload must not render as a green, successful call here. A refusal is
+      // its own outcome and is kept out of `failed` — a guard declining a
+      // directory source is the system working, not a fault, and counting it
+      // in both buckets showed "4 failed" beside "4 refused" for one event.
+      const outcome = actionOutcome(d);
+      const soft = actionStatus(d);
+      st.counts.toolResults += 1;
+      if (outcome === "failed") st.counts.failed += 1;
+      if (outcome === "refused") st.counts.refused += 1;
       const meta = toolMeta(name);
       st.tool = name;
       st.phase = "observing"; st.edge = "act-observe";
       st.active = sub(["observe", meta.plane]);
-      st.headline = ok ? `Observing · ${name}` : `Tool failed · ${name}`;
-      st.detail = ok ? `${meta.label} → back into the loop` : String(d?.error?.message ?? "error returned to the model");
+      st.headline =
+        outcome === "success" ? `Observing · ${name}`
+        : outcome === "refused" ? `Declined · ${name}`
+        : `Tool failed · ${name}`;
+      // The reason lives in the tool's own status for a soft outcome; eve
+      // attaches no `error` to those, so reading only `error.message` printed
+      // a generic caption and threw the actual reason away.
+      st.detail =
+        outcome === "success"
+          ? `${meta.label} → back into the loop`
+          : soft || String(d?.error?.message ?? "error returned to the model");
       break;
     }
     case "input.requested":
