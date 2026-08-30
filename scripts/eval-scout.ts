@@ -105,9 +105,14 @@ async function judgeVendor(f: VendorFinding, region: string) {
 
 const results: EvalCaseResult[] = [];
 /**
- * Briefs whose specialists never went quiet inside EVAL_SETTLE_TIMEOUT_MS.
- * Grading one of those measures timing, not research quality, so the summary
- * it produces is published without a score.
+ * Briefs whose specialists were dispatched and never went quiet inside
+ * EVAL_SETTLE_TIMEOUT_MS. Grading one of those measures timing, not research
+ * quality, so the summary it produces is published without a score.
+ *
+ * A brief where nothing was ever dispatched does not belong here. That run is
+ * not unmeasurable, it is measured and bad, and unscoring it published a dead
+ * agent under the same muted "not scored" chip a merely slow one earns — and,
+ * because this list is global, unscored every other brief in the run with it.
  */
 const unsettled: string[] = [];
 const note = (ok: boolean, name: string, expected: string, got: string, extra?: string) => {
@@ -175,31 +180,81 @@ for (const brief of selected) {
   // parks while they work. Grading here measured a run in flight and scored
   // "0 recorded" against specialists that were still searching. Wait for the
   // tree to go quiet before reading anything.
-  let settled = false;
-  const settleDeadline = Date.now() + SPECIALIST_SETTLE_MS;
-  for (;;) {
-    const snapshot = await getTraceTree(sessionId).catch(() => null);
-    const kids = snapshot?.children ?? [];
-    const running = kids.filter((c) => c.status === "active");
-    if (kids.length > 0 && running.length === 0) {
-      settled = true;
-      console.log(`  specialists settled (${kids.length})`);
-      break;
+  //
+  // Only a tree that exists can go quiet. A fan-out that never happened is not
+  // an unmeasurable run, it is the agent failing at the only job it has, and
+  // sending it down this wait cost twice: ~48 KV polls to confirm an emptiness
+  // already known, then a "not scored" chip that hid a dead agent behind the
+  // label a merely slow one earns. Decide dispatch first.
+  //
+  // Two reads rather than one, because the reverse mistake is as bad: the
+  // parent stream is the weaker witness (eve 0.24.4 never delivers
+  // `subagent.called`, which is why `delegated` is counted off the request),
+  // and a child that started a moment ago may not have reached KV yet.
+  let seenInTree = 0;
+  if (delegated === 0) {
+    for (let probe = 0; probe < 2 && seenInTree === 0; probe += 1) {
+      if (probe > 0) await new Promise((r) => setTimeout(r, 15_000));
+      seenInTree = (await getTraceTree(sessionId).catch(() => null))?.children.length ?? 0;
     }
-    if (Date.now() > settleDeadline) {
-      console.log(`  gave up waiting: ${running.length} still active after ${SPECIALIST_SETTLE_MS / 1000}s`);
-      break;
-    }
-    const recorded = kids.reduce((n, c) => n + c.vendorsRecorded, 0);
-    console.log(`  waiting on ${running.length}/${kids.length} specialists · ${recorded} vendors so far`);
-    await new Promise((r) => setTimeout(r, 15_000));
   }
-  if (!settled) unsettled.push(brief.id);
+  const dispatched = delegated > 0 || seenInTree > 0;
+
+  let settled = false;
+  if (dispatched) {
+    const settleDeadline = Date.now() + SPECIALIST_SETTLE_MS;
+    for (;;) {
+      const snapshot = await getTraceTree(sessionId).catch(() => null);
+      const kids = snapshot?.children ?? [];
+      // Finished, not merely not-running — the definition agent/tools/get_research.ts
+      // uses. A specialist parked on an input gate is `waiting`, and reading that as
+      // done grades a scout that has not searched yet.
+      const unfinished = kids.filter((c) => c.status !== "completed" && c.status !== "failed");
+      // A child joins the tree only once its own session starts, and the first poll
+      // runs before the 15s sleep. Counting only what had registered declared a
+      // five-scout fan-out settled on the two children that had appeared and
+      // finished, and that partial run was published as a real score.
+      const allRegistered = kids.length >= Math.max(delegated, seenInTree);
+      if (kids.length > 0 && allRegistered && unfinished.length === 0) {
+        settled = true;
+        console.log(`  specialists settled (${kids.length}/${Math.max(delegated, seenInTree)})`);
+        break;
+      }
+      if (Date.now() > settleDeadline) {
+        console.log(
+          `  gave up waiting: ${kids.length}/${Math.max(delegated, seenInTree)} registered, ` +
+            `${unfinished.length} unfinished after ${SPECIALIST_SETTLE_MS / 1000}s`,
+        );
+        break;
+      }
+      const recorded = kids.reduce((n, c) => n + c.vendorsRecorded, 0);
+      console.log(
+        `  waiting on ${unfinished.length}/${kids.length} specialists · ` +
+          `${Math.max(delegated, seenInTree)} dispatched · ${recorded} vendors so far`,
+      );
+      await new Promise((r) => setTimeout(r, 15_000));
+    }
+    // Only an in-flight tree is unmeasurable. Everything else gets a number.
+    if (!settled) unsettled.push(brief.id);
+  } else {
+    console.log(`  no specialist was ever dispatched in ${MAX_TURNS} turns — nothing to wait for`);
+  }
+  // `waiting` is the healthy end of this turn: Venus parks the moment she has
+  // dispatched her scouts. Labelling the expectation "completed" published a row
+  // reading expected "completed" · got "waiting (32s)" · PASS on every green run —
+  // a dashboard contradicting itself in public. Wording taken from scripts/grade.ts
+  // so the two graders read alike on /observe.
   note(
     status !== "unknown" && !status.startsWith("error"),
     `${brief.id} · turn`,
-    "completed",
+    "the run settled",
     `${status} (${seconds}s)`,
+  );
+  note(
+    dispatched,
+    `${brief.id} · dispatch`,
+    ">=1 specialist dispatched",
+    dispatched ? `${Math.max(delegated, seenInTree)} dispatched` : `none in ${MAX_TURNS} turns`,
   );
 
   // --- What the specialists actually did.
