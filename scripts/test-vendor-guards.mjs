@@ -9,6 +9,7 @@ import {
   directoryHost,
   emailLooksForeign,
   isContactFormOnly,
+  outsideRadius,
   sourceIsMissing,
 } from "../agent/lib/vendor-guards.ts";
 
@@ -64,6 +65,59 @@ for (const [want, name, url] of LIVENESS) {
   const ok = got === want;
   if (!ok) failures += 1;
   console.log(`${ok ? "✓" : "✗"} want ${want.padEnd(7)} got ${got.padEnd(7)} ${name}`);
+}
+
+// The travel radius, against the towns the 2026-08-30 eval actually judged.
+// Coordinates are real (Nominatim, fetched once and pinned) and the geocoder
+// is a table, so this block needs no network and no key. The five REJECTs are
+// the vendors the judge flagged; Manchester NH is the one it flagged WRONGLY
+// (~23 straight-line miles from Methuen), so it must pass here — the guard is
+// allowed to disagree with the judge only in the permissive direction... and
+// in this one case it is simply right.
+const TOWNS = {
+  "methuen, ma": { lat: 42.7262, lon: -71.1909 },
+  "jackson, nh": { lat: 44.1443, lon: -71.1811 },
+  "tamworth, nh": { lat: 43.8603, lon: -71.2635 },
+  "keene, nh": { lat: 42.9336, lon: -72.2784 },
+  "gilford, nh": { lat: 43.5481, lon: -71.407 },
+  "kingston, ma": { lat: 41.9945, lon: -70.7245 },
+  "northborough, ma": { lat: 42.3196, lon: -71.6422 },
+  "manchester, nh": { lat: 42.9956, lon: -71.4548 },
+  "rowley, ma": { lat: 42.7137, lon: -70.8818 },
+  "groton, ma": { lat: 42.6112, lon: -71.5745 },
+};
+const tableGeocode = async (town) => TOWNS[town.trim().toLowerCase()] ?? null;
+
+const RADIUS = [
+  // [want, vendor town] against "Methuen, MA" at 60 minutes (= 45 straight-line miles).
+  ["REJECT", "Jackson, NH"],      // ~98 mi — the White Mountains venue
+  ["REJECT", "Tamworth, NH"],     // ~79 mi
+  ["REJECT", "Keene, NH"],        // ~57 mi
+  ["REJECT", "Gilford, NH"],      // ~58 mi
+  ["REJECT", "Kingston, MA"],     // ~56 mi, and south of Boston
+  ["PASS", "Manchester, NH"],     // ~23 mi — the judge's own false positive
+  ["PASS", "Northborough, MA"],   // ~36 mi — borderline, survives
+  ["PASS", "Rowley, MA"],
+  ["PASS", "Groton, MA"],
+];
+for (const [want, town] of RADIUS) {
+  const hit = await outsideRadius(town, "Methuen, MA", 60, tableGeocode);
+  const got = hit ? `REJECT(~${hit.miles}mi > ${hit.limitMiles})` : "PASS";
+  const ok = got.startsWith(want);
+  if (!ok) failures += 1;
+  console.log(`${ok ? "✓" : "✗"} want ${want.padEnd(6)} got ${got.padEnd(20)} ${town} vs Methuen @60min`);
+}
+// Every way the guard cannot judge must fall open — an unlocatable town, a
+// brief with no radius, a brief with no town. Rejecting on ignorance would
+// throw away real vendors, the more expensive mistake (same rule as liveness).
+for (const [label, hit] of [
+  ["unknown town", await outsideRadius("Middle of Nowhere, ZZ", "Methuen, MA", 60, tableGeocode)],
+  ["no radius", await outsideRadius("Jackson, NH", "Methuen, MA", undefined, tableGeocode)],
+  ["no couple town", await outsideRadius("Jackson, NH", undefined, 60, tableGeocode)],
+]) {
+  const ok = hit === null;
+  if (!ok) failures += 1;
+  console.log(`${ok ? "✓" : "✗"} want PASS   got ${ok ? "PASS(open)" : "REJECT"}${" ".repeat(11)} fail-open: ${label}`);
 }
 
 console.log(failures === 0 ? "\nvendor guards: all cases behave as intended" : `\nvendor guards: ${failures} MISMATCHES`);

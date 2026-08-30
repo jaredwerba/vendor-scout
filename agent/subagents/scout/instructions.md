@@ -51,7 +51,10 @@ You have no shared history with the planner — the message is everything you kn
 3. **Check the distance before you record — from the map in your head, not from the web.**
    The brief states a location and how far the couple will travel. Read the vendor's actual town
    off their site and record it: `record_vendor` requires `location` ("Rowley, MA") and refuses
-   without it.
+   without it. Pass the couple's town as `couple_location` and the radius as
+   `max_drive_minutes`, both copied straight from your brief — the tool measures the
+   straight-line distance itself and refuses a vendor outside it, because judging distance
+   from memory is exactly what went wrong before.
 
    **Never search for drive times or distances.** Search cannot answer "how long is the drive
    from A to B", and trying burns the budget you need for finding vendors — one scout spent
