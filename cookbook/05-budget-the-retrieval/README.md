@@ -6,7 +6,7 @@ Recipe **05 of 10** in the Venus Blueprint Recipes arc:
 
 > Foundation → Delegation → Durability → Guards → **Governance** → Cost → Latency → Observability → Evaluation → Verification
 
-A research specialist that keeps refining its query looks like it is working. It emits tool calls, it gets results back, its lane in the observability rail keeps moving. It converges on nothing. Venus's catering scout did exactly that on a traced run, because a guard had asked it for a fact the web cannot answer:
+A research specialist that keeps refining its query looks like it is working. It emits tool calls, it gets results back, its lane in the observability rail keeps moving. It converges on nothing. Venus's catering scout did exactly that on a traced run, because a guard had asked it for a fact the web cannot answer. The decision record reads:
 
 ```text
 Catering scout: 7 consecutive searches for one drive time | 25 of 25 spent | 1 vendor recorded
@@ -91,7 +91,7 @@ export function searchCapFor(isSpecialist: boolean): number {
 }
 ```
 
-**A per-session slot is what makes the cap per agent.** eve's `defineState` is durable per-session memory, and a subagent never inherits it — each specialist starts fresh. So one module-scope handle, imported by one tool, yields a private counter for every scout in the fan-out without any of them knowing about each other. The specialist gets a research budget; the root gets a larger one for the occasional lookup between conversations, which is why the two constants differ.
+**A per-session slot is what makes the cap per agent.** eve's `defineState` is durable per-session memory, and a subagent session gets its own — each specialist starts fresh. So one module-scope handle, imported by one tool, yields a private counter for every scout in the fan-out without any of them knowing about each other. The specialist gets a research budget; the root gets a larger one for the occasional lookup between conversations, which is why the two constants differ.
 
 The caller does not pass a flag. [`agent/tools/web_search.ts`](../../agent/tools/web_search.ts) reads it off the runtime:
 
@@ -209,11 +209,10 @@ from A to B", and trying burns the budget you need for finding vendors — one s
 seven straight searches on a single drive time and came back with one vendor.
 ```
 
-The instruction replaces the search with a judgement the model can make unaided: place the town from what it already knows, or skip the vendor. Two `npm run eval:scout` runs over the same brief:
+The instruction replaces the search with a judgement the model can make unaided: place the town from what it already knows, or skip the vendor. The decision record for the rewritten guard, scored by `npm run eval:scout` over the same brief, reads:
 
 ```text
-scout quality 33/37
-scout quality 52/53 = 98% | radius judge 100% in all five categories
+scout quality: 52/53 (98%) | radius judge: 100% in all five categories
 ```
 
 The volume came back and the discipline held — the radius rule did not loosen, it stopped being enforced through a tool that could not enforce it. **A budget makes a bad requirement cheap, not correct.** If your cap keeps being reached, read the last ten queries before you raise it; a spiral and a genuinely hard research problem look identical in the aggregate and nothing alike in the transcript.
@@ -229,7 +228,7 @@ The point is not weddings specifically. This pattern transfers to any domain whe
 | A specialist reports more searches than its cap allows | The trace's `tools` map is folded at `actions.requested`, so it counts intent, not work | Read every count through `toolRuns()`, which subtracts `toolsRefused`; `scripts/test-trace-fold.mjs` asserts it |
 | Budget fully spent, almost nothing recorded | A required field no available tool can produce, so the model searches for it forever | Make the field optional and forbid searching for it by name in the instructions; check the transcript before raising the cap |
 | Budget reports spent on a deployment where search never worked | The counter was decremented before the credential check | Return `not_configured` ahead of `countSearches`; only work decrements |
-| Cap set to 25 but roughly 100 searches billed | The cap counts tool calls while the tool accepts a batch | Reserve `wanted.length` queries in one call to `countSearches` |
+| Cap set to 25 but up to 100 queries run (25 × 4) | The cap counts tool calls while the tool accepts a batch | Reserve `wanted.length` queries in one call to `countSearches` |
 | One transient 429 charged twice against the budget | The retry sits outside the counted unit | Count the batch once, before the network code; retry beneath it, transient statuses only |
 | Model keeps calling search after exhaustion | `cap_reached` returned with no instruction, so the model treats it as a transient denial | Return the terminal state, the used/cap numbers, and the next action in one note |
 | A refused call renders in the UI as a success | The chat read `state === "output-available"`, which is only whether the call returned | Route rendered parts through `partOutcome`; `scripts/test-outcomes.mjs` covers both shapes |

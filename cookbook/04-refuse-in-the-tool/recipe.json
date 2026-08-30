@@ -23,7 +23,7 @@
     "This repository cloned and npm install run once",
     "Network access: the liveness guard issues one real GET per recorded vendor",
     "No model key for the guard suite — the checks are pure functions plus one fetch",
-    "NEBIUS_API_KEY in .env.local only if you also run npm run eval:scout"
+    "No local key for npm run eval:scout either — it drives the deployed Venus, whose keys live on the deployment"
   ],
   "models": [
     { "id": "Qwen/Qwen3-235B-A22B-Instruct-2507", "role": "primary" },

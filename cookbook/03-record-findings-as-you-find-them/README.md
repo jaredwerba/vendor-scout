@@ -15,17 +15,19 @@ one cancelled turn, and a specialist that researched its category correctly hand
 back nothing *silently* — the planner sees an empty result, and an empty result from a research agent reads
 exactly like a category where nothing good exists.
 
-Three measured configurations, each scored by `npm run eval:scout`:
+Four measured configurations, each scored by `npm run eval:scout` and recorded in the decision log:
 
 ```text
 scout Qwen3-235B-A22B · outputSchema on the subagent    | 46/50
 scout DeepSeek-V4-Flash · outputSchema on the subagent  | 10 of 10 child sessions failed | 0 vendors recorded | 10/22
-scout Qwen3-235B-A22B · no outputSchema                 | 3-4 vendors per specialist | 0 truncations | 52/53
+scout Qwen3-235B-A22B · no outputSchema                 | 33/37
+scout Qwen3-235B-A22B · no outputSchema · drive-time guard rewritten | 3-4 vendors per specialist | 0 truncations | 52/53
 ```
 
-The last row moves two things at once — the model went back and the schema went away — so the strip is not
+The third row moves two things at once — the model went back and the schema went away — so it is not
 a clean attribution and should not be read as one; the traces are what separated them, and every failed
-child ended in `OUTPUT_SCHEMA_NOT_FULFILLED`, several before their first search. The score is also the least
+child ended in `OUTPUT_SCHEMA_NOT_FULFILLED`, several before their first search. The fourth row adds a fix that belongs to
+[Budget the Retrieval](../05-budget-the-retrieval/README.md), not to this recipe. The score is also the least
 informative column. `0 vendors recorded` is the one to read: ten specialists left nothing behind, which is
 the state an incremental design exists to prevent — and it could not, because nothing reached the store.
 
@@ -113,7 +115,7 @@ by the tool does not.
 
 ### Where a finding lands
 
-[`research.ts`](../../agent/lib/research.ts) keeps two keys per wedding — `research:<rootSessionId>`, a
+[`research.ts`](../../agent/lib/research.ts) keeps two kinds of key per wedding — `research:<rootSessionId>`, a
 set of category slugs, and `record:<rootSessionId>:<category>`, a hash of vendor slug to JSON finding. The
 write is one pipeline, and it returns the new count so the tool can nudge:
 
@@ -130,7 +132,8 @@ const [, , , total] = await redis([
 that re-records a vendor after a refusal updates it in place. A list would have grown a second copy on
 every retry, and the eval's distinct-vendors check would have started failing on a system that was working
 correctly. `TTL_SECONDS` is thirty days on both keys — long enough for a couple to leave mid-plan and come
-back — and the `EXPIRE` rides in the same pipeline as the write, so activity refreshes the lifetime.
+back — and the hash's `EXPIRE` rides in the same pipeline as the write, the set's in a second call behind it, so
+activity refreshes the lifetime.
 
 One line decides who a finding belongs to:
 
@@ -216,7 +219,7 @@ The point is not weddings specifically. This pattern transfers to any domain whe
 expensive, interruptible work and something downstream must tell "found nothing" apart from "died trying":
 a procurement assistant collecting supplier quotes, a security triage agent working a queue of alerts, a
 citation checker verifying references one at a time, a compliance crawler sampling documents against a rule
-set. The unit of work is a finding, the failure is silent, and losing half an hour of tool calls costs
+set. The unit of work is a finding, the failure is silent, and losing a specialist's whole run of tool calls costs
 twice — once in credits, once in the wrong conclusion drawn from an empty list.
 
 ## Failure modes

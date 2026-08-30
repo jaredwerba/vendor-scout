@@ -41,7 +41,7 @@
   ],
   "quickstart": {
     "clone": "git clone https://github.com/jaredwerba/vendor-scout.git && cd vendor-scout && npm install",
-    "configure": "Nothing to configure to read the committed run artifact. To regenerate it against the live deployment, put NEBIUS_API_KEY and TAVILY_API_KEY in .env.local (full list in README.md) and run npm run run:eve -- boston-boho.",
+    "configure": "Nothing to configure to read the committed run artifact. To regenerate it against the live deployment, put the KV credentials (KV_REST_API_URL and KV_REST_API_TOKEN) in .env.local and run npm run run:eve -- boston-boho; the model and search keys live on the deployment it drives.",
     "run": "npm run test:outcomes"
   },
   "endpoints": [],

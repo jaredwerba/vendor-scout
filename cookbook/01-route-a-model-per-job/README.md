@@ -11,7 +11,7 @@ Running one model for everything is the prototype configuration. It survives bec
 Then the question gets asked in the worst possible way. A sweep over fifteen labelled vendor replies ranked a cheaper model first on accuracy and on cost, so the reply classifier was switched to it. The very next run, same fifteen cases, same prompt:
 
 ```text
-Round 1: 15/15 | Round 2: 11/15 | Schema failures: 6
+First sweep: 15/15 | Next run, same cases: 11/15 | Schema failures: 6
 ```
 
 The saving was real. The tie was not.
@@ -116,7 +116,7 @@ export interface RoleSpec {
 }
 ```
 
-**The `rationale` field is not a comment.** `modelRouting()` returns it alongside the live id, and both [`app/page.tsx`](../../app/page.tsx) and [`app/observe/page.tsx`](../../app/observe/page.tsx) render it into the agent-stack panel. A justification that ships next to the choice is a justification someone will notice has gone stale.
+**The `rationale` field is not a comment.** `modelRouting()` returns it alongside the live id; [`app/observe/page.tsx`](../../app/observe/page.tsx) renders it as a column beside each role, and the [observability rail](../../app/_components/observability-rail.tsx) on the home page carries it as the hover title on each role. A justification that ships next to the choice is a justification someone will notice has gone stale.
 
 The four jobs demand different things, and the registry says so. The `planner` is Venus's voice and her orchestration — a small share of a plan's cost and all of what the couple reads, so it is held constant until an eval can measure prose quality. The `scout` specialists run long tool loops that re-send a growing transcript, which makes input price and context length the dominant terms. The `classifier` makes one structured-output call per reply on untrusted email from the open internet. The `judge` grades the others.
 
@@ -162,7 +162,7 @@ nvidia/Nemotron-3_5-Lightning         80% | $0.0077 | 6613ms
 Qwen/Qwen3-30B-A3B-Instruct-2507      73% | $0.0013 | 1851ms
 ```
 
-Read the bottom two rows before the top two. The candidate with the lowest published per-token rate produced the most expensive run in the field and five times the incumbent's median latency, because price per token is not cost — output volume is. And the cheapest run in the field got the worst score, which on untrusted vendor email means misfiled replies and follow-ups chasing someone who already said yes.
+Read the bottom two rows before the top two. The candidate with the lowest published per-token rate produced the most expensive run in the field and the slowest median of the five, because price per token is not cost — output volume is. And the cheapest run in the field got the worst score, which on untrusted vendor email means misfiled replies and follow-ups chasing someone who already said yes.
 
 Acting on the top row is what taught the sharper lesson. The switch went in, the same fifteen cases were run again, and the result was the strip in the hook. [`scripts/probe-structured-output.ts`](../../scripts/probe-structured-output.ts) was written to settle whether that was noise — thirty structured-output calls per model, scoring only whether an object came back at all:
 
@@ -181,7 +181,9 @@ The `scout` role refused a swap too, and its record is less flattering to the re
 
 ```ts
 const ROUNDS = Number(process.env.COMPARE_ROUNDS ?? 3);
+// …
 rows.sort((a, b) => b.worstScore - a.worstScore || b.score - a.score || a.costUsd - b.costUsd);
+// …
 const cheapestPerfect = rows.filter((r) => r.worstScore === 1).sort((a, b) => a.costUsd - b.costUsd)[0];
 ```
 
@@ -220,8 +222,8 @@ What this proves is narrow and worth stating precisely: the two harnesses hold t
 ## Going further
 
 - **Give the planner an eval before you touch it.** It is the only role held constant on judgement rather than measurement, and the registry says so in its own rationale. Swapping the voice of the product on a hunch is precisely the move this file exists to prevent.
-- **Make the rationale expire.** The strings in `MODEL_ROLES` cite runs by date. Nothing checks whether the run still exists or still says that, and a rationale that has quietly become fiction is harder to spot than a missing one.
-- **Close the loop between the eval record and live routing.** Every eval summary already stores the model it ran on; comparing that against `modelIdFor(role)` at render time would have caught the console reporting a reverted model within seconds instead of hours.
+- **Make the rationale expire.** The strings in `MODEL_ROLES` cite runs by eval name and score, and the date sits in a comment above them. Nothing checks whether the run still exists or still says that, and a rationale that has quietly become fiction is harder to spot than a missing one.
+- **Close the loop between the eval record and live routing.** Every eval summary already stores the model it ran on; comparing that against `modelIdFor(role)` at render time would have caught the console reporting a reverted model at the next render instead of hours later.
 - **Separate the confounds before you record a verdict.** The `scout` revert bundled a model change with a subagent `outputSchema` change, and the registry recorded a clean-sounding conclusion from an experiment that was not clean.
 - **Next: [Delegation — Give the Specialist a Smaller Tool Surface](../02-a-smaller-tool-surface/README.md)** — what happens when one of these roles stops being a model call and becomes a sub-agent with its own session, its own tool surface, and its own way to fail.
 

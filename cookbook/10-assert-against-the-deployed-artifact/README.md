@@ -10,7 +10,7 @@ This repository reported itself verified on the day it pushed a commit that fail
 build. Here is the check that said so, reproduced with a stand-in command that exits non-zero:
 
 ```text
-$ node -e 'console.error("Build failed: 1 error"); process.exit(1)' 2>&1 | grep -iE "error|warn" && echo "no blocking output — shipping it"
+$ node -e 'console.error("Build failed: 1 error"); process.exit(1)' 2>&1 | grep -iE "error|warn" && echo "no blocking output — shipping it"; echo "pipeline status: $?"
 Build failed: 1 error
 no blocking output — shipping it
 pipeline status: 0
@@ -18,8 +18,8 @@ pipeline status: 0
 
 The command exited 1. The pipeline exited 0, because a pipeline's status belongs to its last stage
 and the last stage was `grep`. The transcript is not the interesting part — three separate faults
-here were invisible to typecheck, to `next build`, to `eve build` and to the evals, and each needed
-a different kind of looking to find.
+here were invisible to typecheck, to `next build` and to the evals — the first was reported by `eve build`
+and swallowed by the pipeline around it — and each needed a different kind of looking to find.
 
 ## What you'll build
 
@@ -56,8 +56,8 @@ npm run test:fold        # the trace fold, on eve's real event shapes
 outcome taxonomy: complete and correct
 ```
 
-(The status list is elided to three of twenty-two.) Both scripts exit non-zero on any failure and
-name the assertion that moved. Neither touches a network, and neither would have caught two of the
+(The status list is elided: two of the twenty-two literals and one part case are shown.) Both scripts exit non-zero on any failure and
+name the assertion that moved. Neither touches a network, and neither would have caught any of the
 three faults in this recipe.
 
 ## Walk-through
@@ -161,11 +161,11 @@ the viewport — at exactly the moment there is something to watch. From
 its own tile, and its cap moves with the column count rather than staying constant:
 
 ```css
-.vlanes { max-height: 13.5rem; overflow-y: auto; }
+.vlanes { max-height: 13.5rem; overflow-y: auto; /* … */ }
 /* Between lg and 2xl the panel is one column, so the vertical budget is the
    scarce thing: more padding must be paid for by a shorter lane list, or the
    event stream drops below the fold — which is exactly when it matters. */
-@media (min-width: 1280px) { .vlanes { max-height: 6rem; } }
+@media (min-width: 1280px) { .vlanes { max-height: 6rem; /* … */ } }
 @media (min-width: 1536px) { .vlanes { max-height: 17rem; } }
 ```
 

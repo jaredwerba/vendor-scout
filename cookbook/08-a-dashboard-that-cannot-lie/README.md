@@ -64,13 +64,19 @@ npm run test:fold       # the fold, driven with events shaped the way eve delive
 
 ```text
 22 status literals across 26 sources
-  ✓ cap_reached -> refused | ✓ search_failed -> failed | ✓ sent_to_test_inbox -> success
+  ✓ cap_reached                -> refused
+  ✓ sent_to_test_inbox         -> success
   ✓ {"status":"rejected","error":{"code":"ACTION_RESULT_   -> refused
+  ✓ {"result":{"output":{"status":"search_failed"}}}       -> failed
   ✓ part {"state":"output-denied"}                         -> refused
-1 runtime-assembled status site(s), all vetted | outcome taxonomy: complete and correct
+
+1 runtime-assembled status site(s), all vetted
+
+outcome taxonomy: complete and correct
 ```
 
-(Thirty-six further rows are elided; the run prints every one.) Twenty-two is more than the taxonomy
+(Thirty-six further rows are elided; the run prints every one, and `npm run test:fold` closes with
+`trace fold: correct`.) Twenty-two is more than the taxonomy
 was first written against, and that is the only interesting thing about the count: it is allowed to
 grow, and one nobody classified stops the build.
 
@@ -129,6 +135,7 @@ carried a private copy of "did this work", and all three were wrong the same way
 ```ts
 export const REFUSED_STATUSES = ["blocked", "cap_reached", "no_query"] as const;
 
+/** The tool could not do its job. */
 export const FAILED_STATUSES = [
   "search_failed", "record_failed", "not_configured", "not_found", "unavailable",
 ] as const;
@@ -224,12 +231,12 @@ disabled control concludes something is not ready, which is true. The same insti
 
 ### What this panel still cannot tell you
 
-The eval-versus-routing check is not built. Live lanes are capped at `MAX_ATTACHED = 5` open child
-streams and each log is trimmed to `MAX_EVENTS = 600` rows on a 30-day TTL, so a long run is a summary
+The eval-versus-routing check is not built. Live lanes are capped at `MAX_ATTACHED = 5` attached
+streams, root included, and each log is trimmed to `MAX_EVENTS = 600` rows on a 30-day TTL, so a long run is a summary
 plus its tail. A status assembled at runtime cannot be read out of the source at all, so
 [`test-outcomes.mjs`](../../scripts/test-outcomes.mjs) carries a hand-maintained `DYNAMIC_ALLOWED` map
 naming every value one such site can take. And the store is redacted at write time — nothing the
-couple typed reaches KV, only shape — which is what makes `/observe` safe to leave public, and means
+couple typed reaches KV beyond the budget figure the summary title carries, only shape — which is what makes `/observe` safe to leave public, and means
 no question about *what was said* can ever be answered here, by anyone.
 
 ### Taking it somewhere that is not a wedding
@@ -279,8 +286,8 @@ verified at request time, on every render, by fetching the run before the URL is
   and `modelRouting()`. It is a comparison, not a feature, and it is the one gap this recipe leaves
   open on purpose.
 - **Make the redaction rule enforceable rather than remembered.**
-  [`trace.ts`](../../agent/lib/trace.ts) keeps the couple's words out of KV by convention, inside
-  `describeAction`. A test that folds a message carrying a marker string and asserts it never reaches
+  [`trace.ts`](../../agent/lib/trace.ts) keeps the couple's words out of KV by convention, in the
+  `message.received` branch of `apply()` and in `describeAction`. A test that folds a message carrying a marker string and asserts it never reaches
   the written entry would turn that convention into a guard.
 - **Read the record this was built from.** [`decisions.json`](../../evals/data/decisions.json) and the
   generated [engineering log](../../docs/engineering-log.md) carry all three faults with their dates,

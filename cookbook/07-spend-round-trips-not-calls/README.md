@@ -73,7 +73,7 @@ florals      12 steps | 4 web_search calls | 54.7s
 specialist time 335.8s | slowest 75.5s | run 114.0s
 ```
 
-Twenty search calls across seventy-nine steps. The searches are not the run. That is a committed `RunResult` out of [`runs/`](../../runs/), kept in the repository on the stated principle that a benchmark you cannot re-read is an assertion. Regenerate it against the live deployment with `npm run run:eve -- boston-boho`, which needs the keys.
+Twenty search calls across seventy-nine steps. The searches are not the run. That is a committed `RunResult` out of [`runs/`](../../runs/), kept in the repository on the stated principle that a benchmark you cannot re-read is an assertion. Regenerate it against the live deployment with `npm run run:eve -- boston-boho`, which needs the KV credentials in `.env.local` to read the trace back; the model and search keys live on the deployment it drives.
 
 ## Walk-through
 
@@ -84,7 +84,7 @@ Twenty search calls across seventy-nine steps. The searches are not the run. Tha
 ```ts
 /** Beyond four, a batch is guessing rather than covering angles. */
 const MAX_BATCH = 4;
-
+// …
 queries: z
   .array(z.string().min(3).max(300))
   .min(1)
@@ -107,10 +107,10 @@ Both fields are optional, and that is the second half of the design:
 // failure. A schema the model cannot satisfy kills the call — and on a
 // subagent, the whole session. An empty batch is recoverable: say so and
 // let it try again.
-const wanted = (queries?.length ? queries : query ? [query] : [])
+const wanted = (queries?.length ? queries : query ? [query] : []) // …
 ```
 
-An unsatisfiable schema does not degrade, it terminates — and on a declared subagent it takes the child session with it, which is exactly how ten of ten specialists died in the run recorded in the [engineering log](../../docs/engineering-log.md). So the singular `query` stays, marked in its own description as the lesser option, and a call that arrives with neither returns `no_query` with an instruction instead of throwing. **State the choice, then name the failure the choice avoids:** a strict schema buys enforcement at the price of a fatal edge, and a tolerant schema plus an honest status buys the same enforcement with a recoverable one.
+An unsatisfiable schema does not degrade, it terminates — and on a declared subagent it takes the child session with it, which is what the child's `outputSchema` did to ten of ten specialists in the run recorded in the [engineering log](../../docs/engineering-log.md), and what the commit that made both fields optional was guarding against. So the singular `query` stays, marked in its own description as the lesser option, and a call that arrives with neither returns `no_query` with an instruction instead of throwing. **State the choice, then name the failure the choice avoids:** a strict schema buys enforcement at the price of a fatal edge, and a tolerant schema plus an honest status buys the same enforcement with a recoverable one.
 
 ### The description is the part the model reads before it decides
 
@@ -224,7 +224,7 @@ The point is not weddings specifically. This pattern transfers to any domain whe
 | Durable state grows without limit over a long session | The seen-set has no bound | `slice(-400)` on the durable slot; the oldest URLs fall out of the set first |
 | A batch is refused whole when the budget cannot cover it | All-or-nothing reservation | Grant the part that fits and return `not_run` for the rest; a refused batch spends a round trip and buys nothing |
 | The planner's lane looks idle during a fan-out | It is parked while children run; the turn costs the slowest specialist | Read the specialist lanes rather than the root; the observability recipe covers that view |
-| Wall clock did not move after batching landed | Round trips were removed from the read path while the write path still batches nothing | Intended. `record_vendor` stays one call per vendor so a truncation cannot erase findings |
+| Wall clock barely moves after batching lands | Round trips came out of the read path while the write path still batches nothing | Intended. `record_vendor` stays one call per vendor so a truncation cannot erase findings |
 | No way to tell whether a latency change helped | Duration is recorded per agent, not per step | Known scope. Compare committed `RunResult` files across runs; the within-agent distribution is not captured |
 
 ## Test it

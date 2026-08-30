@@ -52,20 +52,25 @@ npm run report      # every traced session, cost recomputed from stored tokens
 
 ```text
 VENUS — EVIDENCE PACK
-32 traced sessions · 102 agent sessions · $19.45 of real inference
+36 traced sessions · 116 agent sessions · $20.60 of real inference
 ──────────────────────────────────────────────────────────────────────────────
+
 2. COST HAS LONG TAILS
 
-   12 runs with real spend
-     median   $1.07
+   16 runs with real spend
+     median   $0.800
      p90      $3.31
-     max      $9.21   6 agents, 217 steps
-     ratio    8.6× median
+     max      $9.36   6 agents, 218 steps
+     ratio    11.7× median
+
+   The tail is not the model being expensive — it is an agent that would not stop.
+   Which is what the per-session search budgets bound, and why cost is
+   reported per agent in the app rather than per plan.
 ```
 
-(Sections 1, 3 and 4 are reliability, evals and generations; elided here.)
+(Captured 2026-08-30. Sections 1, 3 and 4 are reliability, evals and generations; elided here.)
 
-Twelve of the thirty-two traced sessions carry spend at all, and [`report.ts`](../../agent/lib/report.ts) drops
+Sixteen of the thirty-six traced sessions carry spend at all, and [`report.ts`](../../agent/lib/report.ts) drops
 the rest before taking quantiles — a session with no priced step is not a cheap run, and leaving it in only drags
 the median toward zero. The ratio is the line worth reading, not the max. A tail that far above the median is not
 a model being expensive; it is an agent that would not stop.
@@ -140,6 +145,7 @@ misses, and a missed lookup is a zero. [`pricing.ts`](../../agent/lib/pricing.ts
 
 ```ts
 let id = (modelId ?? "").trim().replace(/^dynamic:/, "");
+if (!id) return null;
 for (let i = 0; i < 3; i += 1) {
   const hit = TOKEN_FACTORY_PRICING[id];
   if (hit) return hit;
@@ -225,7 +231,7 @@ spent on. It does not change that an unverified figure and a correct one look th
 | Every cost is `$0`; token counts look right | The model id was read from a field the runtime does not populate, so `priceFor` never matched | Read `RuntimeIdentity.modelId`, keep the older shape as a fallback ([`trace.ts`](../../agent/lib/trace.ts)) |
 | Every cost is `$0` and tokens are `0` too | Streamed turns omit usage unless it is requested | `includeUsage: true` on the provider ([`nebius.ts`](../../agent/lib/nebius.ts)) |
 | A known model still prices at zero | The trace carries a provider-prefixed id; the table keys on the bare catalog id | `priceFor` peels prefixes and returns `null` rather than guessing |
-| Cost is plausible but roughly double | `prompt_tokens` includes `cached_tokens`; both were billed | Bill `inputTokens` once — it is already the whole prompt |
+| Every cost is plausible and the invoice disagrees | `prompt_tokens` includes `cached_tokens`; both were billed | Bill `inputTokens` once — it is already the whole prompt |
 | A newly routed model reports no spend | Its id is absent from the catalog snapshot | `modelIdFor` throws with nearest matches; `npm run pricing:refresh`, or `NEBIUS_ALLOW_UNKNOWN_MODEL=1` knowing cost will read `$0` |
 | Fixing the rate leaves old sessions wrong | Cost was computed once, at write time, and stored | `agentCost` recomputes from stored tokens on every read |
 | Two surfaces show different dollars for one run | Each call site did its own arithmetic | One exported function, called by the report and the live rail alike |
@@ -234,7 +240,7 @@ spent on. It does not change that an unverified figure and a correct one look th
 ## Test it
 
 ```bash
-npm run verify   # typecheck · next build · eve build · test:guards · test:outcomes · test:fold
+npm run verify   # typecheck · next build · eve build · test:guards · test:outcomes · test:fold · cookbook:check
 ```
 
 That suite guarantees the *shape* of the pipeline, not the price: `test:fold` drives
@@ -258,7 +264,8 @@ the provider's own response.
   reads model and tokens per agent, so the number is one aggregation away.
 - **Read the record this was built from.** [`decisions.json`](../../evals/data/decisions.json) and the
   generated [engineering log](../../docs/engineering-log.md) carry both faults with dates, commits and run
-  ids — including the stale figures published before the fix, left marked rather than quietly divided.
+  ids — including the figures published before the fix, which stand in the record as they were reported
+  rather than quietly divided; the date on each entry is the marker.
 - **Next: [Latency — Spend Round Trips, Not Calls](../07-spend-round-trips-not-calls/).** Cost and wall clock
   come out of the same place, the round trip. The next recipe takes these same traced runs and asks where the
   seconds went.

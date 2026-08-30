@@ -10,7 +10,7 @@ A caterer was recorded with the inquiry address `inquiries@hideseekmedia.com`, t
 
 Both halves of that were already forbidden in writing. The scout's instructions ban directory sources and require a published address on the vendor's own contact page. The model read them and did it anyway.
 
-The fix is to move the rule from the prompt into `record_vendor`, the tool that writes a finding into the research store. The instinct is right and it generalizes — and applied one day later to a different rule, it drained a specialist's entire search budget to produce one vendor:
+The fix is to move the rule from the prompt into `record_vendor`, the tool that writes a finding into the research store. The instinct is right and it generalizes — and applied one day later to a different rule, it drained a specialist's entire search budget to produce one vendor. The decision record reads:
 
 ```text
 Searches spent on one drive time: 7 | Search budget: 25 of 25 | Vendors recorded: 1
@@ -38,7 +38,7 @@ scripts/
 - This repository cloned, and `npm install` run once.
 - Network access: the liveness guard issues one real `GET` per recorded vendor, and the suite fetches live URLs.
 - No model key is needed for the guard suite. The guards are pure functions plus one `fetch`, so they run without an LLM.
-- `NEBIUS_API_KEY` in `.env.local` only if you also want `npm run eval:scout`, which drives real planning turns.
+- Nothing else for the guard suite. `npm run eval:scout` drives real planning turns against the deployed Venus, or a local one you point it at, so the model and search keys live on that deployment rather than in `.env.local`.
 
 ## Run it
 
@@ -139,7 +139,7 @@ directoryHost("https://luxewedding.com/portfolio")                              
 directoryHost("https://www.barnatgibbethill.com/gallery?share=facebook.com/x")          null
 ```
 
-The four `PASS` rows in the suite named `Luxe Wedding Co`, `Sarah Brides Bridal`, `Skylark Farm` and `Notyelp Studio` exist only because of that bug. **A guard with no appeal path has to be more careful than the model it constrains.**
+Three `PASS` rows in the suite — `Luxe Wedding Co`, `Sarah Brides Bridal` and `Notyelp Studio` — exist only because of that bug. **A guard with no appeal path has to be more careful than the model it constrains.**
 
 ### An address that plausibly belongs to the business
 
@@ -198,12 +198,11 @@ distance_note: z
   ),
 ```
 
-The instructions carry the matching sentence, including the reason, so the model is not merely forbidden but told why: *"Never search for drive times or distances. Search cannot answer 'how long is the drive from A to B', and trying burns the budget you need for finding vendors."* The radius itself stays a hard limit — the scout places the town from what it already knows, or skips the vendor.
+The instructions carry the matching sentence, including the reason, so the model is not merely forbidden but told why: *"Never search for drive times or distances. Search cannot answer "how long is the drive from A to B", and trying burns the budget you need for finding vendors — one scout spent seven straight searches on a single drive time and came back with one vendor."* The radius itself stays a hard limit — the scout places the town from what it already knows, or skips the vendor.
 
-Under the required drive time, and under the optional drive note, `npm run eval:scout` reports:
+With the drive note optional and the rule moved into prose, the decision record for `npm run eval:scout` reads:
 
 ```text
-scout quality: 33/37
 scout quality: 52/53 (98%) | radius judge: 100% across all five categories
 ```
 
@@ -234,11 +233,11 @@ A procurement assistant reading a supplier quote off an aggregator instead of th
 npm run test:guards
 ```
 
-The suite is built from rows of a real production run — the findings the scout eval caught, the legitimate findings from the same run that must keep passing, the vendor-owned domains that merely resemble directories, and a page on a real florist's own site that does not exist. It runs with no model and no API key, so a guard change is verified in seconds rather than in a research run.
+The suite is built from rows of a real production run — the findings the scout eval caught, the legitimate findings from the same run that must keep passing, the vendor-owned domains that merely resemble directories, and a page on a real florist's own site that does not exist. It runs with no model and no API key, so a guard change is verified without a research run.
 
 ## Going further
 
-- **Give a guard an appeal path before you make it strict.** A scout cannot argue with a rejection; it can only try again or give up. The liveness check is written to fail toward *let it through*; the two that do reject — directory and foreign email — each return a note naming the alternative.
+- **Give a guard an appeal path before you make it strict.** A scout cannot argue with a rejection; it can only try again or give up. The liveness check is written to fail toward *let it through*; every status that does reject — directory source, missing source, missing location, dead source, foreign email — returns a note naming what to do instead.
 - **Look at what your rejections cost.** The liveness check spends one request per recorded vendor and runs before the email check, which is free — so a vendor with a foreign address pays for a fetch nothing needed. Reordering is a small change; knowing which of your guards are cheap is the part worth doing first.
 - **Audit your prompt for facts your tools cannot reach.** Read the instructions as a list of demands and ask, for each one, which tool call would answer it. The ones with no answer are the death spirals.
 - **Check the guard against the eval, not against itself.** The radius held at 100% across all five categories only because a separately-pinned judge measures it; the guard's own unit test cannot tell you that.

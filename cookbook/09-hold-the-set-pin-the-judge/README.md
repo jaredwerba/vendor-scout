@@ -81,8 +81,8 @@ before. The number moving is the finding. Twelve of those fifteen calls produced
 anything downstream to be right or wrong about, and an accuracy sweep that credits whatever the
 production fallback returns instead scores that as a tie with the line above it.
 
-`probe:schema` with no arguments measures the models currently serving the classifier, scout and
-judge roles. `PROBE_ROUNDS` defaults to 2 and `COMPARE_ROUNDS` to 3, for the reason above.
+`probe:schema` with no arguments measures the registry defaults for the classifier, scout and
+judge roles, not an env override. `PROBE_ROUNDS` defaults to 2 and `COMPARE_ROUNDS` to 3, for the reason above.
 
 ## Walk-through
 
@@ -99,8 +99,9 @@ overridden per candidate, and
 throws the labels away.
 
 **The eval calls the shipped function, not a copy of it.** `eval-replies.ts` imports `classifyReply`
-from [`classify.ts`](../../agent/lib/classify.ts) — the same function the inbound-reply webhook
-calls, with the same prompt, the same precedence rules and the same injection warning. An eval that
+from [`classify.ts`](../../agent/lib/classify.ts) — the same function
+[`inbound-email.ts`](../../agent/channels/inbound-email.ts) calls when a real vendor replies, with
+the same prompt, the same precedence rules and the same injection warning. An eval that
 reimplements the thing it measures grades a second implementation, and the two drift the first time
 somebody edits one prompt.
 
@@ -112,7 +113,7 @@ clearly worse — and everything below follows from taking that sentence literal
 
 `classifyReply` degrades to a keyword heuristic when the model is unreachable, because in production
 a vendor's reply must never be lost over a classification failure. In a sweep that same behaviour
-lies: `DECLINE_HINTS` matches `unavailable|already booked|unsubscribe|not interested`, so a model
+lies: `DECLINE_HINTS` matches, among others, `unavailable|already booked|unsubscribe|not interested`, so a model
 returning nothing at all still gets cases right by accident.
 
 ```ts
@@ -127,7 +128,9 @@ union of the model and its fallback — the right thing to ship, and the wrong t
 
 ```ts
 const ROUNDS = Number(process.env.COMPARE_ROUNDS ?? 3);
+// …
 rows.sort((a, b) => b.worstScore - a.worstScore || b.score - a.score || a.costUsd - b.costUsd);
+// …
 // A candidate has to be perfect in EVERY round to be considered — one bad
 // round out of three is exactly the signal a single pass would have hidden.
 const cheapestPerfect = rows.filter((r) => r.worstScore === 1).sort((a, b) => a.costUsd - b.costUsd)[0];
@@ -142,8 +145,8 @@ the failure mode the harness exists to catch.
 
 ### The probe asks a question accuracy cannot
 
-[`probe-structured-output.ts`](../../scripts/probe-structured-output.ts) is the smallest script in
-the repository and the one that settled it:
+[`probe-structured-output.ts`](../../scripts/probe-structured-output.ts) is seventy-five lines and
+the one that settled it:
 
 ```ts
 try {
@@ -178,7 +181,7 @@ interesting number is the zero beside it that the accuracy sweep also reported.
 ### The judge gets its own env var
 
 [`evals.config.ts`](../../evals/evals.config.ts) is twenty lines and the whole point is one field —
-`judge: { model: modelFor("judge") }`, inherited by every eve eval in the suite. It resolves through
+`judge: { model: modelFor("judge") }`, the shared default for every eve eval. It resolves through
 the registry in [`models.ts`](../../agent/lib/models.ts), where the judge is a role like any other
 and, unlike any other, is never the model under test:
 
@@ -195,9 +198,10 @@ judge: {
 
 **Why its own env var rather than inheriting the agent's?** Because the entire purpose of a sweep is
 to change the agent's model, and a judge that follows it moves the measuring instrument in the same
-command that moves the thing being measured. Point `NEBIUS_MODEL` at something stronger and every
-score improves at once, including the parts you did not touch. `NEBIUS_JUDGE_MODEL` exists so the
-bar can be raised deliberately, in its own commit, as its own decision.
+command that moves the thing being measured. Were the judge to inherit `NEBIUS_MODEL`, pointing that
+at a stronger model would lift every score at once, including the parts of the system nobody
+touched. `NEBIUS_JUDGE_MODEL` exists so the bar moves deliberately, in its own commit, as its own
+decision.
 
 The pin holds at every other judgement. [`eval-scout.ts`](../../scripts/eval-scout.ts) and
 [`grade.ts`](../../scripts/grade.ts) both call `modelFor("judge")` for the vendor verdict, and
@@ -211,7 +215,7 @@ with a `true_intent`, and `simulate.ts` reports agreement with those labels as *
 they are generated, not ground truth. A suite whose cases are invented fresh every run is not a
 fixed set, however good the score looks.
 
-Ask a pinned judge two questions, not one. Both graders hand it a single finding and this schema:
+Ask a pinned judge two questions, not one. Both graders hand it a single finding and two booleans; this is the schema in [`grade.ts`](../../scripts/grade.ts), and `eval-scout.ts` carries a near-identical one:
 
 ```ts
 const verdictSchema = z.object({
@@ -250,20 +254,18 @@ marketing.** One contract, one grader, one set of briefs; the stack is a string.
 
 The three above are fixed sets against one function call.
 [`eval-scout.ts`](../../scripts/eval-scout.ts) drives real planning turns against a running Venus,
-and the hard part is knowing *when to read the result*. Venus parks as soon as she has dispatched
-her scouts, so a grader that reads immediately scores `0 recorded` against specialists still
-searching; the script polls the trace tree every fifteen seconds until no child is `active`, bounded
-by `EVAL_SETTLE_TIMEOUT_MS`. The nudge loop above it had the mirror-image bug: it counted
-`subagent.called`, which eve 0.24.4 never delivers on the parent stream, concluded nothing had been
-delegated, and re-prompted — triggering a whole extra fan-out per nudge. **An eval that measures the
-system wrong costs more than no eval.** One of those bugs scored a healthy run at zero; the other
-tripled the price of every run it graded. Neither threw.
+and the hard part is knowing *when* to read the result. Two of its own bugs are recorded in its
+comments: Venus parks the moment she dispatches her scouts, so an early read scored `0 recorded`
+against specialists that were still searching, and the nudge loop counted `subagent.called` — which
+eve 0.24.4 never delivers on the parent stream — concluded nothing had been delegated, and bought a
+whole extra fan-out per re-prompt. **An eval that measures the system wrong costs more than no
+eval.** Neither threw.
 
-What that eval caught is the second decision this recipe is built on. The specialist tier was moved
-to a cheaper model:
+What it caught is the second decision this recipe is built on. The specialist tier was moved to a
+cheaper model, and the decision record for that run reads:
 
 ```text
-eval:scout · boston-boho | candidate 10/22 (45%) | baseline 46/50
+eval:scout · boston-boho | DeepSeek-V4-Flash in the scout role: 10/22 (45%)
 10/10 specialist sessions failed · not one recorded a vendor
 ```
 
@@ -274,10 +276,10 @@ searching once. Reverting the model and deleting the schema gave 33/37, then 52/
 fix. The schema was redundant anyway: findings reach the planner through the research store, never
 through the child's return value.
 
-**Two changes landed in that run, and the score could not tell them apart.** A single number said
-the candidate failed; only the child sessions said which half of the change did it. That is the
-argument for keeping failure text, which is why `probe:schema` counts error strings and `grade.ts`
-carries the judge's `reason` into the failing case note.
+**Two changes landed in that run, and one number could not tell them apart.** The score said the
+candidate failed; the decision record names two causes, and only one of them was the model. That is
+the argument for keeping failure text beside the score, which is why `probe:schema` counts error
+strings and `grade.ts` carries the judge's `reason` into the failing case note.
 
 ### What this suite still cannot tell you
 
@@ -291,10 +293,10 @@ length, then *vetoed* by `eval:scout`. A veto is a weaker instrument than a comp
 rationale says what to do about it: re-test any candidate with `npm run eval:scout` before it takes
 the role.
 
-Both `RunResult` files in [`runs/`](../../runs/) are committed and no scorecard over them is. Three
-briefs, fifteen replies, four sampled vendors per category, and nothing geocodes — so the radius
-judge reasons about a drive it cannot measure. Those are the real ceilings on every number here, and
-listing them costs less than defending a figure that was never that strong.
+Three briefs, fifteen replies, four sampled vendors per category, both `RunResult` files committed
+and no scorecard over them, and nothing geocodes — so the radius judge reasons about a drive it
+cannot measure. Those are the real ceilings on every number here, and listing them costs less than
+defending a figure that was never that strong.
 
 ### Taking it somewhere that is not a wedding
 
@@ -323,7 +325,6 @@ be right every time it answers and still refuse to answer.
 | A live vendor is scored as a dead source | A 403 is bot blocking, not a missing page | `isLive` accepts 403, 405 and 429; `grade.ts` fails only on 404 and 410 |
 | An adversarial run reports a breach that did not happen | A regex cannot tell "quoted the attack" from "followed the attack" | A semantic grader is asked whether the agent *acted* on the instruction ([`simulate.ts`](../../scripts/simulate.ts)) |
 | A comparison flatters whichever stack you built | Each implementation graded itself | One `RunResult` contract, one `grade.ts`, identical fixed briefs ([`harness/types.ts`](../../evals/harness/types.ts)) |
-| A sweep reports `$0` for a candidate | Its id is absent from the catalog price snapshot | Both scripts `skip` an unpriceable model rather than reporting it as free |
 
 ## Test it
 
@@ -334,12 +335,11 @@ npm run eval:all   # test:guards · eval:replies · simulate · eval:scout · ev
 That chain ends by driving real planning turns against the deployed agent, so it spends research
 credits and takes minutes — `npm run eval:replies` alone is the fast half.
 
-What the suite guarantees is a property, not a score. Every script that prints a number also prints
-the model that produced it and, where a judgement was involved, the model that graded it, and those
-two are never the same id. The labelled set is committed, so a score is reproducible against the
-exact cases that produced it; the adversarial set is not, and says so in its own output. Nothing
-here is a badge and there is no pass threshold: the suite exists to make a swap arguable, not to
-declare one safe.
+What the suite guarantees is a property, not a score. Every eval script that prints a score also prints
+the model that produced it and, where a judgement was involved, the model that graded it, and by
+default those two are never the same id; `grade.ts` writes its judge to the summary rather than stdout. The labelled set is committed, so a score is reproducible against the
+exact cases that produced it; the adversarial set is not, and says so in its own output. There is no
+badge and no pass threshold — the suite exists to make a swap arguable, not to declare one safe.
 
 ## Going further
 
@@ -348,14 +348,14 @@ declare one safe.
   comment directly above it: a model that won a single-pass sweep at 15/15, then scored 11/15 on the
   very next run of the same cases.
 - **Probe the incumbent, not only the suspect.** `probe:schema` with no arguments measures the
-  models currently serving the classifier, scout and judge roles. An incumbent nobody re-measures is
+  registry defaults for the classifier, scout and judge roles. An incumbent nobody re-measures is
   an assumption wearing a measurement's clothes.
-- **Give the planner an eval before you swap it.** It is roughly 15% of a plan's cost and 100% of
-  what the couple reads. [`synthesis.eval.ts`](../../evals/synthesis.eval.ts) is the nearest model
+- **Give the planner an eval before you swap it.** The registry comment puts it at 15% of a plan's cost — a share
+  nothing measures — and it is 100% of what the couple reads. [`synthesis.eval.ts`](../../evals/synthesis.eval.ts) is the nearest model
   for one: a full turn, a hard assertion that every presented total fits the budget, and a judged
-  rubric on top of that.
+  rubric over that.
 - **Publish the scorecard, not only the runs.** [`runs/`](../../runs/) holds a `RunResult` per
-  system per brief and `npm run grade` will score them with identical code. Until that output is
+  system per brief and `npm run grade` scores them with identical code. Until that output is
   committed, the fairness of the comparison is a design property rather than a published one.
 - **Next: [Verification — Assert Against the Deployed Artifact](../10-assert-against-the-deployed-artifact/).**
   A score is only as true as the artifact it was taken from. The last recipe is about the gap

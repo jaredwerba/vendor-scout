@@ -10,7 +10,7 @@ Venus plans a wedding by fanning out: one research specialist per category, up t
 
 The built-in runs a copy of the *root* agent: same instructions, same tools. The root's tools include `send_outreach`, which puts a real email in a real stranger's inbox. So every research child was also an outreach agent. Nobody decided that. The capability arrived by inheritance, and a researcher was one bad inference away from using it.
 
-Research moved into a declared subagent with no such tool. A production session traced after that change still shows this:
+Research moved into a declared subagent with no such tool. The decision record for a production session traced after that change reads:
 
 ```text
 scout calls: 10 | agent calls: 3 | session: 1
@@ -74,7 +74,7 @@ grep -L disableTool agent/subagents/scout/tools/*.ts
 ```
 
 ```text
-$ jq -r ".tools[].name" .eve/agent-summary.json
+$ jq -r '.tools[].name' .eve/agent-summary.json
 agent
 cancel_followups
 check_outreach_status
@@ -88,7 +88,7 @@ save_wedding_plan
 send_outreach
 web_search
 
-$ jq -r ".subagents[].name" .eve/agent-summary.json
+$ jq -r '.subagents[].name' .eve/agent-summary.json
 scout
 
 $ grep -L disableTool agent/subagents/scout/tools/*.ts
@@ -117,6 +117,7 @@ export default defineAgent({
     "styling) against a couple's brief and budget, and returns 3-4 real, currently-operating " +
     "vendors with published contact details, price signals and source links. Reads the web " +
     "only — it never contacts a vendor.",
+  // …
   model: modelFor("scout"),
   modelContextWindowTokens: contextWindowFor("scout"),
 ```
@@ -152,6 +153,8 @@ export default disableTool();
 Six files in that directory are a comment and a `disableTool()`. One of them is not about safety at all — [`todo.ts`](../../agent/subagents/scout/tools/todo.ts):
 
 ```ts
+import { disableTool } from "eve/tools";
+
 // A scout has one category and a search budget. It used two round trips per
 // run keeping a to-do list, and a round trip here costs 10-30 seconds of
 // model time — measured at 166s of one scout's 220s spent deciding what to
@@ -165,7 +168,7 @@ The same rule reaches the observability plane. [`agent/subagents/scout/hooks/obs
 
 ### A rule in a prompt is not a control
 
-The scout shipped, the instructions named it as the only delegation path, and the built-in was still there. Hence the strip in the hook. The fix is [`agent/tools/agent.ts`](../../agent/tools/agent.ts):
+The scout shipped, the instructions named it as the only delegation path, and the built-in was still there. Hence the numbers at the top of this recipe. The fix is [`agent/tools/agent.ts`](../../agent/tools/agent.ts):
 
 ```ts
 export default defineTool({
@@ -201,17 +204,19 @@ The scout deliberately has no `outputSchema`, and the comment in its definition 
   // It was here to guarantee a structured return, and it became the single
   // most brittle thing in the specialist tier: eve escalates a schema the
   // model cannot produce to OUTPUT_SCHEMA_NOT_FULFILLED, which fails the
-  // whole child session.
+  // whole child session. A run with DeepSeek-V4-Flash killed 10 of 10
+  // specialists that way, several before they had searched even once.
+  // …
 ```
 
-Two runs of the same fixed brief through `npm run eval:scout`, both with the schema still in place:
+The engineering log records two `npm run eval:scout` runs of the same fixed brief, both with the schema still in place:
 
 ```text
 DeepSeek-V4-Flash · specialist sessions failed: 10 of 10 | vendors recorded: 0 | 10/22
 Qwen/Qwen3-235B-A22B-Instruct-2507 · vendors per specialist: 3-4 | 46/50
 ```
 
-Read past the scores. The schema was survivable on one model and lethal on another, which makes it a dependency on the model rather than a guarantee — and several of those ten sessions died before they had searched even once. It was also redundant. Findings reach the planner through `record_vendor` and the research store, which [`get_research`](../../agent/tools/get_research.ts) joins to the live trace; the child's closing message is prose, and nothing reads it. The schema bought nothing and could cost everything.
+Read past the scores. The schema was survivable on one model and lethal on another, which makes it a dependency on the model rather than a guarantee — and several of those ten sessions died before they had searched even once. It was also redundant. Findings reach the planner through `record_vendor` and the research store, which [`get_research`](../../agent/tools/get_research.ts) joins to the live trace; the child's closing message is prose, and the planner is instructed to read findings from the store, not from that message. The schema bought nothing and could cost everything.
 
 ### What this transfers to
 
