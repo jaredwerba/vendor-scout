@@ -53,6 +53,14 @@ function delinkRepoPaths(md: string): string {
     .replace(/\[([^\]\n]+)\]\(\.\.[^)]*\)/g, "`$1`");
 }
 
+const ARC_LINE = /^[\s\S]*?\n> \**Foundation\** → [^\n]*\n/;
+
+function stripFrontMatter(md: string): string {
+  if (ARC_LINE.test(md)) return md.replace(ARC_LINE, "");
+  // No arc line: drop just the h1 and the tagline blockquote under it.
+  return md.replace(/^# [^\n]*\n(?:\s*> [^\n]*\n)?/, "");
+}
+
 export default async function RecipePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const dir = findDir(slug);
@@ -69,8 +77,11 @@ export default async function RecipePage({ params }: { params: Promise<{ slug: s
   }
 
   // The page renders its own header from recipe.json, so drop the markdown's
-  // h1, tagline blockquote and arc line rather than showing them twice.
-  const body = delinkRepoPaths(markdown.replace(/^[\s\S]*?(?=\n## )/, "").trimStart());
+  // h1, tagline blockquote, "Recipe NN of 10" line and arc chain rather than
+  // showing them twice. Stop there: the hook paragraphs between the arc and
+  // the first h2 carry the recipe's opening proof strip, and an earlier
+  // version of this line cut to the first h2 and dropped them on every page.
+  const body = delinkRepoPaths(stripFrontMatter(markdown).trimStart());
 
   return (
     <main className="min-h-dvh bg-background px-4 py-10 text-foreground sm:px-6">
