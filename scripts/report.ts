@@ -95,9 +95,10 @@ const evals = await listEvalSummaries();
 for (const e of evals) {
   line(
     `\n   ${e.kind.padEnd(9)} ${String(e.passed).padStart(3)}/${String(e.n).padEnd(3)} ` +
-      `${(e.score * 100).toFixed(0)}%   ${e.name.slice(0, 52)}`,
+      `${e.incomplete ? "  —  " : `${(e.score * 100).toFixed(0)}%   `}${e.name.slice(0, 52)}`,
   );
   if (e.model) line(`             model ${e.model.slice(0, 60)}`);
+  if (e.incomplete) line(`             NOT SCORED — ${e.incomplete.slice(0, 74)}`);
 }
 
 // ── 4. Generations ────────────────────────────────────────────────────────

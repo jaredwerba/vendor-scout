@@ -70,13 +70,18 @@ function EvalCard({ e }: { readonly e: EvalSummary }) {
     <div className="rounded-2xl border bg-card/70 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="font-medium text-sm">{e.name}</p>
-        <Chip tone={pct >= 80 ? "good" : "warn"}>{pct}% · {e.passed}/{e.n}</Chip>
+        {e.incomplete ? (
+          <Chip tone="muted">not scored · {e.passed}/{e.n}</Chip>
+        ) : (
+          <Chip tone={pct >= 80 ? "good" : "warn"}>{pct}% · {e.passed}/{e.n}</Chip>
+        )}
       </div>
       <p className="mt-1 text-muted-foreground text-xs">
         ran {when(e.ranAt)}{e.model ? ` · ${e.model}` : ""}
         {e.langsmith?.experiment ? ` · LangSmith experiment ${e.langsmith.experiment}` : ""}
         {e.note ? ` · ${e.note}` : ""}
       </p>
+      {e.incomplete ? <p className="mt-1 text-destructive text-xs">{e.incomplete}</p> : null}
       {e.langsmith?.url ? (
         <a className="mt-1 inline-block text-primary text-xs underline" href={e.langsmith.url} rel="noreferrer" target="_blank">
           open in LangSmith →

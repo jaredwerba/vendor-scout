@@ -104,6 +104,12 @@ async function judgeVendor(f: VendorFinding, region: string) {
 }
 
 const results: EvalCaseResult[] = [];
+/**
+ * Briefs whose specialists never went quiet inside EVAL_SETTLE_TIMEOUT_MS.
+ * Grading one of those measures timing, not research quality, so the summary
+ * it produces is published without a score.
+ */
+const unsettled: string[] = [];
 const note = (ok: boolean, name: string, expected: string, got: string, extra?: string) => {
   results.push({ name, expected, got, ok, note: extra });
   console.log(`${ok ? "✓" : "✗"} ${name.padEnd(46)} ${got}`);
@@ -169,12 +175,14 @@ for (const brief of selected) {
   // parks while they work. Grading here measured a run in flight and scored
   // "0 recorded" against specialists that were still searching. Wait for the
   // tree to go quiet before reading anything.
+  let settled = false;
   const settleDeadline = Date.now() + SPECIALIST_SETTLE_MS;
   for (;;) {
     const snapshot = await getTraceTree(sessionId).catch(() => null);
     const kids = snapshot?.children ?? [];
     const running = kids.filter((c) => c.status === "active");
     if (kids.length > 0 && running.length === 0) {
+      settled = true;
       console.log(`  specialists settled (${kids.length})`);
       break;
     }
@@ -186,6 +194,7 @@ for (const brief of selected) {
     console.log(`  waiting on ${running.length}/${kids.length} specialists · ${recorded} vendors so far`);
     await new Promise((r) => setTimeout(r, 15_000));
   }
+  if (!settled) unsettled.push(brief.id);
   note(
     status !== "unknown" && !status.startsWith("error"),
     `${brief.id} · turn`,
@@ -345,6 +354,12 @@ const score = results.length ? passed / results.length : 0;
 console.log(
   `\nscout quality ${passed}/${results.length} = ${(score * 100).toFixed(0)}% · agent ${model} · judge ${modelIdFor("judge")}`,
 );
+if (unsettled.length) {
+  console.log(
+    `NOT A SCORE — specialists never settled on ${unsettled.join(", ")}. ` +
+      "Published unscored; re-run before quoting this number.",
+  );
+}
 
 if (traceConfigured()) {
   await saveEvalSummary({
@@ -359,6 +374,10 @@ if (traceConfigured()) {
     cases: results,
     langsmith: null,
     note: `${selected.length} brief${selected.length === 1 ? "" : "s"} against ${host}`,
+    incomplete: unsettled.length
+      ? `specialists never settled on ${unsettled.join(", ")} within ${SPECIALIST_SETTLE_MS / 1000}s — ` +
+        "these checks graded a run still in flight, so this is a reading of timing, not of research quality"
+      : null,
   });
   console.log("saved to KV → /observe");
 } else {

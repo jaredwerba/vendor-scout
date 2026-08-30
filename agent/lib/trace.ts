@@ -140,6 +140,17 @@ export interface EvalSummary {
   cases: EvalCaseResult[];
   langsmith?: { dataset?: string; experiment?: string; url?: string } | null;
   note?: string;
+  /**
+   * Why this run must not be read as a score.
+   *
+   * A research eval that reads before its specialists have settled grades a
+   * run still in flight: few checks exist, most of them fail, and the result
+   * looks like a measurement of quality rather than of timing. One such run
+   * published 7/12 (58%) beside a cookbook citing 52/53 for the same command.
+   * A summary carrying this is shown as unscored everywhere, and the reason
+   * is shown with it — the number is kept, it just stops being a verdict.
+   */
+  incomplete?: string | null;
 }
 
 const key = (id: string) => `trace:session:${id}`;
