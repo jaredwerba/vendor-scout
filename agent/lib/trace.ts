@@ -74,6 +74,8 @@ export interface TraceSummary {
   toolCalls: number;
   toolResults: number;
   failedActions: number;
+  /** Guard refusals: the tool worked and declined the input on purpose. */
+  refusedActions: number;
   subagents: number;
   questions: number;
   /** record_vendor calls that succeeded — partial progress, visible live. */
@@ -155,7 +157,7 @@ function fresh(id: string, now: string, parent?: SessionLineage | null): TraceSu
     durationMs: 0,
     title: null,
     status: "active",
-    turns: 0, steps: 0, toolCalls: 0, toolResults: 0, failedActions: 0, subagents: 0,
+    turns: 0, steps: 0, toolCalls: 0, toolResults: 0, failedActions: 0, refusedActions: 0, subagents: 0,
     questions: 0, vendorsRecorded: 0, truncations: 0,
     inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, costUsd: 0,
     model: null, lastTool: null, lastEvent: null, tools: {},
@@ -271,17 +273,35 @@ function apply(s: TraceSummary, ev: { type: string; data?: Any }, now: string): 
     }
     case "action.result": {
       const name = actionName(d.result);
-      const ok = d.status !== "failed" && !d.error && !d?.result?.isError;
+      const threw = d.status === "failed" || Boolean(d.error) || Boolean(d?.result?.isError);
+      // A tool that reports its own failure in the payload does not throw, so
+      // the runtime calls it a success. Tavily returning `search_failed`, a
+      // spent search budget, and every guard refusal were all recorded as
+      // healthy tool calls — 258 searches showed "0 failed" while saying
+      // nothing about how many actually returned results.
+      const soft = String((d?.result?.output as { status?: string } | undefined)?.status ?? "");
+      const refused = soft.startsWith("rejected_");
+      const failedSoftly = soft === "search_failed" || soft === "record_failed" || soft === "not_configured";
+      const ok = !threw && !failedSoftly;
+
       s.toolResults += 1;
       if (!ok) s.failedActions += 1;
-      if (ok && name === "record_vendor") s.vendorsRecorded += 1;
+      if (refused) s.refusedActions += 1;
+      // Only an actual write counts. Every guard refusal was previously
+      // counted as a recorded vendor, which inflated the health check that
+      // `get_research` uses to decide whether a category needs re-running.
+      if (name === "record_vendor" && soft === "recorded") s.vendorsRecorded += 1;
       // A specialist's result carries the child's whole token bill.
       const usage = d?.result?.usage ? readUsage(d.result.usage) : null;
       return {
         t: now, type: ev.type, seq, tool: name, ok,
-        note: ok
-          ? (d.status === "rejected" ? "declined at the approval gate" : undefined)
-          : String(d?.error?.message ?? "failed").slice(0, 140),
+        note: threw
+          ? String(d?.error?.message ?? "failed").slice(0, 140)
+          : soft && soft !== "ok" && soft !== "recorded"
+            ? soft
+            : d.status === "rejected"
+              ? "declined at the approval gate"
+              : undefined,
         tokens: usage ? { in: usage.inputTokens, out: usage.outputTokens } : undefined,
       };
     }

@@ -44,9 +44,12 @@ export default defineTool({
         status: stalled ? "stalled" : c.status,
         searches: c.tools.web_search ?? 0,
         vendors_recorded: c.vendorsRecorded,
+        refused: c.refusedActions ?? 0,
         truncated: c.truncations > 0,
         failed_actions: c.failedActions,
-        note: stalled
+        note: (c.refusedActions ?? 0) >= 3 && c.vendorsRecorded === 0
+          ? "Everything it tried to record was REFUSED — directory sources, addresses that do not belong to the vendor, or a missing town. Re-run it and tell it to open each vendor's own site."
+          : stalled
           ? `STALLED — no activity for over ${Math.round(STALL_AFTER_MS / 60000)} minutes. ` +
             "Do not wait for it. Use whatever it already recorded and move on."
           : c.truncations > 0

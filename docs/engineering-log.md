@@ -196,6 +196,18 @@ The failures that cost the most are the ones that look like success.
 
 <sub>runs `wrun_41M16NZKKB0GJNG65GT0HQ5BGW`</sub>
 
+### A failed search was recorded as a successful tool call
+
+**Wrong.** The trace reported 258 web searches across recent runs and zero failures. Jared then mentioned Tavily had been out of credit.
+
+**Why.** `web_search` reports its own failure in the payload — `{status: "search_failed"}` — rather than throwing. The runtime sees a tool that returned cleanly, so the trace marked it ok. The same held for a spent search budget and for every guard refusal. Worse, `record_vendor` counted a refusal as a recorded vendor, which inflated the health check that decides whether a category needs re-running.
+
+**Changed.** The trace reads the tool's own status. A self-reported failure counts as failed, a guard refusal is counted separately as refused, and only an actual write counts as a recorded vendor. `get_research` now tells the planner when a scout's finds are all being refused, which is otherwise indistinguishable from finding nothing.
+
+**Outcome.** Tavily was in fact healthy through those runs — 258 searches, all real. But the metric could not have told us either way, which is the point.
+
+> A tool that returns "I failed" as a successful result is invisible to anything counting exceptions.
+
 ---
 
 ## How to read the outcomes
