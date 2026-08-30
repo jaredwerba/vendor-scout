@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { clearSavedSession } from "@/app/_components/venus-app";
+import { clearSavedSession } from "@/app/_components/session-storage";
 
 /**
  * Clears this browser's saved session and drops the visitor on the landing.

@@ -15,6 +15,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import {
   actionOutcome,
+  partOutcome,
   FAILED_STATUSES,
   isKnownStatus,
   REFUSED_STATUSES,
@@ -93,6 +94,29 @@ for (const [data, want] of cases) {
   const ok = got === want;
   if (!ok) bad += 1;
   console.log(`  ${ok ? "✓" : "✗"} ${JSON.stringify(data).slice(0, 52).padEnd(54)} -> ${got}`);
+}
+
+// The chat reads a rendered message part, not an action.result. It had its
+// own answer to "did this work" — `state === "output-available"` — which is
+// only whether the call RETURNED, so a send the guards blocked printed
+// "Email sent ✓" to the couple. Same taxonomy, second shape.
+const partCases = [
+  [{ state: "input-available" }, "pending"],
+  [{ state: "output-available", output: { status: "sent" } }, "success"],
+  [{ state: "output-available", output: { status: "blocked", note: "cap" } }, "refused"],
+  [{ state: "output-available", output: { status: "cap_reached" } }, "refused"],
+  [{ state: "output-available", output: { status: "search_failed" } }, "failed"],
+  [{ state: "output-available", output: { status: "not_configured" } }, "failed"],
+  [{ state: "output-available", output: {} }, "success"],
+  [{ state: "output-error" }, "failed"],
+  [{ state: "output-denied" }, "refused"],
+];
+console.log("");
+for (const [part, want] of partCases) {
+  const got = partOutcome(part);
+  const ok = got === want;
+  if (!ok) bad += 1;
+  console.log(`  ${ok ? "✓" : "✗"} part ${JSON.stringify(part).slice(0, 47).padEnd(49)} -> ${got}`);
 }
 
 if (unclassified.length) {

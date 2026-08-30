@@ -11,7 +11,7 @@
  */
 
 import { getTraceTree, listTraces, readCount, type TraceSummary } from "./trace";
-import { cacheHitRate, costFor } from "./pricing";
+import { agentCost, cacheHitRate, costFor } from "./pricing";
 
 /**
  * Cost is recomputed from tokens rather than read from the stored figure.
@@ -21,11 +21,6 @@ import { cacheHitRate, costFor } from "./pricing";
  * inflated by roughly 1.9x. Recomputing on read corrects the whole history
  * instead of only what happens next.
  */
-function agentCost(a: TraceSummary): number {
-  const recomputed = costFor(a.model, a);
-  return recomputed > 0 ? recomputed : Number(a.costUsd) || 0;
-}
-
 export interface RunFacts {
   id: string;
   agents: number;

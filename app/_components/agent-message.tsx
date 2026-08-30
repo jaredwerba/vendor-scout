@@ -14,6 +14,7 @@ import {
   KeyRoundIcon,
   XCircleIcon,
 } from "lucide-react";
+import { partNote, partOutcome } from "@/agent/lib/actions";
 import { Message, MessageContent, MessageResponse } from "@/components/ai-elements/message";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -130,8 +131,9 @@ function AgentProgressRow({
   readonly message: string;
   readonly part: EveDynamicToolPart;
 }) {
-  const done = part.state === "output-available";
-  const failed = part.state === "output-error" || part.state === "output-denied";
+  const outcome = partOutcome(part);
+  const done = outcome === "success";
+  const failed = outcome === "failed" || outcome === "refused";
   const { name, phase } = delegationInfo(message);
   return (
     <div className="venus-rise flex items-center gap-3 rounded-2xl border bg-card/60 px-4 py-3">
@@ -153,8 +155,13 @@ function AgentProgressRow({
 /** A sent (or sending) vendor email — the email itself readable on tap, as text. */
 function OutreachCard({ part }: { readonly part: EveDynamicToolPart }) {
   const input = (part.input ?? {}) as Record<string, unknown>;
-  const done = part.state === "output-available";
-  const failed = part.state === "output-error" || part.state === "output-denied";
+  // `output-available` only means the call returned. send_outreach reports a
+  // blocked send in its payload, so reading the state alone told the couple
+  // "Email sent ✓" for an email the guards refused to send.
+  const outcome = partOutcome(part);
+  const done = outcome === "success";
+  const refused = outcome === "refused";
+  const failed = outcome === "failed";
   const vendor = typeof input.vendor_name === "string" ? input.vendor_name : "a vendor";
   const subject = typeof input.subject === "string" ? input.subject : undefined;
   const body = typeof input.body === "string" ? input.body : undefined;
@@ -168,13 +175,20 @@ function OutreachCard({ part }: { readonly part: EveDynamicToolPart }) {
       <p className="font-medium text-sm">
         {failed
           ? `Couldn't reach ${vendor} just now — I'll regroup`
-          : done
-            ? `Email sent to ${vendor} ✓`
-            : `Writing to ${vendor}…`}
+          : refused
+            ? `Didn't send to ${vendor}`
+            : done
+              ? `Email sent to ${vendor} ✓`
+              : `Writing to ${vendor}…`}
         {done ? (
           <span className="ml-2 font-normal text-muted-foreground text-xs">tracking replies</span>
         ) : null}
       </p>
+      {refused ? (
+        <p className="mt-1 text-muted-foreground text-xs">
+          {partNote(part) ?? "They've already been contacted, so I held this one back."}
+        </p>
+      ) : null}
       {body ? (
         <details className="mt-2">
           <summary className="cursor-pointer text-muted-foreground text-xs hover:text-foreground">
@@ -192,8 +206,9 @@ function OutreachCard({ part }: { readonly part: EveDynamicToolPart }) {
 
 /** Quiet one-liner for searches, page reads, and plan upkeep. */
 function ActivityChip({ part }: { readonly part: EveDynamicToolPart }) {
-  const done = part.state === "output-available";
-  const failed = part.state === "output-error" || part.state === "output-denied";
+  const outcome = partOutcome(part);
+  const done = outcome === "success";
+  const failed = outcome === "failed" || outcome === "refused";
   return (
     <p className="venus-rise flex items-center gap-2 text-muted-foreground text-xs">
       <span
@@ -245,11 +260,13 @@ function delegationInfo(message: string): { name: string; phase: string } {
 
 function venusActivityLabel(part: EveDynamicToolPart): string {
   const input = (part.input ?? {}) as Record<string, unknown>;
-  const done = part.state === "output-available";
-  const failed = part.state === "output-error" || part.state === "output-denied";
+  const outcome = partOutcome(part);
+  const done = outcome === "success";
   const str = (v: unknown) => (typeof v === "string" ? v : undefined);
 
-  if (failed) {
+  // A search that came back empty, was capped, or hit an unconfigured key is
+  // not a search that found something — it must not print "Searched: … ✓".
+  if (outcome === "failed" || outcome === "refused") {
     return "That one didn't go through — adjusting…";
   }
 

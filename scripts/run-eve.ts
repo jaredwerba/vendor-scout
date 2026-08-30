@@ -12,6 +12,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { Client } from "eve/client";
 import type { AgentFacts, FindingFacts, RunResult } from "../evals/harness/types.ts";
 import { listAllFindings } from "../agent/lib/research.ts";
+import { agentCost } from "../agent/lib/pricing.ts";
 import { getTraceTree, readCount, toolRuns } from "../agent/lib/trace.ts";
 import { traceUrl } from "../agent/lib/langsmith.ts";
 
@@ -128,7 +129,9 @@ const agents: AgentFacts[] = [tree.root, ...tree.children]
     truncations: readCount(s.truncations),
     inputTokens: readCount(s.inputTokens),
     outputTokens: readCount(s.outputTokens),
-    costUsd: Number(s.costUsd) || 0,
+    // Recomputed, not the stored figure: costs written before the cache
+    // fix are ~1.9x high, and the grader compares this column head-to-head.
+    costUsd: agentCost(s),
     durationMs: readCount(s.durationMs),
     // Approach A has no cross-session corpus: every plan researches from zero.
     corpusHits: 0,

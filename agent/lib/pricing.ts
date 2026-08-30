@@ -65,6 +65,26 @@ export function costFor(modelId: string | null | undefined, usage: Partial<Actio
   return (input * price.in + output * price.out) / 1e6;
 }
 
+/**
+ * What one agent's run cost, from its trace summary.
+ *
+ * Recompute wins over the stored figure. Every cost written before
+ * 2026-08-29 double-billed cached reads and is ~1.9x too high, and the stored
+ * number is only a fallback for a summary whose model is missing from the
+ * price table. Five sites used to spell this out — three one way, two by
+ * trusting `costUsd` raw — so the rail and the mobile strip could show two
+ * different dollar figures for the same run.
+ */
+export function agentCost(summary: {
+  model?: string | null;
+  costUsd?: number | null;
+  inputTokens?: number;
+  outputTokens?: number;
+}): number {
+  const recomputed = costFor(summary?.model, summary ?? {});
+  return recomputed > 0 ? recomputed : Number(summary?.costUsd) || 0;
+}
+
 /** What fraction of the prompt was served from cache. */
 export function cacheHitRate(usage: Partial<ActionUsage>): number {
   const input = Number(usage.inputTokens ?? 0) || 0;

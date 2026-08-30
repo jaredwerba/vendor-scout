@@ -88,7 +88,10 @@ export function categoryFromBrief(message: unknown): string | null {
   // rather than trusting the very first one.
   for (const raw of message.split("\n", 6)) {
     const m = raw.match(/^[\s>*_#-]*CATEGORY\s*[:\u2014-]\s*\*{0,2}([^*\n]+?)\*{0,2}\s*$/i);
-    if (m) return m[1].toLowerCase().slice(0, 40);
+    // trim() is load-bearing: the bold form "**CATEGORY:** florals" captures
+    // the leading space after the closing asterisks, and that value becomes
+    // the lane label verbatim on screen.
+    if (m) return m[1].trim().toLowerCase().slice(0, 40);
   }
   return null;
 }
@@ -168,12 +171,42 @@ export function actionOutcome(data: Any): ActionOutcome {
   const status = String(data?.status ?? "");
   if (status === "rejected") return "refused";
   if (status === "failed" || data?.error || data?.result?.isError) return "failed";
+  return outcomeFromStatus(actionStatus(data));
+}
 
-  const soft = String((data?.result?.output as { status?: string } | undefined)?.status ?? "");
+/** Read a tool's self-reported status. An unknown status is not a fault. */
+export function outcomeFromStatus(soft: string): ActionOutcome {
   if (!soft) return "success";
   if (soft.startsWith("rejected_") || REFUSED.has(soft)) return "refused";
   if (FAILED.has(soft)) return "failed";
   return "success";
+}
+
+/**
+ * The same reading, for a rendered message part in the chat.
+ *
+ * The chat had its own answer to "did this call work": `state ===
+ * "output-available"`. That is only whether the call RETURNED. A tool that
+ * refuses in its payload returns perfectly well, so a send the guards blocked
+ * rendered as "Email sent ✓ · tracking replies" to the couple. The part's
+ * state answers whether it finished; its output answers what happened.
+ */
+export type PartOutcome = "pending" | "success" | "refused" | "failed";
+
+export function partOutcome(part: Any): PartOutcome {
+  const state = String(part?.state ?? "");
+  if (state === "output-denied") return "refused";
+  if (state === "output-error") return "failed";
+  if (state !== "output-available") return "pending";
+  const output = part?.output as { status?: string } | undefined;
+  return outcomeFromStatus(String(output?.status ?? "").slice(0, 40));
+}
+
+/** What the tool said about a refusal or failure, for the couple to read. */
+export function partNote(part: Any): string | undefined {
+  const output = part?.output as { note?: string } | undefined;
+  const note = typeof output?.note === "string" ? output.note.trim() : "";
+  return note ? note : undefined;
 }
 
 /** The tool's self-reported status, for the trace note. Bounded. */

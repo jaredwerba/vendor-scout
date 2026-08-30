@@ -1,5 +1,7 @@
 "use client";
 
+import dynamic from "next/dynamic";
+
 import type { UserContent } from "ai";
 import { useEveAgent } from "eve/react";
 import {
@@ -32,19 +34,22 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { AgentMessage } from "./agent-message";
+// The landing renders zero messages, but importing the renderer statically
+// put streamdown, shiki, mermaid and katex on the front door's first paint —
+// and on /observe's, through the old venus-app cycle. The empty/non-empty
+// branch below is a seam that already exists, so the conversation loads when
+// there is a conversation.
+const AgentMessage = dynamic(() => import("./agent-message").then((m) => m.AgentMessage), {
+  ssr: false,
+  loading: () => <div className="h-16" aria-hidden="true" />,
+});
 import { isDelegationPart } from "@/agent/lib/actions";
 import type { StackEvent, StackRuntime } from "./agent-stack";
 import { MODEL_STORAGE_KEY, storedPlannerModel } from "./model-picker";
 import { ObservabilityRail, ObservabilityStrip } from "./observability-rail";
 import { useAgentLanes } from "./use-agent-lanes";
-import { clearSavedSession, type CuratedPreview, saveSession } from "./venus-app";
-
-export interface SavedVenusSession {
-  session: { sessionId?: string; continuationToken?: string; streamIndex: number };
-  events: readonly unknown[];
-  savedAt: string;
-}
+import { clearSavedSession, type SavedVenusSession, saveSession } from "./session-storage";
+import type { CuratedPreview } from "./venus-app";
 
 const COPY = {
   eyebrow: "Your private wedding planner",

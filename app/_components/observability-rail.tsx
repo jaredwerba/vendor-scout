@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { memo, useEffect, useMemo, useState } from "react";
 import { actionName, actionOutcome, actionStatus, readCount, toolRuns } from "@/agent/lib/actions";
-import { cacheHitRate, costFor, formatUsd } from "@/agent/lib/pricing";
+import { agentCost, cacheHitRate, formatUsd } from "@/agent/lib/pricing";
 import type { TraceEntry } from "@/agent/lib/trace";
 import { cn } from "@/lib/utils";
 import {
@@ -193,7 +193,7 @@ function laneStats(lane: Lane, derived: StackState): LaneStats {
     outputTokens: Math.max(derived.counts.outputTokens, s?.outputTokens ?? 0),
     // Recomputed: stored costs written before the cache fix double-billed
     // cached reads and are ~1.9x too high.
-    costUsd: s ? costFor(s.model, s) || s.costUsd || 0 : 0,
+    costUsd: s ? agentCost(s) : 0,
     failed: Math.max(derived.counts.failed, readCount(s?.failedActions)),
     refused: Math.max(derived.counts.refused, readCount(s?.refusedActions)),
     truncated: (s?.truncations ?? 0) > 0,
@@ -447,7 +447,7 @@ export function ObservabilityRail({
     let totalIn = 0;
     for (const l of lanes) {
       const s = l.summary;
-      cost += s ? costFor(s.model, s) || s.costUsd || 0 : 0;
+      cost += s ? agentCost(s) : 0;
       tokens += (s?.inputTokens ?? 0) + (s?.outputTokens ?? 0);
       vendors += s?.vendorsRecorded ?? 0;
       totalIn += s?.inputTokens ?? 0;
@@ -623,7 +623,9 @@ export function ObservabilityStrip({
   readonly onOpen: () => void;
 }) {
   const live = lanes.filter((l) => l.status === "live").length;
-  const cost = lanes.reduce((n, l) => n + (l.summary?.costUsd ?? 0), 0);
+  // Same reading as the rail: the strip used to show the raw stored
+  // figure, so opening the rail changed the dollar amount for one run.
+  const cost = lanes.reduce((n, l) => n + (l.summary ? agentCost(l.summary) : 0), 0);
   const vendors = lanes.reduce((n, l) => n + (l.summary?.vendorsRecorded ?? 0), 0);
   const busy = status === "streaming" || status === "submitted" || live > 0;
 

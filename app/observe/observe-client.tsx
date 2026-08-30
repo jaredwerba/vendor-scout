@@ -6,7 +6,7 @@ import type { TraceSummary } from "@/agent/lib/trace";
 import type { StackRuntime } from "@/app/_components/agent-stack";
 import { ObservabilityRail } from "@/app/_components/observability-rail";
 import { useAgentLanes } from "@/app/_components/use-agent-lanes";
-import { loadSavedSession } from "@/app/_components/venus-app";
+import { loadSavedSession } from "@/app/_components/session-storage";
 
 /**
  * The console side of /observe: pick any session and watch its whole agent
