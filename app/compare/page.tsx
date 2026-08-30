@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { type Charts, EconomicsDashboard } from "./economics-dashboard";
 import comparison from "@/evals/data/v1-v2.json";
 
 export const dynamic = "force-dynamic";
@@ -36,6 +37,7 @@ interface Lever {
 interface Economics {
   framing: string;
   headline: { claim: string; mechanism: string; source: string };
+  charts: Charts;
   levers: Lever[];
   limits: string[];
 }
@@ -154,16 +156,7 @@ export default function ComparePage() {
             {economics.framing}
           </p>
 
-          <div className="mb-5 rounded-2xl border border-primary/30 bg-primary/5 p-5">
-            <p className="mb-1 font-medium text-[11px] text-primary uppercase tracking-[0.18em]">
-              The largest movement
-            </p>
-            <p className="venus-serif text-lg leading-snug">{economics.headline.claim}</p>
-            <p className="mt-2 text-sm leading-relaxed">{economics.headline.mechanism}</p>
-            <p className="mt-2 font-mono text-[11px] text-muted-foreground">
-              {economics.headline.source}
-            </p>
-          </div>
+          <EconomicsDashboard charts={economics.charts} />
 
           <ol className="space-y-3">
             {economics.levers.map((lever, i) => (

@@ -794,3 +794,113 @@ input[type="range"].venus-slider:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .vrail-phase[data-state="active"] { animation: none; }
 }
+
+/* ---------------------------------------------------------------------------
+   Economics dashboard on /compare.
+
+   Every animation here is pure CSS driven by a custom property the server
+   renders inline, so the charts stay in a server component: no chart library,
+   no client bundle, nothing to hydrate. The page's JS cost for all four charts
+   is zero.
+--------------------------------------------------------------------------- */
+
+.veco-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 640px) {
+  .veco-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .veco-wide { grid-column: 1 / -1; }
+}
+
+.veco-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1.15rem;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--card) 70%, transparent);
+}
+.veco-label {
+  font-size: 0.66rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+.veco-caption { font-size: 0.78rem; line-height: 1.5; color: var(--muted-foreground); }
+.veco-source { font-size: 0.66rem; color: var(--muted-foreground); opacity: 0.75; font-family: var(--font-mono, ui-monospace), monospace; }
+.veco-figure { font-variant-numeric: tabular-nums; }
+
+/* --- before/after bars --------------------------------------------------- */
+.veco-bar-row { display: grid; grid-template-columns: 4.2rem 1fr auto; align-items: center; gap: 0.6rem; }
+.veco-bar-track {
+  position: relative;
+  height: 1.5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted) 60%, transparent);
+  overflow: hidden;
+}
+.veco-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  width: var(--veco-w);
+  transform-origin: left center;
+  animation: veco-grow 1000ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--veco-delay, 0ms);
+}
+.veco-bar-fill[data-tone="was"] { background: color-mix(in srgb, var(--muted-foreground) 45%, transparent); }
+.veco-bar-fill[data-tone="now"] { background: var(--primary); }
+@keyframes veco-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+/* --- cache ring ---------------------------------------------------------- */
+.veco-ring-track { stroke: color-mix(in srgb, var(--muted-foreground) 22%, transparent); }
+.veco-ring-fill {
+  stroke: var(--primary);
+  stroke-linecap: round;
+  stroke-dasharray: var(--veco-circ);
+  stroke-dashoffset: var(--veco-circ);
+  animation: veco-sweep 1400ms cubic-bezier(0.22, 1, 0.36, 1) 200ms both;
+}
+@keyframes veco-sweep { to { stroke-dashoffset: var(--veco-offset); } }
+
+/* --- scatter ------------------------------------------------------------- */
+.veco-dot {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: veco-pop 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--veco-delay, 0ms);
+}
+@keyframes veco-pop { from { opacity: 0; transform: scale(0.2); } to { opacity: 1; transform: scale(1); } }
+.veco-axis { stroke: color-mix(in srgb, var(--muted-foreground) 30%, transparent); }
+.veco-tick { fill: var(--muted-foreground); font-size: 8px; font-variant-numeric: tabular-nums; }
+.veco-dot-label { fill: var(--foreground); font-size: 8.5px; }
+
+/* --- stacked round-trip bar --------------------------------------------- */
+.veco-stack { display: flex; height: 2rem; border-radius: 0.6rem; overflow: hidden; background: color-mix(in srgb, var(--muted) 60%, transparent); }
+.veco-seg {
+  width: var(--veco-w);
+  transform-origin: left center;
+  animation: veco-grow 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--veco-delay, 0ms);
+}
+.veco-seg[data-tone="thinking"] { background: var(--primary); }
+.veco-seg[data-tone="tools"] { background: color-mix(in srgb, var(--primary) 42%, var(--card)); }
+.veco-key { display: flex; flex-wrap: wrap; gap: 0.75rem; font-size: 0.72rem; color: var(--muted-foreground); }
+.veco-key span::before {
+  content: "";
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 0.15rem;
+  margin-right: 0.35rem;
+  background: var(--veco-swatch);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .veco-bar-fill, .veco-seg, .veco-dot, .veco-ring-fill { animation: none; }
+  .veco-dot { opacity: 1; }
+  .veco-ring-fill { stroke-dashoffset: var(--veco-offset); }
+}

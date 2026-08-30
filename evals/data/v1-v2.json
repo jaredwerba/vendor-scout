@@ -220,6 +220,68 @@
       "No cost figure here has ever been checked against an invoice. Every one is list price multiplied by measured tokens, and cached reads are charged at the full rate on purpose, so these numbers err high.",
       "\"About 15% of cost for the planner, about 80% for the specialists\" is asserted in code comments and never measured. No script in this repo computes a cost share per role.",
       "Only one side of the LangGraph comparison exists on disk so far, so no head-to-head cost number is available yet."
-    ]
+    ],
+    "charts": {
+      "correction": {
+        "reported": 1.5,
+        "actual": 0.8,
+        "caption": "One traced plan, before and after the cached-token fix. No model changed.",
+        "source": "docs/engineering-log.md"
+      },
+      "cache": {
+        "percent": 90.7,
+        "agents": 33,
+        "caption": "of all input tokens served from Token Factory's prefix cache. Still billed here at the full prompt rate, on purpose.",
+        "source": "docs/engineering-log.md"
+      },
+      "sweep": {
+        "caption": "15 labelled vendor replies, one point per candidate. Bubble size is median latency.",
+        "source": "agent/lib/models.ts · npm run models:compare, 2026-08-29",
+        "rows": [
+          {
+            "model": "DeepSeek-V4-Flash",
+            "accuracy": 100,
+            "cost": 0.002,
+            "ms": 1570,
+            "note": ""
+          },
+          {
+            "model": "Qwen3-235B",
+            "accuracy": 100,
+            "cost": 0.0023,
+            "ms": 1203,
+            "note": "incumbent"
+          },
+          {
+            "model": "GLM-5.3-Flash",
+            "accuracy": 93,
+            "cost": 0.0041,
+            "ms": 2633,
+            "note": ""
+          },
+          {
+            "model": "Nemotron-3.5-Lightning",
+            "accuracy": 80,
+            "cost": 0.0077,
+            "ms": 6613,
+            "note": "cheapest per token, dearest per run"
+          },
+          {
+            "model": "Qwen3-30B",
+            "accuracy": 73,
+            "cost": 0.0013,
+            "ms": 1851,
+            "note": "cheapest run, worst accuracy"
+          }
+        ]
+      },
+      "roundTrip": {
+        "thinking": 166,
+        "tools": 27,
+        "total": 220,
+        "caption": "One traced scout run. The rest of the wall clock is unattributed in the source.",
+        "source": "agent/tools/web_search.ts"
+      }
+    }
   }
 }

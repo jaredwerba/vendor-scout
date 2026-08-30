@@ -635,6 +635,21 @@ export function AgentChat({
               isStarting={isBusy}
               onBegin={begin}
             />
+            {/* The only link to the engineering pages used to live in the
+                header, which this state does not render — so on a phone, where
+                you land here and stay, they were reachable only by typing the
+                URL. */}
+            <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-muted-foreground text-xs">
+              <a className="transition-colors hover:text-foreground" href="/compare">
+                V1 → V2
+              </a>
+              <a className="transition-colors hover:text-foreground" href="/observe">
+                Observability
+              </a>
+              <a className="transition-colors hover:text-foreground" href="/curated">
+                Curated by Venus
+              </a>
+            </nav>
           </div>
         ) : (
           <div className="w-full">{composer}</div>
