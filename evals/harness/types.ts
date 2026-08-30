@@ -60,6 +60,16 @@ export interface RunResult {
   startedAt: string;
   wallClockMs: number;
   status?: "completed" | "waiting" | "failed" | "timeout";
+  /**
+   * Why this run must not be turned into a score, or null/absent if it settled.
+   *
+   * `waiting` is the healthy status of a planner parked while its specialists
+   * work, so status alone cannot say whether the fan-out ever finished. Only
+   * the collector that waited knows, and a run read mid-search grades timing
+   * rather than research — few checks exist and most of them fail. The grader
+   * carries this into EvalSummary.incomplete so the card publishes unscored.
+   */
+  incomplete?: string | null;
   agents: AgentFacts[];
   findings: Record<string, FindingFacts[]>;
 }

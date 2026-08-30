@@ -89,6 +89,12 @@ if (!sessionId) {
 
 // The parent turn settles as soon as the scouts are dispatched; the work
 // continues in the children, so wait for the tree to go quiet.
+//
+// The reason is carried, not just logged, because this collector writes a
+// RunResult either way and parks the status at "waiting" either way. Without
+// it the grader cannot tell a finished fan-out from one abandoned mid-search,
+// and publishes the second as a percentage on /observe.
+let incomplete: string | null = null;
 const deadline = Date.now() + SETTLE_MS;
 for (;;) {
   const snapshot = await getTraceTree(sessionId).catch(() => null);
@@ -99,6 +105,13 @@ for (;;) {
     break;
   }
   if (Date.now() > deadline) {
+    const stalled =
+      kids.length === 0
+        ? "no specialists ever appeared"
+        : `${running.length} of ${kids.length} specialists were still active`;
+    incomplete =
+      `${stalled} after ${SETTLE_MS / 1000}s — these findings were read from a run still in ` +
+      "flight, so what they measure is timing, not research quality";
     console.log(`  gave up waiting: ${running.length} still active`);
     break;
   }
@@ -165,6 +178,7 @@ const run: RunResult = {
   startedAt: new Date(t0).toISOString(),
   wallClockMs: Date.now() - t0,
   status,
+  incomplete,
   agents,
   findings,
 };
@@ -177,4 +191,8 @@ console.log(
     `$${agents.reduce((n, a) => n + a.costUsd, 0).toFixed(2)} · ` +
     `${((Date.now() - t0) / 1000).toFixed(0)}s`,
 );
+if (incomplete) {
+  console.log(`\nNOT A SCORE — ${incomplete}.`);
+  console.log("Recorded in the file; grading it publishes the card unscored. Re-run before quoting it.");
+}
 console.log(`grade it with:  npm run grade -- runs/eve-${brief.id}.json`);

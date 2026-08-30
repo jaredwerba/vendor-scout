@@ -16,6 +16,10 @@
     "startedAt": { "type": "string", "format": "date-time" },
     "wallClockMs": { "type": "integer", "description": "End to end, including specialist fan-out." },
     "status": { "type": "string", "enum": ["completed", "waiting", "failed", "timeout"] },
+    "incomplete": {
+      "type": ["string", "null"],
+      "description": "Why this run must not be turned into a score — set when the specialist fan-out never went quiet before the collector gave up waiting. Absent or null means it settled. Status cannot carry this: 'waiting' is also what a healthy parked planner reports."
+    },
     "agents": {
       "type": "array",
       "description": "Every agent that ran, root first. One entry per agent session/thread.",

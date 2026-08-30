@@ -88,12 +88,34 @@ async function judge(f: FindingFacts, region: string) {
   return object;
 }
 
+/**
+ * Why this run must not be published as a score, or null if it settled.
+ *
+ * One rule, so both publishers of the /observe eval cards obey the same one.
+ * "waiting" is the healthy status of a planner parked while its specialists
+ * work, which is why status alone cannot stand in for a settled fan-out — the
+ * collector states that in `incomplete`. Grading a run still in flight reads
+ * timing; a percent chip on that card claims it read research quality.
+ */
+function unscorable(run: RunResult): string | null {
+  if (run.incomplete) return run.incomplete;
+  if (run.status !== "completed" && run.status !== "waiting") {
+    return (
+      `the run ended "${run.status ?? "unknown"}" rather than settling — these checks ` +
+      "graded a run that never finished"
+    );
+  }
+  return null;
+}
+
 interface Scorecard {
   system: string;
   briefId: string;
   passed: number;
   total: number;
   cases: EvalCaseResult[];
+  /** Non-null when this card must publish unscored. See `unscorable`. */
+  incomplete: string | null;
   costUsd: number;
   wallClockMs: number;
   vendors: number;
@@ -112,11 +134,13 @@ async function grade(run: RunResult): Promise<Scorecard> {
 
   console.log(`\n=== ${run.system} · ${run.briefId}`);
 
+  const incomplete = unscorable(run);
   note(
-    run.status === "completed" || run.status === "waiting",
+    incomplete === null,
     `${run.system} · turn`,
     "the run settled",
     `${run.status ?? "unknown"} in ${(run.wallClockMs / 1000).toFixed(0)}s`,
+    incomplete ?? undefined,
   );
 
   const kids = specialists(run);
@@ -253,6 +277,7 @@ async function grade(run: RunResult): Promise<Scorecard> {
     passed,
     total: cases.length,
     cases,
+    incomplete,
     costUsd: totalCost(run),
     wallClockMs: run.wallClockMs,
     vendors: totalVendors(run),
@@ -281,6 +306,13 @@ for (const c of cards) {
   );
 }
 
+// Said on stdout before it is published, the way eval-scout does it: the
+// counts stay in the table because the run is still evidence of something,
+// it just stops being a verdict.
+for (const c of cards) {
+  if (c.incomplete) console.log(`\nNOT A SCORE — ${c.system} · ${c.briefId}: ${c.incomplete}`);
+}
+
 if (traceConfigured()) {
   for (const c of cards) {
     await saveEvalSummary({
@@ -295,6 +327,7 @@ if (traceConfigured()) {
       cases: c.cases,
       langsmith: null,
       note: `${formatUsd(c.costUsd)} · ${(c.wallClockMs / 1000).toFixed(0)}s · ${c.vendors} vendors · ${c.agents} agents`,
+      incomplete: c.incomplete,
     });
   }
   console.log("\nsaved to KV → /observe");
