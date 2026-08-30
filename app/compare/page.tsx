@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { SiteNav } from "@/app/_components/site-nav";
 import { type Charts, EconomicsDashboard } from "./economics-dashboard";
 import comparison from "@/evals/data/v1-v2.json";
 
@@ -99,12 +99,11 @@ function Star({ star }: { readonly star: NonNullable<Change["star"]> }) {
 
 export default function ComparePage() {
   return (
-    <main className="min-h-dvh bg-background px-4 py-10 text-foreground sm:px-6">
-      <div className="mx-auto w-full max-w-4xl">
+    <main className="min-h-dvh bg-background text-foreground">
+      <SiteNav current="/compare" />
+      <div className="mx-auto w-full max-w-4xl px-4 py-10 sm:px-6">
         <header className="mb-8 flex flex-col items-center gap-2 text-center">
-          <Link className="venus-script text-5xl text-primary leading-none" href="/">
-            Venus
-          </Link>
+          <p className="venus-script text-5xl text-primary leading-none">Venus</p>
           <h1 className="venus-serif text-2xl">V1 to V2</h1>
           <p className="max-w-xl text-muted-foreground text-sm leading-relaxed">
             This page compares the first architecture with the second one. It gives the reason for
@@ -269,18 +268,38 @@ export default function ComparePage() {
         </section>
 
         <footer className="flex flex-wrap justify-center gap-4 text-muted-foreground text-xs">
-          <Link className="hover:text-foreground" href="/">
+          <a
+            className="hover:text-foreground"
+            href="/"
+            rel="noopener noreferrer"
+            target="_blank"
+          >
             ← back to Venus
-          </Link>
-          <Link className="hover:text-foreground" href="/cookbook">
+          </a>
+          <a
+            className="hover:text-foreground"
+            href="/cookbook"
+            rel="noopener noreferrer"
+            target="_blank"
+          >
             cookbook
-          </Link>
-          <Link className="hover:text-foreground" href="/observe">
+          </a>
+          <a
+            className="hover:text-foreground"
+            href="/observe"
+            rel="noopener noreferrer"
+            target="_blank"
+          >
             observability
-          </Link>
-          <Link className="hover:text-foreground" href="/curated">
+          </a>
+          <a
+            className="hover:text-foreground"
+            href="/curated"
+            rel="noopener noreferrer"
+            target="_blank"
+          >
             the gallery
-          </Link>
+          </a>
         </footer>
       </div>
     </main>

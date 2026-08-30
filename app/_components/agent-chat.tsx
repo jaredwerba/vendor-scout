@@ -4,16 +4,7 @@ import dynamic from "next/dynamic";
 
 import type { UserContent } from "ai";
 import { useEveAgent } from "eve/react";
-import {
-  ActivityIcon,
-  AlertCircleIcon,
-  ClipboardListIcon,
-  GitCompareIcon,
-  MailIcon,
-  ImageIcon,
-  MenuIcon,
-  RotateCcwIcon,
-} from "lucide-react";
+import { ActivityIcon, AlertCircleIcon, RotateCcwIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Conversation,
@@ -26,13 +17,7 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
 } from "@/components/ai-elements/prompt-input";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { SiteNavLinks } from "@/app/_components/site-nav";
 import { cn } from "@/lib/utils";
 // The landing renders zero messages, but importing the renderer statically
 // put streamdown, shiki, mermaid and katex on the front door's first paint —
@@ -471,19 +456,26 @@ export function AgentChat({
       <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
       {isEmpty ? <Petals /> : null}
       {isEmpty ? null : (
-        <header className="flex h-14 shrink-0 items-center justify-between px-4">
+        <header className="flex min-h-14 shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-2">
           <span className="flex min-w-0 items-center gap-2.5">
             <span className="venus-script text-3xl text-primary leading-none">Venus</span>
             <StatusDot status={agent.status} />
           </span>
+          <nav
+            aria-label="Site"
+            className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-x-4 gap-y-1 text-muted-foreground text-xs"
+          >
+            <SiteNavLinks />
+          </nav>
           <span className="flex items-center gap-1">
             <button
-              className="hidden items-center gap-1.5 rounded-full px-3 py-1.5 text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground sm:flex"
+              aria-label="New session"
+              className="flex items-center gap-1.5 rounded-full px-2 py-1.5 text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground sm:px-3"
               onClick={startFresh}
               type="button"
             >
               <RotateCcwIcon className="size-3.5" />
-              New session
+              <span className="hidden sm:inline">New session</span>
             </button>
             <button
               aria-label="Live agent stack"
@@ -497,54 +489,6 @@ export function AgentChat({
             >
               <ActivityIcon className="size-5" />
             </button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                aria-label="Menu"
-                className="flex size-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                type="button"
-              >
-                <MenuIcon className="size-5" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 rounded-2xl">
-              <DropdownMenuItem asChild>
-                <a className="flex cursor-pointer items-center gap-2.5" href="/my-wedding">
-                  <ClipboardListIcon className="size-4" />
-                  My Wedding
-                </a>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <a className="flex cursor-pointer items-center gap-2.5" href="/curated">
-                  <ImageIcon className="size-4" />
-                  Curated by Venus
-                </a>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <a className="flex cursor-pointer items-center gap-2.5" href="/observe">
-                  <ActivityIcon className="size-4" />
-                  Observability
-                </a>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <a className="flex cursor-pointer items-center gap-2.5" href="/outreach">
-                  <MailIcon className="size-4" />
-                  Every email I sent
-                </a>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <a className="flex cursor-pointer items-center gap-2.5" href="/compare">
-                  <GitCompareIcon className="size-4" />
-                  V1 → V2 compare
-                </a>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="flex cursor-pointer items-center gap-2.5" onClick={startFresh}>
-                <RotateCcwIcon className="size-4" />
-                Start a new wedding
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
           </span>
         </header>
       )}
@@ -639,19 +583,11 @@ export function AgentChat({
                 header, which this state does not render — so on a phone, where
                 you land here and stay, they were reachable only by typing the
                 URL. */}
-            <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-muted-foreground text-xs">
-              <a className="transition-colors hover:text-foreground" href="/cookbook">
-                Cookbook
-              </a>
-              <a className="transition-colors hover:text-foreground" href="/compare">
-                V1 → V2
-              </a>
-              <a className="transition-colors hover:text-foreground" href="/observe">
-                Observability
-              </a>
-              <a className="transition-colors hover:text-foreground" href="/curated">
-                Curated by Venus
-              </a>
+            <nav
+              aria-label="Site"
+              className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-muted-foreground text-xs"
+            >
+              <SiteNavLinks />
             </nav>
           </div>
         ) : (
