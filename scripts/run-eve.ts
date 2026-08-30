@@ -120,6 +120,7 @@ const agents: AgentFacts[] = [tree.root, ...tree.children]
     steps: readCount(s.steps),
     toolCalls: readCount(s.toolCalls),
     failedActions: readCount(s.failedActions),
+    refusedActions: readCount(s.refusedActions),
     searches: readCount(s.tools?.web_search),
     vendorsRecorded: readCount(s.vendorsRecorded),
     truncations: readCount(s.truncations),

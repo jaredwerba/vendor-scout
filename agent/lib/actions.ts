@@ -97,3 +97,61 @@ export function categoryFromBrief(message: unknown): string | null {
 export function categorySlug(category: string): string {
   return category.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "general";
 }
+
+// ─── Outcomes ────────────────────────────────────────────────────────────────
+//
+// A tool reports its own outcome in the payload rather than by throwing, so
+// nothing that counts exceptions can see it. The taxonomy lives here, beside
+// `actionName`, for the same reason that did: the trace store, the live rail
+// and the stack diagram each used to carry a private copy of "did this work",
+// and all three were wrong in the same way.
+//
+// Tools must import these constants rather than inventing status strings, so
+// a rename breaks a type instead of silently zeroing a metric.
+
+/** The call did what it was asked to do. */
+export const SUCCESS_STATUSES = [
+  "ok", "recorded", "saved", "filed", "booked", "cancelled", "sent", "no_timeline",
+] as const;
+
+/**
+ * The tool worked and declined the input on purpose — a guard refusal, a
+ * budget limit, or a send that policy blocked. Not a fault, but never a
+ * success either: an outreach round where every send hit the daily cap must
+ * not look like one where every send landed.
+ */
+export const REFUSED_STATUSES = ["blocked", "cap_reached"] as const;
+
+/** The tool could not do its job. */
+export const FAILED_STATUSES = [
+  "search_failed", "record_failed", "not_configured", "not_found", "unavailable",
+] as const;
+
+const REFUSED = new Set<string>(REFUSED_STATUSES);
+const FAILED = new Set<string>(FAILED_STATUSES);
+
+export type ActionOutcome = "success" | "refused" | "failed";
+
+/**
+ * Read one `action.result` event as success, refusal or failure.
+ *
+ * `threw` covers the runtime's own view: a thrown tool, an error payload, or
+ * `status: "rejected"` — eve's approval-gate denial, which the protocol
+ * defines as a call that never executed.
+ */
+export function actionOutcome(data: Any): ActionOutcome {
+  const status = String(data?.status ?? "");
+  if (status === "failed" || data?.error || data?.result?.isError) return "failed";
+  if (status === "rejected") return "refused";
+
+  const soft = String((data?.result?.output as { status?: string } | undefined)?.status ?? "");
+  if (!soft) return "success";
+  if (soft.startsWith("rejected_") || REFUSED.has(soft)) return "refused";
+  if (FAILED.has(soft)) return "failed";
+  return "success";
+}
+
+/** The tool's self-reported status, for the trace note. Bounded. */
+export function actionStatus(data: Any): string {
+  return String((data?.result?.output as { status?: string } | undefined)?.status ?? "").slice(0, 40);
+}

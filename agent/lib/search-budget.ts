@@ -22,11 +22,19 @@ export function searchCapFor(isSpecialist: boolean): number {
   return isSpecialist ? SPECIALIST_SEARCH_CAP : ROOT_SEARCH_CAP;
 }
 
-/** Returns the state of the budget AFTER counting this search. */
+/**
+ * Returns the state of the budget AFTER counting this search.
+ *
+ * A call past the cap never reaches Tavily, so it must not be counted as a
+ * search. Counting it made a scout that called web_search 30 times against a
+ * cap of 25 report 30 searches, of which only 25 happened.
+ */
 export function countSearch(cap: number): { used: number; cap: number; exhausted: boolean } {
-  const next = searches.get().count + 1;
+  const current = searches.get().count;
+  if (current >= cap) return { used: current, cap, exhausted: true };
+  const next = current + 1;
   searches.update(() => ({ count: next }));
-  return { used: next, cap, exhausted: next > cap };
+  return { used: next, cap, exhausted: false };
 }
 
 export function searchesUsed(): number {

@@ -6,7 +6,7 @@ import {
   ExternalLinkIcon,
 } from "lucide-react";
 import { memo, useEffect, useMemo, useState } from "react";
-import { actionName } from "@/agent/lib/actions";
+import { actionName, actionOutcome, actionStatus } from "@/agent/lib/actions";
 import { cacheHitRate, costFor, formatUsd } from "@/agent/lib/pricing";
 import type { TraceEntry } from "@/agent/lib/trace";
 import { cn } from "@/lib/utils";
@@ -104,8 +104,10 @@ function rowsFromEvents(events: readonly StackEvent[]): LogRow[] {
       }
       case "action.result":
         tool = actionName(d.result);
-        ok = d.status !== "failed" && !d.error && !d?.result?.isError;
-        if (!ok) note = String(d?.error?.message ?? "failed").slice(0, 90);
+        // Shared with the trace store: a tool that reports its own failure in the
+        // payload must not render as a green, successful call here.
+        ok = actionOutcome(d) === "success";
+        if (!ok) note = actionStatus(d) || String(d?.error?.message ?? "failed").slice(0, 90);
         break;
       case "step.completed": {
         const u = d.usage ?? {};
@@ -171,6 +173,7 @@ interface LaneStats {
   outputTokens: number;
   costUsd: number;
   failed: number;
+  refused: number;
   truncated: boolean;
   durationMs: number;
   subagents: number;
@@ -191,6 +194,7 @@ function laneStats(lane: Lane, derived: StackState): LaneStats {
     // cached reads and are ~1.9x too high.
     costUsd: s ? costFor(s.model, s) || s.costUsd || 0 : 0,
     failed: Math.max(derived.counts.failed, s?.failedActions ?? 0),
+    refused: Number(s?.refusedActions) || 0,
     truncated: (s?.truncations ?? 0) > 0,
     durationMs: s?.durationMs ?? 0,
     subagents: Math.max(derived.counts.subagents, s?.subagents ?? 0),
@@ -288,6 +292,11 @@ const LaneCard = memo(function LaneCard({
             {lane.attached ? <span className="text-sage">live stream</span> : null}
             {stats.failed > 0 ? (
               <span className="text-destructive">{stats.failed} failed</span>
+            ) : null}
+            {stats.refused > 0 ? (
+              <span title="The guards declined these on purpose — a directory source, an address that does not belong to the vendor, or a spent budget.">
+                {stats.refused} refused
+              </span>
             ) : null}
           </div>
         </>

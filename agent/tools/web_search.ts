@@ -61,7 +61,7 @@ export default defineTool({
     if (budget.exhausted) {
       return {
         status: "cap_reached",
-        used: budget.used - 1,
+        used: budget.used,
         cap: budget.cap,
         note:
           `Search budget for this agent is spent (${budget.cap} searches). Do NOT search again. ` +

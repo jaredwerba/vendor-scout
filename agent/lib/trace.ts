@@ -27,7 +27,14 @@
  *       eval:<kind> (JSON EvalSummary)
  */
 
-import { actionName, categoryFromBrief, isSubagentAction, readUsage } from "./actions";
+import {
+  actionName,
+  actionOutcome,
+  actionStatus,
+  categoryFromBrief,
+  isSubagentAction,
+  readUsage,
+} from "./actions";
 import { costFor } from "./pricing";
 
 const URL_BASE = process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_API_URL ?? "";
@@ -167,6 +174,11 @@ function fresh(id: string, now: string, parent?: SessionLineage | null): TraceSu
 // biome-ignore lint/suspicious/noExplicitAny: eve protocol projection
 type Any = any;
 
+/** Older summaries predate some counters; read them as 0 rather than NaN. */
+export function readCount(n: unknown): number {
+  return Number.isFinite(Number(n)) ? Number(n) : 0;
+}
+
 /**
  * What may be written about a tool call. Vendor research is the product's
  * visible work and safe to show; anything carrying the couple's words or a
@@ -273,35 +285,30 @@ function apply(s: TraceSummary, ev: { type: string; data?: Any }, now: string): 
     }
     case "action.result": {
       const name = actionName(d.result);
-      const threw = d.status === "failed" || Boolean(d.error) || Boolean(d?.result?.isError);
-      // A tool that reports its own failure in the payload does not throw, so
-      // the runtime calls it a success. Tavily returning `search_failed`, a
-      // spent search budget, and every guard refusal were all recorded as
-      // healthy tool calls — 258 searches showed "0 failed" while saying
-      // nothing about how many actually returned results.
-      const soft = String((d?.result?.output as { status?: string } | undefined)?.status ?? "");
-      const refused = soft.startsWith("rejected_");
-      const failedSoftly = soft === "search_failed" || soft === "record_failed" || soft === "not_configured";
-      const ok = !threw && !failedSoftly;
+      // One reading of "did this work", shared with the rail and the diagram.
+      const outcome = actionOutcome(d);
+      const soft = actionStatus(d);
+      const ok = outcome === "success";
 
       s.toolResults += 1;
-      if (!ok) s.failedActions += 1;
-      if (refused) s.refusedActions += 1;
-      // Only an actual write counts. Every guard refusal was previously
-      // counted as a recorded vendor, which inflated the health check that
-      // `get_research` uses to decide whether a category needs re-running.
-      if (name === "record_vendor" && soft === "recorded") s.vendorsRecorded += 1;
-      // A specialist's result carries the child's whole token bill.
+      if (outcome === "failed") s.failedActions += 1;
+      if (outcome === "refused") s.refusedActions = readCount(s.refusedActions) + 1;
+      // Anything the guards refused is not a vendor. Counted by outcome
+      // rather than by an exact status literal, so a new success status does
+      // not silently zero the number get_research re-runs categories on.
+      if (name === "record_vendor" && ok) s.vendorsRecorded += 1;
+
       const usage = d?.result?.usage ? readUsage(d.result.usage) : null;
       return {
         t: now, type: ev.type, seq, tool: name, ok,
-        note: threw
-          ? String(d?.error?.message ?? "failed").slice(0, 140)
-          : soft && soft !== "ok" && soft !== "recorded"
-            ? soft
-            : d.status === "rejected"
-              ? "declined at the approval gate"
-              : undefined,
+        note:
+          outcome === "failed" && d?.error?.message
+            ? String(d.error.message).slice(0, 140)
+            : soft && soft !== "ok"
+              ? soft
+              : d.status === "rejected"
+                ? "declined at the approval gate"
+                : undefined,
         tokens: usage ? { in: usage.inputTokens, out: usage.outputTokens } : undefined,
       };
     }
@@ -483,11 +490,6 @@ export interface TraceTree {
 }
 
 /** The whole agent tree for one root session: Venus plus every specialist. */
-/** Older summaries predate some counters; read them as 0 rather than NaN. */
-export function readCount(n: unknown): number {
-  return Number.isFinite(Number(n)) ? Number(n) : 0;
-}
-
 export async function getTraceTree(rootId: string): Promise<TraceTree> {
   if (!traceConfigured()) return { root: null, children: [], langsmithTraceId: null };
   const [rootRaw, childIds, lsRaw] = (await redis([

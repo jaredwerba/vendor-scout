@@ -22,6 +22,8 @@ export interface AgentFacts {
   steps: number;
   toolCalls: number;
   failedActions?: number;
+  /** Guard refusals: the tool worked and declined the input on purpose. */
+  refusedActions?: number;
   searches?: number;
   vendorsRecorded?: number;
   truncations?: number;

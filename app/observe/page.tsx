@@ -46,6 +46,7 @@ function TraceRow({ t }: { readonly t: TraceSummary }) {
         {when(t.startedAt)} · {t.turns} turns · {t.steps} model steps · {t.toolCalls} tool calls · {t.subagents} specialists ·{" "}
         {t.inputTokens.toLocaleString("en-US")} in / {t.outputTokens.toLocaleString("en-US")} out tokens
         {t.failedActions ? ` · ${t.failedActions} failed actions` : ""}
+        {t.refusedActions ? ` · ${t.refusedActions} refused by guards` : ""}
       </p>
       {tools.length ? (
         <div className="mt-2 flex flex-wrap gap-1.5">

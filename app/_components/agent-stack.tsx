@@ -2,7 +2,7 @@
 
 import { PauseIcon, PlayIcon, SkipBackIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { actionName, isSubagentAction } from "@/agent/lib/actions";
+import { actionName, actionOutcome, isSubagentAction } from "@/agent/lib/actions";
 
 /**
  * The agent stack, live. A faithful take on the "2026: Agent stack" diagram —
@@ -141,7 +141,9 @@ function fold(st: StackState, ev: StackEvent, inSub = false): void {
     }
     case "action.result": {
       const name = actionName(d.result);
-      const ok = d.status !== "failed" && !d.error && !d?.result?.isError;
+      // Shared with the trace store: a tool that reports its own failure in the
+      // payload must not render as a green, successful call here.
+      const ok = actionOutcome(d) === "success";
       st.counts.toolResults += 1; if (!ok) st.counts.failed += 1;
       const meta = toolMeta(name);
       st.tool = name;
