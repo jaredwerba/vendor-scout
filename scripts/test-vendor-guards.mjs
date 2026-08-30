@@ -27,6 +27,18 @@ const cases = [
   ["PASS", "Susanne's Weddings Floral Design Studio", "https://www.susannesweddings.com", "Laurie@susannesweddings.com", "https://www.susannesweddings.com"],
   ["PASS", "Peppers Artful Events", "https://www.peppersartfulevents.com/events/weddings", "EventInquiry@peppersartfulevents.com", "https://www.peppersartfulevents.com"],
   ["PASS", "Copper Penny Flowers", "https://www.copperpennyflowers.com", "contact form only", "https://www.copperpennyflowers.com"],
+  // A vendor's own domain that merely CONTAINS a directory pattern. Substring
+  // matching rejected all four, silently, with no way for the scout to appeal.
+  ["PASS", "Luxe Wedding Co", "https://luxewedding.com/portfolio", "hello@luxewedding.com", "https://luxewedding.com"],
+  ["PASS", "Sarah Brides Bridal", "https://sarahbrides.com/about", "sarah@sarahbrides.com", "https://sarahbrides.com"],
+  ["PASS", "Skylark Farm", "https://skylark.com/weddings", "events@skylark.com", "https://skylark.com"],
+  ["PASS", "Notyelp Studio", "https://notyelp.com/wedding-photography", "hi@notyelp.com", "https://notyelp.com"],
+  // A share link in the query string is not a listing.
+  ["PASS", "Gibbet Hill Gallery", "https://www.barnatgibbethill.com/gallery?share=facebook.com/x", "barn@gibbethill.com", "https://www.barnatgibbethill.com"],
+  // Still directories, on a label boundary — these must keep failing.
+  ["REJECT", "Real Knot Listing", "https://www.theknot.com/marketplace/some-venue", "info@example.com", null],
+  ["REJECT", "Real Wedding.com Listing", "https://www.wedding.com/vendors/some-florist", "info@example.com", null],
+  ["REJECT", "Real Maps Listing", "https://www.google.com/maps/place/some-venue", "info@example.com", null],
 ];
 
 // Caught by the scout eval (2026-08-29): a real florist in the right town,

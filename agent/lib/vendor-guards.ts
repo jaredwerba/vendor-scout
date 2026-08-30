@@ -18,10 +18,33 @@ export const DIRECTORY_HOSTS = [
   "brides.com", "junebugweddings.", "weddingrule.", "bark.com",
 ] as const;
 
-/** The directory this URL belongs to, or null if it looks like a vendor's own site. */
+/**
+ * The directory this URL belongs to, or null if it looks like a vendor's own site.
+ *
+ * Matched on HOST LABELS, not as a substring of the URL. Plain `includes`
+ * read "wedding.com" inside `luxewedding.com` and "brides.com" inside
+ * `sarahbrides.com`, so a real vendor's own domain was classified as a
+ * directory and silently discarded — and a scout has no way to appeal a
+ * guard. A share link in a query string (`?share=facebook.com/...`) did the
+ * same to a legitimate gallery page.
+ *
+ * Three pattern shapes, because the list mixes three intents:
+ *   "yelp."           one label, anywhere in the host (yelp.com, yelp.co.uk)
+ *   "wedding.com"     a domain suffix, on a label boundary
+ *   "google.com/maps" a host plus a path, so the whole URL still applies
+ */
 export function directoryHost(url: string): string | null {
   const lower = url.toLowerCase();
-  return DIRECTORY_HOSTS.find((h) => lower.includes(h)) ?? null;
+  const host = lower.split("//").pop()?.split("/")[0].split("?")[0] ?? "";
+  const labels = host.split(".");
+  const match = (h: string): boolean => {
+    if (h.includes("/")) return lower.includes(h);
+    if (h.endsWith(".")) return labels.includes(h.slice(0, -1));
+    const want = h.split(".");
+    const at = labels.length - want.length;
+    return at >= 0 && want.every((w, i) => labels[at + i] === w);
+  };
+  return DIRECTORY_HOSTS.find(match) ?? null;
 }
 
 const FREE_MAIL = /^(gmail|yahoo|hotmail|outlook|aol|icloud|comcast|verizon|me)\./;
