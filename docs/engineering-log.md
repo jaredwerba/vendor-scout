@@ -208,6 +208,22 @@ The failures that cost the most are the ones that look like success.
 
 > A tool that returns "I failed" as a successful result is invisible to anything counting exceptions. Two follow-up fixes then failed the same way for a subtler reason: each was tested one level below where it was wrong. Unit-testing the taxonomy while nothing exercised the fold that consumes it is how a correct table and an incorrect reading of it shipped together, twice.
 
+## 2026-08-30
+
+### An eval that graded a run in flight published it as a score
+
+**Wrong.** `/observe` served the research eval as 7/12, 58%, under the heading "Research quality", while `/cookbook` cited 52/53 for the same command. Both pages are public.
+
+**Why.** `eval-scout.ts` waits for the specialist fan-out to go quiet before it reads anything — that wait exists because grading early once scored "0 recorded" against scouts that were still searching. When the wait gives up it grades anyway, and saves the result like any other summary. The stored run had settled nothing: its first case read `expected "completed", got "waiting (32s)"` against the 114s a real fan-out takes, and it carried 12 checks where a full run produces 37-53. Neither number was wrong. 58% was a reading of timing, not of research.
+
+**Changed.** `EvalSummary` gains `incomplete`, a reason string set whenever a brief's specialists never settled inside `EVAL_SETTLE_TIMEOUT_MS`. `/observe` renders such a summary as "not scored" with the reason under it instead of a percent chip, `npm run report` prints NOT SCORED in place of the percentage, and the script says NOT A SCORE on stdout before it saves.
+
+**Outcome.** The two public surfaces stopped disagreeing: an unsettled run reads as unscored on `/observe` and in `npm run report`, and 52/53 is again the only research score either page quotes. The counts stay visible — the run is still evidence of something, it just stops being a verdict. Nothing yet re-runs an incomplete summary or expires it from KV, and no test covers the flag: it is set in one script and read in two places, all three by hand.
+
+> When a measurement's precondition fails the honest output is no score, not a low one. Publishing the arithmetic anyway makes the panel wrong about what the number means rather than about the number.
+
+<sub>commits `c6f86f0`</sub>
+
 ---
 
 ## How to read the outcomes

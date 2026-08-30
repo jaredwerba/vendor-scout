@@ -6,20 +6,23 @@ Recipe **08 of 10** in the Venus Blueprint Recipes arc:
 
 > Foundation → Delegation → Durability → Guards → Governance → Cost → Latency → **Observability** → Evaluation → Verification
 
-Three readings taken off the same public panel, on three different days:
+Four readings taken off the same public panel:
 
 ```text
 specialists: 0 | five were running
 reply understanding: 73% | the shipped classifier scores 15/15
 web_search: 258 calls | 0 failures
+research quality: 7/12, 58% | the scouts were still searching
 ```
 
 The first was built on an event the runtime does not emit. The second reported a model that had been
 reverted hours earlier. The third was true — and nothing in the system could have established that,
 because `web_search` reports its own failure as `{status: "search_failed"}` and returns cleanly, so
-every failed search had been counted as a healthy tool call.
+every failed search had been counted as a healthy tool call. The fourth was arithmetic over a run
+that had not finished: twelve checks graded while the specialists still searched, published beside a
+cookbook citing 52/53 for the same command.
 
-None of the three raised an error or failed a build. A panel is the one component whose defects are
+None of the four raised an error or failed a build. A panel is the one component whose defects are
 indistinguishable from the news it reports, which is why it is the last place a fault gets noticed
 and the first place one should be looked for.
 
@@ -203,6 +206,35 @@ implied, because a recipe about a panel that lies should not imply its own is fi
 **A score measures a configuration; it is not a property of a product.** Store what it ran on, render
 what it ran on, and treat a stale pairing as a defect of the same class as a wrong number.
 
+### A score of a run that had not finished
+
+The same panel served `7/12, 58%` for research quality while `/cookbook` cited 52/53 for the same
+command. Neither number was wrong. [`eval-scout.ts`](../../scripts/eval-scout.ts) waits for the
+fan-out to go quiet before it reads anything — that wait exists because grading early once scored
+"0 recorded" against scouts that were still searching — but when the wait gives up, the script grades
+anyway and saves the result like any other summary. The stored run had settled nothing: its first
+case read `expected "completed", got "waiting (32s)"` against the 114s a real fan-out takes, and it
+carried twelve checks where a settled run produces thirty-seven to fifty-three.
+
+The fix is not a better score, it is refusing to call that a score. The summary carries the reason it
+must not be read as one:
+
+```ts
+incomplete: unsettled.length
+  ? `specialists never settled on ${unsettled.join(", ")} within ${SPECIALIST_SETTLE_MS / 1000}s — ` +
+    "these checks graded a run still in flight, so this is a reading of timing, not of research quality"
+  : null,
+```
+
+[`page.tsx`](../../app/observe/page.tsx) renders such a summary as *"not scored"* with that reason
+beneath it rather than as a percent chip, `npm run report` prints NOT SCORED in place of the
+percentage, and the script says so on stdout before it saves. The counts stay visible — the run is
+still evidence of something, it just stops being a verdict.
+
+**A precondition that failed is not a low score, it is no score.** Nothing here was wrong about the
+arithmetic; it was wrong about what the arithmetic meant, which is the reading no build can catch —
+every digit on screen checks out, and the heading above them is the lie.
+
 ### A broken link looks like working tracing
 
 LangSmith derives a run id from the OTel **span** id, zero-padded into a UUID. The exporter in
@@ -231,7 +263,9 @@ disabled control concludes something is not ready, which is true. The same insti
 
 ### What this panel still cannot tell you
 
-The eval-versus-routing check is not built. Live lanes are capped at `MAX_ATTACHED = 5` attached
+The eval-versus-routing check is not built, and neither is any repair for an incomplete run:
+`incomplete` marks a summary unscored, and nothing re-runs it or expires it from KV. Live lanes are
+capped at `MAX_ATTACHED = 5` attached
 streams, root included, and each log is trimmed to `MAX_EVENTS = 600` rows on a 30-day TTL, so a long run is a summary
 plus its tail. A status assembled at runtime cannot be read out of the source at all, so
 [`test-outcomes.mjs`](../../scripts/test-outcomes.mjs) carries a hand-maintained `DYNAMIC_ALLOWED` map
@@ -261,6 +295,7 @@ not change that a panel is a program, and programs are wrong.
 | Approval-gate denials count as failures; `refusedActions` is stuck at 0 | `data.error` is read before `data.status`, and eve attaches an error to a rejection too | Read `status` first in `actionOutcome`; the `test:fold` fixture carries the error key |
 | The search count exceeds the configured budget cap | `tools` counts calls *requested*; a capped call never ran | Subtract `toolsRefused` through `toolRuns` before any surface reports it |
 | An eval score contradicts the deployed configuration | The summary stores the model it ran on; nothing compares that to the live routing | Re-run the eval. The automatic flag is recommended in `decisions.json` and not built |
+| An eval score is a reading of timing, not of quality | The wait for the specialists to settle gave up and the script graded the run anyway | `EvalSummary.incomplete` carries the reason; `/observe` and `npm run report` render the run unscored |
 | "Open trace in LangSmith" always 404s | The URL was built from the OTel trace id, not the run id LangSmith derives from a span id | `langsmithRunId` pads the span id; `traceUrl` fetches the run and returns `null` if it is absent |
 | The LangSmith project stays empty and nothing errors | `LANGSMITH_API_KEY` set, `LANGSMITH_TRACING` unset — the exporter drops every span | `instrumentation.ts` warns loudly at `setup` rather than starting quietly |
 | Observability takes the app down with it | A hook that throws fails the turn | The observe hook swallows and warns; `recordTraceEvent` never throws |
@@ -290,7 +325,7 @@ verified at request time, on every render, by fetching the run before the URL is
   `message.received` branch of `apply()` and in `describeAction`. A test that folds a message carrying a marker string and asserts it never reaches
   the written entry would turn that convention into a guard.
 - **Read the record this was built from.** [`decisions.json`](../../evals/data/decisions.json) and the
-  generated [engineering log](../../docs/engineering-log.md) carry all three faults with their dates,
+  generated [engineering log](../../docs/engineering-log.md) carry all four faults with their dates,
   including the two follow-up fixes that each failed for the same reason one level down.
 - **Next: [Evaluation — Hold the Set, Pin the Judge](../09-hold-the-set-pin-the-judge/).** A panel
   that cannot lie about a run still says nothing about whether the run was any good. The next recipe
