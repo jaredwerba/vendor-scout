@@ -904,3 +904,61 @@ input[type="range"].venus-slider:focus-visible {
   .veco-dot { opacity: 1; }
   .veco-ring-fill { stroke-dashoffset: var(--veco-offset); }
 }
+
+/* ---------------------------------------------------------------------------
+   Long-form prose for a cookbook recipe.
+
+   The chat renders markdown through Streamdown too, but inside a bubble where
+   the constraint is fitting a reply. A recipe is read end to end, so the
+   measure is narrower, the headings carry more space above than below, and
+   tables and fences get their own scroll rather than pushing the page sideways.
+--------------------------------------------------------------------------- */
+
+.venus-prose { font-size: 0.95rem; line-height: 1.7; }
+.venus-prose > * + * { margin-top: 1rem; }
+.venus-prose h2 {
+  margin-top: 2.5rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-serif, inherit);
+  font-size: 1.35rem;
+  line-height: 1.3;
+  text-wrap: balance;
+}
+.venus-prose h3 {
+  margin-top: 1.9rem;
+  margin-bottom: 0.5rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  text-wrap: balance;
+}
+.venus-prose p, .venus-prose li { max-width: 68ch; }
+.venus-prose ul, .venus-prose ol { padding-left: 1.15rem; }
+.venus-prose li + li { margin-top: 0.4rem; }
+.venus-prose li::marker { color: var(--muted-foreground); }
+.venus-prose blockquote {
+  margin: 1.25rem 0;
+  padding: 0.1rem 0 0.1rem 1rem;
+  border-left: 2px solid var(--primary);
+  color: var(--muted-foreground);
+}
+.venus-prose a { color: var(--primary); text-underline-offset: 3px; }
+.venus-prose code {
+  padding: 0.1em 0.32em;
+  border-radius: 0.3rem;
+  background: color-mix(in srgb, var(--muted) 70%, transparent);
+  font-size: 0.88em;
+}
+.venus-prose pre { overflow-x: auto; }
+.venus-prose pre code { background: none; padding: 0; font-size: 0.82em; }
+/* A recipe's tables are wide by design — the failure-modes one is three
+   columns of prose. Let the table scroll, never the page. */
+.venus-prose table { display: block; overflow-x: auto; width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.venus-prose th, .venus-prose td {
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+.venus-prose th { background: color-mix(in srgb, var(--muted) 45%, transparent); font-weight: 600; }

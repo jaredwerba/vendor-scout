@@ -7,32 +7,42 @@
   "tagline": "Correctness of the content and reliability of the shape are different axes. Measure both.",
   "difficulty": "advanced",
   "estimatedReadingTime": "13 min",
-  "estimatedRunTime": "6 min",
+  "estimatedRunTime": "10 min",
   "stack": {
-    "primary": ["eve", "nebius-token-factory"],
-    "secondary": ["langsmith", "upstash-redis", "zod", "ai-sdk"]
+    "primary": ["nebius-token-factory", "eve", "typescript"],
+    "secondary": ["ai-sdk", "zod", "langsmith", "upstash-redis"]
   },
-  "tags": ["evaluation", "judge", "ground-truth", "structured-output", "adversarial", "benchmark"],
+  "tags": [
+    "evaluation",
+    "llm-judge",
+    "ground-truth",
+    "structured-output",
+    "model-selection",
+    "adversarial-simulation",
+    "benchmark-fairness"
+  ],
   "story": {
-    "problem": "A cheaper classifier won an accuracy sweep and was promoted on the strength of a tie, then failed 4 of 30 structured-output calls — a failure an accuracy score reads as a tie rather than as a fault.",
-    "solution": "A held labelled set, a judge pinned to its own environment variable so a model swap cannot move the bar, shape conformance probed as a separate axis, and one stack-blind grader that scores any system emitting the shared RunResult contract.",
-    "outcome": "Two different architectures scored on the same brief by identical code, and a model promotion reversed thirteen minutes later on evidence rather than on preference."
+    "problem": "A single-pass sweep over fifteen labelled vendor replies scored DeepSeek-V4-Flash 15/15 at less cost than the incumbent, so the classifier was switched to it. The very next run of the same fifteen cases scored 11/15 with six schema failures. One pass over a small set cannot separate two models near the top — it can only rule out the clearly worse — and an accuracy sweep is structurally blind to schema failure, because a call that never returns an object is not a wrong answer, it is no answer, and it averages in as a tie.",
+    "solution": "Hold one human-labelled set constant across every candidate and run the production classifier over it rather than a copy. Count a fallback to the production keyword heuristic as a loss for the candidate, not a free pass. Run three rounds and rank on the worst round, with cost only as the third tiebreak. Measure shape conformance as its own axis with a probe that ignores the labels entirely and keeps every error string. Pin the judge to its own NEBIUS_JUDGE_MODEL so swapping the agent's model cannot move the bar, and ask it two independent questions rather than one blended score. Have both architectures emit one shared RunResult contract so a single stack-blind grader scores them with identical code.",
+    "outcome": "The classifier was reverted to Qwen3-235B, which has now held 15/15 on the labelled set across three separate runs. The schema probe over thirty structured-output calls each read 30/30 against 26/30; a fresh single-round probe on 2026-08-30 read 15/15 against 3/15, with twelve AI_NoObjectGeneratedError failures. The same discipline vetoed a cheaper specialist model that produced 10/22 with all ten child sessions failed against a 46/50 baseline; reverting it and deleting a redundant outputSchema gave 33/37, then 52/53. No scorecard from npm run grade over the two committed RunResult files is published yet, and the planner role still has no eval that measures its prose."
   },
   "prerequisites": [
-    "Recipe 01 — the judge is a role in the model registry, not a constant",
-    "Node 24.x and npm install at the repo root",
-    "A Nebius Token Factory key as NEBIUS_API_KEY in .env.local",
-    "A labelled set with ground truth — fifteen real vendor replies ship in evals/data/vendor-replies.json",
-    "A running deployment for the evals that drive full turns"
+    "Recipe 01 (Foundation) — the judge is a role in the model registry, not a constant",
+    "NEBIUS_API_KEY in .env.local — every script here makes real Token Factory calls, none mock a model",
+    "Node 24 (engines in package.json) and `npm install` at the repository root",
+    "KV_REST_API_URL and KV_REST_API_TOKEN, optional — without them the scripts print and skip the /observe summary",
+    "LANGSMITH_API_KEY, optional — eval:replies also files the run as a LangSmith experiment",
+    "A running deployment for eval:scout, which drives real planning turns and spends research credits"
   ],
   "models": [
-    { "id": "deepseek-ai/DeepSeek-V4-Pro", "role": "judge" },
-    { "id": "Qwen/Qwen3-235B-A22B-Instruct-2507", "role": "classifier" }
+    { "id": "Qwen/Qwen3-235B-A22B-Instruct-2507", "role": "planner" },
+    { "id": "Qwen/Qwen3-235B-A22B-Instruct-2507", "role": "primary" },
+    { "id": "deepseek-ai/DeepSeek-V4-Pro", "role": "critic" }
   ],
   "quickstart": {
-    "clone": "git clone https://github.com/jaredwerba/vendor-scout && cd vendor-scout",
-    "configure": "cp .env.example .env.local  # then fill NEBIUS_API_KEY",
-    "run": "npm install && npm run eval:replies && npm run probe:schema"
+    "clone": "git clone https://github.com/jaredwerba/vendor-scout.git && cd vendor-scout && npm install",
+    "configure": "Create .env.local with NEBIUS_API_KEY (full list in README.md). KV and LangSmith keys are optional — without them results stay on stdout.",
+    "run": "PROBE_ROUNDS=1 npm run probe:schema -- Qwen/Qwen3-235B-A22B-Instruct-2507 deepseek-ai/DeepSeek-V4-Flash"
   },
   "endpoints": [],
   "deployment": {
@@ -40,7 +50,12 @@
     "instructions": "../../README.md"
   },
   "nextRecipe": "assert-against-the-deployed-artifact",
-  "authors": [{ "name": "Jared Werba", "url": "https://github.com/jaredwerba" }],
+  "authors": [
+    {
+      "name": "Jared Werba",
+      "url": "https://github.com/jaredwerba"
+    }
+  ],
   "publishedAt": "2026-08-30",
   "updatedAt": "2026-08-30"
 }

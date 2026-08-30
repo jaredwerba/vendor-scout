@@ -41,7 +41,7 @@ The recipes are a **sequence**. They form an arc — Foundation → Delegation �
 | 06 | [Cost — Compute the Price, Then Distrust It](./06-compute-the-price-then-distrust-it/) | `nebius-token-factory` `eve` `typescript` `next` `upstash-redis` `vercel` | advanced | 12 min |
 | 07 | [Latency — Spend Round Trips, Not Calls](./07-spend-round-trips-not-calls/) | `eve` `nebius-token-factory` `tavily` `typescript` `zod` `next` `upstash` `vercel` | intermediate | 11 min |
 | 08 | [Observability — A Dashboard That Cannot Lie](./08-a-dashboard-that-cannot-lie/) | `eve` `typescript` `langsmith` `opentelemetry` `next` `upstash-redis` `nebius-token-factory` `vercel` | advanced | 12 min |
-| 09 | [Evaluation — Hold the Set, Pin the Judge](./09-hold-the-set-pin-the-judge/) | `eve` `nebius-token-factory` `langsmith` `upstash-redis` `zod` `ai-sdk` | advanced | 13 min |
+| 09 | [Evaluation — Hold the Set, Pin the Judge](./09-hold-the-set-pin-the-judge/) | `nebius-token-factory` `eve` `typescript` `ai-sdk` `zod` `langsmith` `upstash-redis` | advanced | 13 min |
 | 10 | [Verification — Assert Against the Deployed Artifact](./10-assert-against-the-deployed-artifact/) | `eve` `next` `typescript` `nebius-token-factory` `vercel` `playwright` `node` | advanced | 12 min |
 
 <!-- END:RECIPES -->

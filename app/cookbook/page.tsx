@@ -64,8 +64,6 @@ function loadRecipes(): Recipe[] {
   return out.sort((a, b) => a.order - b.order);
 }
 
-const GH = "https://github.com/jaredwerba/vendor-scout/tree/main/cookbook";
-
 export default function CookbookPage() {
   const recipes = loadRecipes();
 
@@ -104,11 +102,9 @@ export default function CookbookPage() {
           <ol className="space-y-3">
             {recipes.map((r) => (
               <li key={r.slug}>
-                <a
+                <Link
                   className="block rounded-2xl border bg-card/70 p-5 transition-colors hover:border-primary/40 hover:bg-card"
-                  href={`${GH}/${r.dir}/`}
-                  rel="noreferrer"
-                  target="_blank"
+                  href={`/cookbook/${r.slug}`}
                 >
                   <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
                     <span className="font-mono text-muted-foreground text-xs tabular-nums">
@@ -155,7 +151,7 @@ export default function CookbookPage() {
                       </span>
                     ))}
                   </p>
-                </a>
+                </Link>
               </li>
             ))}
           </ol>
