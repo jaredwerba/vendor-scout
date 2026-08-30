@@ -616,7 +616,7 @@ export function AgentChat({
             onClick={() => setSheetOpen(false)}
             type="button"
           />
-          <div className="absolute inset-x-0 bottom-0 flex max-h-[82vh] flex-col rounded-t-3xl border-t bg-background shadow-2xl">
+          <div className="absolute inset-x-0 bottom-0 flex max-h-[82dvh] flex-col rounded-t-3xl border-t bg-background shadow-2xl">
             <div className="flex items-center justify-between px-4 pt-3 pb-1">
               <span className="font-medium text-sm">Under the hood</span>
               <button
@@ -627,7 +627,12 @@ export function AgentChat({
                 Close
               </button>
             </div>
-            <div className="min-h-0 flex-1 overflow-hidden">{rail}</div>
+            {/* The sheet body is the scroller. It was `overflow-hidden`, which
+                clipped every tile below the first screen with no way to reach
+                them — on a phone that is most of the panel. */}
+            <div className="vsheet-body min-h-0 flex-1 overflow-y-auto overscroll-contain">
+              {rail}
+            </div>
           </div>
         </div>
       ) : null}

@@ -1195,3 +1195,30 @@ input[type="range"].venus-slider:focus-visible {
   vertical-align: top;
 }
 .venus-prose th { background: color-mix(in srgb, var(--muted) 45%, transparent); font-weight: 600; }
+
+/* ---------------------------------------------------------------------------
+ * The rail inside the mobile sheet.
+ *
+ * On a phone the rail is a bottom sheet rather than a column, and the sheet
+ * body is the only scroller. Two things have to give way for that to work.
+ *
+ * The bento sets `overflow-y: auto` for the desktop column, where it is a
+ * fixed-height pane. In the sheet it has no height to scroll within, so its
+ * own overflow never engages and only adds a second scroll container; the
+ * left border belongs to a column beside a chat, not to a full-width sheet.
+ *
+ * The lane list and the event log carry their own `max-height` plus
+ * `overscroll-behavior: contain`. Contain is right on desktop — it stops a
+ * scroll inside the log from running the page away underneath it. In a sheet
+ * it means a finger that lands on either region moves nothing once that
+ * region hits its end, which reads as a panel that cannot be scrolled at all.
+ * Chaining is restored here so the sheet keeps moving.
+ * ------------------------------------------------------------------------- */
+.vsheet-body .vbento[data-variant="rail"] {
+  overflow: visible;
+  border-left: 0;
+}
+.vsheet-body .vlanes,
+.vsheet-body .vrail-log {
+  overscroll-behavior: auto;
+}
