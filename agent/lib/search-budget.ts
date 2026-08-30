@@ -23,18 +23,26 @@ export function searchCapFor(isSpecialist: boolean): number {
 }
 
 /**
- * Returns the state of the budget AFTER counting this search.
+ * Reserve up to `n` searches at once and report what the budget granted.
  *
  * A call past the cap never reaches Tavily, so it must not be counted as a
  * search. Counting it made a scout that called web_search 30 times against a
  * cap of 25 report 30 searches, of which only 25 happened.
+ *
+ * A batch that would cross the cap is granted in PART rather than refused:
+ * three of four queries is a better outcome than none, and the model still
+ * learns the budget is gone from `granted < n`. The unit of the cap is the
+ * query, not the tool call — otherwise batching four queries into one call
+ * would quietly quadruple the retrieval budget this exists to bound.
  */
-export function countSearch(cap: number): { used: number; cap: number; exhausted: boolean } {
+export function countSearches(
+  n: number,
+  cap: number,
+): { granted: number; used: number; cap: number; exhausted: boolean } {
   const current = searches.get().count;
-  if (current >= cap) return { used: current, cap, exhausted: true };
-  const next = current + 1;
-  searches.update(() => ({ count: next }));
-  return { used: next, cap, exhausted: false };
+  const granted = Math.max(0, Math.min(n, cap - current));
+  if (granted > 0) searches.update(() => ({ count: current + granted }));
+  return { granted, used: current + granted, cap, exhausted: granted === 0 };
 }
 
 export function searchesUsed(): number {

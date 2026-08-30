@@ -133,7 +133,7 @@ export const SUCCESS_STATUSES = [
  * success either: an outreach round where every send hit the daily cap must
  * not look like one where every send landed.
  */
-export const REFUSED_STATUSES = ["blocked", "cap_reached"] as const;
+export const REFUSED_STATUSES = ["blocked", "cap_reached", "no_query"] as const;
 
 /** The tool could not do its job. */
 export const FAILED_STATUSES = [

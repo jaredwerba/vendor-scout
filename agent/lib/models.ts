@@ -85,10 +85,15 @@ export const MODEL_ROLES: Record<ModelRole, RoleSpec> = {
    * re-sends the growing transcript. That makes INPUT price and context
    * length the dominant terms, not output quality.
    *
-   * DeepSeek-V4-Flash: $0.14/$0.28 per Mtok against Qwen's $0.20/$0.60, with
-   * a 1M context instead of 262k. Cheaper on the axis that dominates, with
-   * four times the headroom for a long research loop. This is the same
-   * substitution Nebius's own production write-up made for the heavy tier.
+   * That argument points straight at DeepSeek-V4-Flash: $0.14/$0.28 per Mtok
+   * against Qwen's $0.20/$0.60, with a 1M context instead of 262k — cheaper on
+   * the axis that dominates, four times the headroom for a long research loop,
+   * and the same substitution Nebius's own production write-up made for the
+   * heavy tier.
+   *
+   * It was tried. It lost, for the reason in the rationale below, and the role
+   * stayed on Qwen. The argument is kept because it is still correct about
+   * where the money goes — it just does not survive contact with eval:scout.
    */
   scout: {
     model: "Qwen/Qwen3-235B-A22B-Instruct-2507",

@@ -122,14 +122,16 @@ its verified photo URLs, collected by the scout that found it. That map is the O
 scouts no longer hand you images in their reply, so if you present a tier without opening
 `venue_images`, that tier will have no photos and the couple will not fall in love with it.
 
-Every tier gets photos. If a venue is missing from `venue_images`, run ONE `web_search` with
-`include_images: true` for that venue before you present — never present a tier with none.
+Every tier gets photos. If a venue is missing from `venue_images`, run `web_search` with
+`include_images: true` before you present — never present a tier with none. If several venues are
+missing, put them in one call: `queries: ["<venue A> wedding venue", "<venue B> wedding venue"]`
+runs them at the same time, and the couple waits once instead of three times.
 
 Image rules, absolute: only real photographs of **that actual venue** (from `venue_images`, which
 holds only URLs a scout verified). Never stock photos
 of "a similar vibe," never another venue, never placeholder text like "[image]". If you have
 fewer verified images for a venue, show the ones you have — and if a venue somehow has none, run
-one `web_search` with `include_images: true` for it before presenting. Absolute https URLs only.
+`web_search` with `include_images: true` for it before presenting. Absolute https URLs only.
 
 Money rules:
 - **All three totals fit within their stated budget.**

@@ -33,13 +33,19 @@ const cases = JSON.parse(
  * Candidates for a structured-output job on untrusted email: the incumbent,
  * the cheap long-context workhorses, and one small model to see how far down
  * the price curve accuracy survives.
+ *
+ * nvidia/Nemotron-3_5-Lightning was swept on 2026-08-29 and is no longer a
+ * default: 80% accuracy, the most expensive run in the field, and five times
+ * the incumbent's median latency. The measurement is kept in agent/lib/models.ts
+ * because it is the evidence for "price per token is not price per task" —
+ * re-running it every sweep only spends its own wall-clock again. Pass it as an
+ * argument to measure it once more.
  */
 const DEFAULT_CANDIDATES = [
   "Qwen/Qwen3-235B-A22B-Instruct-2507",
   "deepseek-ai/DeepSeek-V4-Flash",
   "zai-org/GLM-5.3-Flash",
   "Qwen/Qwen3-30B-A3B-Instruct-2507",
-  "nvidia/Nemotron-3_5-Lightning",
 ];
 
 const candidates = process.argv.slice(2).filter((a) => !a.startsWith("-"));
