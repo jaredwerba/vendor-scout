@@ -11,6 +11,20 @@
  */
 
 import { getTraceTree, listTraces, readCount, type TraceSummary } from "./trace";
+import { cacheHitRate, costFor } from "./pricing";
+
+/**
+ * Cost is recomputed from tokens rather than read from the stored figure.
+ *
+ * Every cost written before 2026-08-29 double-billed cached reads, and Token
+ * Factory serves ~90% of this workload from cache, so the stored numbers are
+ * inflated by roughly 1.9x. Recomputing on read corrects the whole history
+ * instead of only what happens next.
+ */
+function agentCost(a: TraceSummary): number {
+  const recomputed = costFor(a.model, a);
+  return recomputed > 0 ? recomputed : Number(a.costUsd) || 0;
+}
 
 export interface RunFacts {
   id: string;
@@ -38,6 +52,8 @@ export interface FleetStats {
   /** actionSuccess ** n, for representative workflow lengths. */
   compounding: { steps: number; probability: number }[];
   cost: { median: number; p90: number; max: number; ratio: number; n: number } | null;
+  /** Share of prompt tokens served from Token Factory's cache. */
+  cacheHitRate: number;
   /** Median steps for a run that actually fanned out specialists. */
   medianRealRun: { steps: number; agents: number } | null;
 }
@@ -57,7 +73,7 @@ export async function fleetStats(limit = 100): Promise<FleetStats> {
       toolCalls: all.reduce((n, s) => n + readCount(s.toolCalls), 0),
       failedActions: all.reduce((n, s) => n + readCount(s.failedActions), 0),
       truncations: all.reduce((n, s) => n + readCount(s.truncations), 0),
-      costUsd: all.reduce((n, s) => n + (Number(s.costUsd) || 0), 0),
+      costUsd: all.reduce((n, s) => n + agentCost(s), 0),
       durationMs: Math.max(0, ...all.map((s) => readCount(s.durationMs))),
       startedAt: r.startedAt,
     };
@@ -67,6 +83,16 @@ export async function fleetStats(limit = 100): Promise<FleetStats> {
   const toolCalls = sum((r) => r.toolCalls);
   const failedActions = sum((r) => r.failedActions);
   const actionSuccess = toolCalls > 0 ? 1 - failedActions / toolCalls : 1;
+
+  // Cache hit rate across every agent, weighted by prompt size.
+  let cachedIn = 0;
+  let totalIn = 0;
+  for (const r of roots.map((x, i) => [x, trees[i]] as const)) {
+    for (const a of [r[0], ...(r[1]?.children ?? [])]) {
+      totalIn += readCount(a.inputTokens);
+      cachedIn += readCount(a.cacheReadTokens);
+    }
+  }
 
   const costed = runs.filter((r) => r.costUsd > 0).sort((a, b) => a.costUsd - b.costUsd);
   const quantile = (q: number) =>
@@ -96,6 +122,7 @@ export async function fleetStats(limit = 100): Promise<FleetStats> {
     cost: costed.length
       ? { median, p90: quantile(0.9), max, ratio: median > 0 ? max / median : 0, n: costed.length }
       : null,
+    cacheHitRate: totalIn > 0 ? cachedIn / totalIn : 0,
     medianRealRun: mid ? { steps: mid.steps, agents: mid.agents } : null,
   };
 }

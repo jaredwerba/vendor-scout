@@ -39,13 +39,37 @@ export function priceFor(modelId: string | null | undefined): ModelPrice | null 
   return null;
 }
 
-/** Dollars for one step's usage on `modelId`. 0 when the model is unknown. */
+/**
+ * Dollars for one step's usage on `modelId`. 0 when the model is unknown.
+ *
+ * `inputTokens` already INCLUDES the cached ones. On the OpenAI-compatible
+ * wire, `prompt_tokens` is the whole prompt and
+ * `prompt_tokens_details.cached_tokens` is a subset of it — verified directly
+ * against Token Factory: a 2,024-token prompt reported 2,016 cached.
+ *
+ * This function used to add the two together, which double-billed every
+ * cached token. Token Factory serves ~90% of this workload's input from
+ * cache, so every cost this project reported was inflated by roughly 1.9x.
+ * The bug was invisible because the number looked plausible and nothing
+ * cross-checked it against an invoice.
+ *
+ * Cached reads are charged at the full prompt rate here. If Nebius discounts
+ * them the way OpenAI does, this is an over-estimate — deliberately, since a
+ * cost report should err high rather than flatter itself.
+ */
 export function costFor(modelId: string | null | undefined, usage: Partial<ActionUsage>): number {
   const price = priceFor(modelId);
   if (!price) return 0;
-  const input = (Number(usage.inputTokens ?? 0) || 0) + (Number(usage.cacheReadTokens ?? 0) || 0);
+  const input = Number(usage.inputTokens ?? 0) || 0;
   const output = Number(usage.outputTokens ?? 0) || 0;
   return (input * price.in + output * price.out) / 1e6;
+}
+
+/** What fraction of the prompt was served from cache. */
+export function cacheHitRate(usage: Partial<ActionUsage>): number {
+  const input = Number(usage.inputTokens ?? 0) || 0;
+  const cached = Number(usage.cacheReadTokens ?? 0) || 0;
+  return input > 0 ? Math.min(1, cached / input) : 0;
 }
 
 /** "$0.0043" / "$1.27" — cost is usually cents, so never round it to nothing. */

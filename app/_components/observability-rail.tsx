@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { memo, useEffect, useMemo, useState } from "react";
 import { actionName } from "@/agent/lib/actions";
-import { formatUsd } from "@/agent/lib/pricing";
+import { cacheHitRate, costFor, formatUsd } from "@/agent/lib/pricing";
 import type { TraceEntry } from "@/agent/lib/trace";
 import { cn } from "@/lib/utils";
 import {
@@ -187,7 +187,9 @@ function laneStats(lane: Lane, derived: StackState): LaneStats {
     vendors: s?.vendorsRecorded ?? 0,
     inputTokens: Math.max(derived.counts.inputTokens, s?.inputTokens ?? 0),
     outputTokens: Math.max(derived.counts.outputTokens, s?.outputTokens ?? 0),
-    costUsd: s?.costUsd ?? 0,
+    // Recomputed: stored costs written before the cache fix double-billed
+    // cached reads and are ~1.9x too high.
+    costUsd: s ? costFor(s.model, s) || s.costUsd || 0 : 0,
     failed: Math.max(derived.counts.failed, s?.failedActions ?? 0),
     truncated: (s?.truncations ?? 0) > 0,
     durationMs: s?.durationMs ?? 0,
@@ -431,15 +433,21 @@ export function ObservabilityRail({
     let cost = 0;
     let tokens = 0;
     let vendors = 0;
+    let cachedIn = 0;
+    let totalIn = 0;
     for (const l of lanes) {
-      cost += l.summary?.costUsd ?? 0;
-      tokens += (l.summary?.inputTokens ?? 0) + (l.summary?.outputTokens ?? 0);
-      vendors += l.summary?.vendorsRecorded ?? 0;
+      const s = l.summary;
+      cost += s ? costFor(s.model, s) || s.costUsd || 0 : 0;
+      tokens += (s?.inputTokens ?? 0) + (s?.outputTokens ?? 0);
+      vendors += s?.vendorsRecorded ?? 0;
+      totalIn += s?.inputTokens ?? 0;
+      cachedIn += s?.cacheReadTokens ?? 0;
     }
+    const cached = totalIn > 0 ? cachedIn / totalIn : 0;
     if (vendors === 0 && research) {
       vendors = Object.values(research).reduce((a, b) => a + b, 0);
     }
-    return { cost, tokens, vendors };
+    return { cost, tokens, vendors, cached };
   }, [lanes, research]);
 
   const liveCount = lanes.filter((l) => l.status === "live").length;
@@ -475,12 +483,21 @@ export function ObservabilityRail({
             <Stat label="cost" value={formatUsd(totals.cost)} />
             <Stat highlight={totals.vendors > 0} label="vendors" value={fmt(totals.vendors)} />
           </dl>
-        ) : (
+        ) : null}
+        {totals.cached > 0 ? (
+          <p
+            className="text-[10px] text-muted-foreground"
+            title="Token Factory serves a repeated prompt prefix from cache. A scout re-sends its brief on every step, so most of its input is cached — and about 40% faster."
+          >
+            {(totals.cached * 100).toFixed(0)}% of prompt tokens served from cache
+          </p>
+        ) : null}
+        {totals.tokens === 0 ? (
           <p className="text-[11px] text-muted-foreground leading-relaxed">
             Tokens and cost appear here per agent as soon as Venus starts — a plan runs about
             six agents.
           </p>
-        )}
+        ) : null}
         {onPlannerModel ? (
           <div className="border-t pt-1.5">
             <p className="mb-1 text-[10px] text-muted-foreground">Planner model</p>

@@ -182,6 +182,20 @@ The failures that cost the most are the ones that look like success.
 
 <sub>commits `4d43b34`</sub>
 
+### Every cost was inflated by ~1.9x
+
+**Wrong.** Cost per plan was reported as $1.50. Nothing looked wrong; the number was plausible.
+
+**Why.** Token Factory serves a repeated prompt prefix from cache — measured at 90.7% of all input tokens across 33 agents. On the OpenAI-compatible wire `prompt_tokens` INCLUDES `cached_tokens`, and `costFor` was adding the two together, so every cached token was billed twice.
+
+**Changed.** Bill `inputTokens` once. Recompute cost from tokens on read rather than trusting the stored figure, so the whole history is corrected rather than only what happens next. Surface the cache hit rate in the app, because it is now the number that explains the cost.
+
+**Outcome.** A real traced plan: $1.50 reported, $0.80 actual — 47% lower. Cached reads are still charged at the full prompt rate here, so this remains a deliberate over-estimate.
+
+> A plausible number nobody cross-checks is indistinguishable from a correct one.
+
+<sub>runs `wrun_41M16NZKKB0GJNG65GT0HQ5BGW`</sub>
+
 ---
 
 ## How to read the outcomes
