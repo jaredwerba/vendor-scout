@@ -24,6 +24,19 @@ function when(iso: string | null): string {
     : d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
+/**
+ * A send time, in the reader's own timezone.
+ *
+ * `toLocaleString` has no fixed timezone, so the server rendered these in UTC
+ * and the browser re-rendered them locally — a hydration mismatch (React 418)
+ * and, on the page that answers "who got what email, when", a timestamp that
+ * silently changed after paint. suppressHydrationWarning keeps the client's
+ * value, which is the correct one.
+ */
+function When({ iso }: { readonly iso: string | null }) {
+  return <span suppressHydrationWarning>{when(iso)}</span>;
+}
+
 export function OutreachList({ records }: { readonly records: OutreachRecord[] }) {
   const [open, setOpen] = useState<string | null>(null);
 
@@ -44,7 +57,7 @@ export function OutreachList({ records }: { readonly records: OutreachRecord[] }
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-medium text-sm">{r.vendor_name}</span>
                 <span className="block truncate text-[11px] text-muted-foreground">
-                  {r.vendor_email} · {when(r.sent_at)}
+                  {r.vendor_email} · <When iso={r.sent_at} />
                   {r.nudge_count > 0 ? ` · ${r.nudge_count} follow-up${r.nudge_count > 1 ? "s" : ""}` : ""}
                 </span>
               </span>
@@ -92,7 +105,9 @@ export function OutreachList({ records }: { readonly records: OutreachRecord[] }
                         <span className={t.who === "agent" ? "text-primary" : "text-secondary-foreground"}>
                           {t.who === "agent" ? "Venus wrote" : `${r.vendor_name} replied`}
                         </span>
-                        <span className="text-muted-foreground">{when(t.when)}</span>
+                        <span className="text-muted-foreground">
+                          <When iso={t.when} />
+                        </span>
                       </p>
                       {t.subject ? <p className="mb-1 font-medium text-xs">{t.subject}</p> : null}
                       <p className="whitespace-pre-wrap text-[13px] leading-relaxed">{t.text}</p>
