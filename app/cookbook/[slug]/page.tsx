@@ -41,16 +41,33 @@ function findDir(slug: string): string | null {
   }
 }
 
+const REPO = "https://github.com/jaredwerba/vendor-scout";
+
 /**
- * Relative links point at files in a private repository, so on the web they
- * would resolve to nothing. The path is still worth showing — it is how a
- * reader finds the code once they have the repo — so it renders as inline
- * code rather than as a link that lies.
+ * A recipe cites the code it is about by relative path — `../../agent/lib/
+ * models.ts` — which is right on disk and resolves to nothing on the web.
+ * While the repository was private these rendered as inline code, because a
+ * link that 404s for everyone but its owner is worse than no link.
+ *
+ * The repository is public now, so the same paths can point at the file they
+ * always meant. A path whose last segment carries no extension is a
+ * directory, and GitHub serves those under `tree` rather than `blob`.
  */
-function delinkRepoPaths(md: string): string {
-  return md
-    .replace(/\[(`[^`]+`)\]\(\.\.[^)]*\)/g, "$1")
-    .replace(/\[([^\]\n]+)\]\(\.\.[^)]*\)/g, "`$1`");
+function repoUrl(relative: string): string {
+  const path = relative.replace(/^\.\.\/\.\.\//, "").replace(/\/$/, "");
+  const last = path.split("/").pop() ?? "";
+  return `${REPO}/${last.includes(".") ? "blob" : "tree"}/main/${path}`;
+}
+
+function resolveRepoLinks(md: string): string {
+  return md.replace(/\]\((\.\.\/[^)\s]*)\)/g, (whole, relative: string) => {
+    // A sibling recipe is a page on this site, not a file on GitHub.
+    const sibling = relative.match(/^\.\.\/\d\d-([a-z0-9-]+)\/(?:README\.md)?$/);
+    if (sibling) return `](/cookbook/${sibling[1]})`;
+    if (relative === "../README.md") return "](/cookbook)";
+    if (relative.startsWith("../../")) return `](${repoUrl(relative)})`;
+    return whole;
+  });
 }
 
 const ARC_LINE = /^[\s\S]*?\n> \**Foundation\** → [^\n]*\n/;
@@ -81,7 +98,7 @@ export default async function RecipePage({ params }: { params: Promise<{ slug: s
   // showing them twice. Stop there: the hook paragraphs between the arc and
   // the first h2 carry the recipe's opening proof strip, and an earlier
   // version of this line cut to the first h2 and dropped them on every page.
-  const body = delinkRepoPaths(stripFrontMatter(markdown).trimStart());
+  const body = resolveRepoLinks(stripFrontMatter(markdown).trimStart());
 
   return (
     <main className="min-h-dvh bg-background px-4 py-10 text-foreground sm:px-6">

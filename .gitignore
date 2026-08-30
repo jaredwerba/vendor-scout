@@ -1,5 +1,7 @@
 node_modules
 .env*
+# ...except the template, which is the first thing a reader runs.
+!.env.example
 .eve
 .vercel
 .next
