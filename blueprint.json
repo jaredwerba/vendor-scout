@@ -1,0 +1,58 @@
+{
+  "$schema": "./cookbook/schema/blueprint.schema.json",
+  "slug": "venus-wedding-planner",
+  "eyebrow": "Planning",
+  "title": "Venus — Wedding Planning Agent",
+  "tagline": "A planner that fans out research specialists, verifies what they find, emails the vendors, and reports what it spent.",
+  "summary": "Venus is a complete, deployed wedding-planning agent. A root planner holds the conversation and dispatches up to five research specialists in one batch, each with a tool surface of web search plus a recording tool and no ability to contact anyone. Specialists record each verified vendor to KV as they find it, so partial progress survives a truncation and an empty category is a detectable failure rather than a plausible answer; a record-time gate refuses directory listings, addresses that do not belong to the business, and pages that 404. The planner then writes three costed visions, sends the inquiry emails through Resend, classifies the replies that come back, schedules its own follow-ups, and tracks the countdown. Every step is priced from a generated Token Factory catalog and traced to LangSmith and a redacted KV trace store that the app renders live beside the conversation. It ships fixed eval sets, an adversarial simulation that writes fresh injection attempts each run, and a stack-blind grader that scores this architecture and a LangGraph rebuild of it with identical code.",
+  "difficulty": "advanced",
+  "estimatedRunTime": "2 min",
+  "stack": {
+    "primary": ["eve", "nebius-token-factory", "next"],
+    "secondary": ["tavily", "langsmith", "upstash-redis", "resend", "react", "tailwind", "vercel"]
+  },
+  "tags": [
+    "agent",
+    "multi-agent",
+    "grounding",
+    "guardrails",
+    "observability",
+    "evaluation",
+    "actions",
+    "cost",
+    "blueprint"
+  ],
+  "models": [
+    { "id": "Qwen/Qwen3-235B-A22B-Instruct-2507", "provider": "nebius", "role": "planner" },
+    { "id": "Qwen/Qwen3-235B-A22B-Instruct-2507", "provider": "nebius", "role": "scout" },
+    { "id": "Qwen/Qwen3-235B-A22B-Instruct-2507", "provider": "nebius", "role": "classifier" },
+    { "id": "deepseek-ai/DeepSeek-V4-Pro", "provider": "nebius", "role": "judge" }
+  ],
+  "integrations": ["nebius", "tavily", "langsmith", "resend", "upstash"],
+  "capabilities": {
+    "hasUI": true,
+    "hasEval": true,
+    "hasDataset": true
+  },
+  "dataset": {
+    "description": "15 labelled vendor replies with ground-truth intents, including prompt-injection and out-of-scope cases; three fixed research briefs both architectures run; and a dated record of every fault that changed the design.",
+    "items": 15
+  },
+  "assets": {
+    "architecture": "README.md"
+  },
+  "quickstart": {
+    "clone": "git clone https://github.com/jaredwerba/vendor-scout && cd vendor-scout",
+    "configure": "cp .env.example .env.local  # then fill NEBIUS_API_KEY, TAVILY_API_KEY, RESEND_API_KEY and the Upstash KV vars. Leave OUTREACH_MODE=dry_run until you mean it.",
+    "run": "npm install && npm run verify && npm exec -- eve dev --no-ui --port 3111"
+  },
+  "deployment": {
+    "target": "vercel",
+    "instructions": "README.md"
+  },
+  "authors": [
+    { "name": "Jared Werba", "url": "https://github.com/jaredwerba" }
+  ],
+  "publishedAt": "2026-08-30",
+  "updatedAt": "2026-08-30"
+}

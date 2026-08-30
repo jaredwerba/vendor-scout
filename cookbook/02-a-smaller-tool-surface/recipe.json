@@ -1,0 +1,59 @@
+{
+  "$schema": "../schema/recipe.schema.json",
+  "slug": "a-smaller-tool-surface",
+  "order": 2,
+  "eyebrow": "Delegation",
+  "title": "Give the Specialist a Smaller Tool Surface",
+  "tagline": "The capability a sub-agent must not have is the one it should not be given.",
+  "difficulty": "intermediate",
+  "estimatedReadingTime": "9 min",
+  "estimatedRunTime": "5 min",
+  "stack": {
+    "primary": ["eve", "nebius-token-factory", "typescript"],
+    "secondary": ["next", "zod", "tavily", "upstash", "jq"]
+  },
+  "tags": [
+    "delegation",
+    "subagents",
+    "tool-design",
+    "least-privilege",
+    "fan-out",
+    "agent-safety"
+  ],
+  "story": {
+    "problem": "Research was delegated with eve's built-in `agent` tool, which runs a copy of the ROOT agent — same instructions, same tools, including `send_outreach`. Nothing looked wrong and the plans were good, but the capability to email a stranger was inherited rather than granted, so a research child was one bad inference away from using it.",
+    "solution": "Move research into a declared subagent at `agent/subagents/scout`, whose entire tool surface is web search plus `record_vendor`. Declared subagents inherit nothing, so the disabled shell tools and the observability hook are re-authored under that directory. Then shadow eve's built-in `agent` tool with an authored refusal, because `disableTool()` does not cover a built-in and a rule in a prompt is not a control.",
+    "outcome": "The capability is absent rather than forbidden: research and outreach never share a context. A later production session showed the planner still reaching for both delegation paths — 10 `scout` calls and 3 `agent` calls in one session — which is why the built-in is shadowed rather than merely discouraged."
+  },
+  "prerequisites": [
+    "Node 24.x and this repository checked out — the commands inspect the real agent, not a sample",
+    "eve ^0.24.4; `eve build` writes the `.eve/agent-summary.json` manifest the checks read",
+    "jq, for reading that manifest",
+    "NEBIUS_API_KEY in .env.local if you intend to run the agent rather than only inspect its tool surface",
+    "Familiarity with agent/lib/models.ts — planner and scout are separate roles on purpose"
+  ],
+  "models": [
+    { "id": "Qwen/Qwen3-235B-A22B-Instruct-2507", "role": "planner" },
+    { "id": "Qwen/Qwen3-235B-A22B-Instruct-2507", "role": "primary" },
+    { "id": "deepseek-ai/DeepSeek-V4-Pro", "role": "critic" }
+  ],
+  "quickstart": {
+    "clone": "git clone https://github.com/jaredwerba/vendor-scout.git && cd vendor-scout && npm install",
+    "configure": "Set NEBIUS_API_KEY and TAVILY_API_KEY in .env.local. The tool-surface checks in this recipe need no keys; npm run eval:scout does.",
+    "run": "npm run build:eve && jq -r '.tools[].name' .eve/agent-summary.json && grep -L disableTool agent/subagents/scout/tools/*.ts"
+  },
+  "endpoints": [],
+  "nextRecipe": "record-findings-as-you-find-them",
+  "deployment": {
+    "target": "vercel",
+    "instructions": "../../README.md"
+  },
+  "authors": [
+    {
+      "name": "Jared Werba",
+      "url": "https://github.com/jaredwerba"
+    }
+  ],
+  "publishedAt": "2026-08-30",
+  "updatedAt": "2026-08-30"
+}

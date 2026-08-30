@@ -1,0 +1,46 @@
+{
+  "$schema": "../schema/recipe.schema.json",
+  "slug": "refuse-in-the-tool",
+  "order": 4,
+  "eyebrow": "Guards",
+  "title": "Refuse in the Tool, Not in the Prompt",
+  "tagline": "Move a broken rule into the tool — but only where the tool can actually check it.",
+  "difficulty": "intermediate",
+  "estimatedReadingTime": "9 min",
+  "estimatedRunTime": "1 min",
+  "stack": {
+    "primary": ["eve", "typescript", "zod", "nebius-token-factory"],
+    "secondary": ["next", "tavily", "upstash", "vercel"]
+  },
+  "tags": ["guardrails", "tool-design", "validation", "subagents", "evals"],
+  "story": {
+    "problem": "A research specialist recorded a caterer with the inquiry address inquiries@hideseekmedia.com, read off a WeddingWire page for a different business. Outreach runs live, so that address was one plan away from a real stranger's inbox — and the scout's instructions already forbade directory sources and already required a published address on the vendor's own site.",
+    "solution": "record_vendor refuses at the write boundary: a source URL on any of 20 known directories, matched on host labels rather than as a substring of the URL; an email whose corporate domain shares nothing with the vendor's name or website, with free mail passing untouched; and a source page that returns a definitive 404 or 410. Every refusal returns a note naming the next action. The counter-lesson is enforced too — a required drive time, which no tool in the system can produce, was demoted to an optional field the scout is explicitly told never to search for.",
+    "outcome": "The guards are unit-tested without a model against real rows from a production run: the findings the scout eval caught reject, and every legitimate finding from the same run still passes, including gmail addresses and contact-form-only vendors. Removing the unreachable drive-time requirement returned recorded findings to 52/53 while the radius judge held at 100% across all five categories."
+  },
+  "prerequisites": [
+    "Node 24 — package.json pins \"node\": \"24.x\"",
+    "This repository cloned and npm install run once",
+    "Network access: the liveness guard issues one real GET per recorded vendor",
+    "No model key for the guard suite — the checks are pure functions plus one fetch",
+    "NEBIUS_API_KEY in .env.local only if you also run npm run eval:scout"
+  ],
+  "models": [
+    { "id": "Qwen/Qwen3-235B-A22B-Instruct-2507", "role": "primary" },
+    { "id": "deepseek-ai/DeepSeek-V4-Pro", "role": "critic" }
+  ],
+  "quickstart": {
+    "clone": "git clone https://github.com/jaredwerba/vendor-scout.git && cd vendor-scout",
+    "configure": "npm install — the guard suite needs no API key; add .env.local only if you go on to npm run eval:scout",
+    "run": "npm run test:guards"
+  },
+  "endpoints": [],
+  "deployment": {
+    "target": "vercel",
+    "instructions": "../../README.md"
+  },
+  "nextRecipe": "budget-the-retrieval",
+  "authors": [{ "name": "Jared Werba", "url": "https://github.com/jaredwerba" }],
+  "publishedAt": "2026-08-30",
+  "updatedAt": "2026-08-30"
+}

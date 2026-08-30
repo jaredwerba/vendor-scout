@@ -1,0 +1,95 @@
+{
+  "$schema": "../schema/recipe.schema.json",
+  "slug": "a-dashboard-that-cannot-lie",
+  "order": 8,
+  "eyebrow": "Observability",
+  "title": "A Dashboard That Cannot Lie",
+  "tagline": "Observability that lies is worse than none, and it will lie about itself first.",
+  "difficulty": "advanced",
+  "estimatedReadingTime": "12 min",
+  "estimatedRunTime": "3 min",
+  "stack": {
+    "primary": [
+      "eve",
+      "typescript",
+      "langsmith"
+    ],
+    "secondary": [
+      "opentelemetry",
+      "next",
+      "upstash-redis",
+      "nebius-token-factory",
+      "vercel"
+    ]
+  },
+  "tags": [
+    "observability",
+    "tracing",
+    "otel",
+    "outcome-taxonomy",
+    "silent-failure",
+    "agent-tree",
+    "deep-links"
+  ],
+  "story": {
+    "problem": "A public engineering console reported three things that were not true, and none of them raised an error. It counted zero specialists during a five-way fan-out because it was built on `subagent.called`, an event eve 0.24.4 documents on the parent's durable stream and never emits. It displayed 73% for reply understanding, a score belonging to a classifier that had been reverted hours earlier. And it counted every failed search as a healthy tool call, because `web_search` reports failure as `{status: \"search_failed\"}` and returns cleanly, so nothing counting exceptions could see it. Every 'Open trace in LangSmith' button 404'd for the same class of reason: the link was built from the OTel trace id rather than the run id LangSmith derives from a span id, and nothing ever fetched it.",
+    "solution": "Count delegations at `actions.requested`, where a subagent call is genuinely visible, and discover child lanes from the trace tree each specialist writes for itself. Move the success/refusal/failure taxonomy into agent/lib/actions.ts as one shared reading, ordered to match eve's protocol — `status` before `error`, because eve attaches an error to a rejection as well as to a failure. Subtract refused calls through `toolRuns` before any surface reports work done. Stamp every eval summary with the model it ran on. Verify a LangSmith run exists before returning its URL, and render `null` as a disabled caption rather than a dead link.",
+    "outcome": "Lanes populate live and the research eval stopped triple-running one fan-out. `npm run test:outcomes` reads 22 status literals back out of 26 tool sources and fails on any the taxonomy does not classify; `npm run test:fold` drives the real fold with events in eve's delivered shape. Two follow-up fixes each failed one level below the defect before that pairing existed. The structural fix for the stale score — the console flagging a summary whose model no longer matches the live routing — is recommended in the decision record and is not built."
+  },
+  "prerequisites": [
+    "KV_REST_API_URL and KV_REST_API_TOKEN (or the UPSTASH_REDIS_REST_* pair) — the trace store",
+    "LANGSMITH_API_KEY and LANGSMITH_TRACING=true — the exporter's export() is a no-op without the second",
+    "Node 24 (package.json `engines`) and `npm install` at the repository root",
+    "Recipe 02 (Delegation): a single-agent run has no tree, and the tree is where the lies live",
+    "One run that actually fans out — a panel with one lane cannot disagree with itself"
+  ],
+  "models": [
+    {
+      "id": "Qwen/Qwen3-235B-A22B-Instruct-2507",
+      "role": "planner"
+    },
+    {
+      "id": "Qwen/Qwen3-235B-A22B-Instruct-2507",
+      "role": "primary"
+    },
+    {
+      "id": "deepseek-ai/DeepSeek-V4-Pro",
+      "role": "critic"
+    }
+  ],
+  "quickstart": {
+    "clone": "git clone https://github.com/jaredwerba/vendor-scout.git && cd vendor-scout && npm install",
+    "configure": "Create .env.local with KV_REST_API_URL and KV_REST_API_TOKEN for the trace store, plus LANGSMITH_API_KEY and LANGSMITH_TRACING=true for span export. Neither guard command below needs them.",
+    "run": "npm run test:outcomes && npm run test:fold"
+  },
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/observe/sessions",
+      "description": "Every root session, newest first — the session picker on /observe. Summaries are redacted at write time, so the route needs no gate."
+    },
+    {
+      "method": "GET",
+      "path": "/api/observe/session/[id]",
+      "description": "One whole agent tree: the root plus every specialist, each with its recorded event log, plus a LangSmith URL that is null unless the run was verified to exist."
+    },
+    {
+      "method": "GET",
+      "path": "/api/observe/evals",
+      "description": "Every eval summary the scripts have uploaded, each stamped with the model it ran on."
+    }
+  ],
+  "deployment": {
+    "target": "vercel",
+    "instructions": "../../README.md"
+  },
+  "nextRecipe": "hold-the-set-pin-the-judge",
+  "authors": [
+    {
+      "name": "Jared Werba",
+      "url": "https://github.com/jaredwerba"
+    }
+  ],
+  "publishedAt": "2026-08-30",
+  "updatedAt": "2026-08-30"
+}

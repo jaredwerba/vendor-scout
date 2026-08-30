@@ -640,6 +640,9 @@ export function AgentChat({
                 you land here and stay, they were reachable only by typing the
                 URL. */}
             <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-muted-foreground text-xs">
+              <a className="transition-colors hover:text-foreground" href="/cookbook">
+                Cookbook
+              </a>
               <a className="transition-colors hover:text-foreground" href="/compare">
                 V1 → V2
               </a>

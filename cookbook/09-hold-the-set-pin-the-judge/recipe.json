@@ -1,0 +1,46 @@
+{
+  "$schema": "../schema/recipe.schema.json",
+  "slug": "hold-the-set-pin-the-judge",
+  "order": 9,
+  "eyebrow": "Evaluation",
+  "title": "Hold the Set, Pin the Judge",
+  "tagline": "Correctness of the content and reliability of the shape are different axes. Measure both.",
+  "difficulty": "advanced",
+  "estimatedReadingTime": "13 min",
+  "estimatedRunTime": "6 min",
+  "stack": {
+    "primary": ["eve", "nebius-token-factory"],
+    "secondary": ["langsmith", "upstash-redis", "zod", "ai-sdk"]
+  },
+  "tags": ["evaluation", "judge", "ground-truth", "structured-output", "adversarial", "benchmark"],
+  "story": {
+    "problem": "A cheaper classifier won an accuracy sweep and was promoted on the strength of a tie, then failed 4 of 30 structured-output calls — a failure an accuracy score reads as a tie rather than as a fault.",
+    "solution": "A held labelled set, a judge pinned to its own environment variable so a model swap cannot move the bar, shape conformance probed as a separate axis, and one stack-blind grader that scores any system emitting the shared RunResult contract.",
+    "outcome": "Two different architectures scored on the same brief by identical code, and a model promotion reversed thirteen minutes later on evidence rather than on preference."
+  },
+  "prerequisites": [
+    "Recipe 01 — the judge is a role in the model registry, not a constant",
+    "Node 24.x and npm install at the repo root",
+    "A Nebius Token Factory key as NEBIUS_API_KEY in .env.local",
+    "A labelled set with ground truth — fifteen real vendor replies ship in evals/data/vendor-replies.json",
+    "A running deployment for the evals that drive full turns"
+  ],
+  "models": [
+    { "id": "deepseek-ai/DeepSeek-V4-Pro", "role": "judge" },
+    { "id": "Qwen/Qwen3-235B-A22B-Instruct-2507", "role": "classifier" }
+  ],
+  "quickstart": {
+    "clone": "git clone https://github.com/jaredwerba/vendor-scout && cd vendor-scout",
+    "configure": "cp .env.example .env.local  # then fill NEBIUS_API_KEY",
+    "run": "npm install && npm run eval:replies && npm run probe:schema"
+  },
+  "endpoints": [],
+  "deployment": {
+    "target": "vercel",
+    "instructions": "../../README.md"
+  },
+  "nextRecipe": "assert-against-the-deployed-artifact",
+  "authors": [{ "name": "Jared Werba", "url": "https://github.com/jaredwerba" }],
+  "publishedAt": "2026-08-30",
+  "updatedAt": "2026-08-30"
+}

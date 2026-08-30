@@ -272,6 +272,9 @@ export default function ComparePage() {
           <Link className="hover:text-foreground" href="/">
             ← back to Venus
           </Link>
+          <Link className="hover:text-foreground" href="/cookbook">
+            cookbook
+          </Link>
           <Link className="hover:text-foreground" href="/observe">
             observability
           </Link>

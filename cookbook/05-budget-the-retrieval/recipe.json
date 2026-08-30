@@ -1,0 +1,61 @@
+{
+  "$schema": "../schema/recipe.schema.json",
+  "slug": "budget-the-retrieval",
+  "order": 5,
+  "eyebrow": "Governance",
+  "title": "Budget the Retrieval",
+  "tagline": "A cap counted in queries, where hitting it is a normal outcome rather than an error.",
+  "difficulty": "intermediate",
+  "estimatedReadingTime": "11 min",
+  "estimatedRunTime": "2 min",
+  "stack": {
+    "primary": ["eve", "nebius-token-factory", "tavily"],
+    "secondary": ["typescript", "zod", "next", "upstash"]
+  },
+  "tags": [
+    "governance",
+    "retrieval",
+    "budget",
+    "rate-limiting",
+    "durable-state",
+    "subagents",
+    "tool-design",
+    "observability"
+  ],
+  "story": {
+    "problem": "An unbounded search loop is how a research specialist burns an afternoon and a budget without converging. Worse, a guard that demanded a fact no tool could reach turned the loop into a death spiral: one catering scout ran seven consecutive searches for a single drive time, spent its entire 25-search budget, and recorded one vendor. Nothing threw, and every surface that counted searches counted the calls it requested rather than the calls that happened, so a scout capped at 25 could report 30.",
+    "solution": "A durable per-session counter in agent/lib/search-budget.ts — 25 for a specialist, 40 for the root, derived from ctx.session.parent rather than a tool argument. The unit is the query, not the tool call, so a four-query batch cannot quietly quadruple the budget. Calls that could never reach the provider return before the counter moves, and the batch is counted once so a retried transient failure is not charged twice. Exhaustion returns status cap_reached with an instruction to finish from what is already found, and the taxonomy in agent/lib/actions.ts classifies that as a refusal so toolRuns() reports searches performed rather than requested.",
+    "outcome": "The guard was moved to a fact the tools can actually reach: the vendor's town stays required, the drive note is optional, and the scout is told never to search for one. Two npm run eval:scout runs over the same brief read 33/37 and 52/53 = 98%, with the radius judge at 100% in all five categories. scripts/test-trace-fold.mjs asserts that a search refused at the cap is not counted as a search, and scripts/test-outcomes.mjs fails if any tool status stops being classified."
+  },
+  "prerequisites": [
+    "Node 24 (engines in package.json)",
+    "An eve install with defineState and declared subagents (^0.24.4)",
+    "NEBIUS_API_KEY for a Token Factory model",
+    "TAVILY_API_KEY for live web search (the two checks in the recipe run without it)",
+    "The Delegation recipe's declared specialist — the cap is per agent because the session is per agent"
+  ],
+  "models": [
+    { "id": "Qwen/Qwen3-235B-A22B-Instruct-2507", "role": "planner" },
+    { "id": "Qwen/Qwen3-235B-A22B-Instruct-2507", "role": "primary" },
+    { "id": "deepseek-ai/DeepSeek-V4-Pro", "role": "critic" }
+  ],
+  "quickstart": {
+    "clone": "git clone https://github.com/jaredwerba/vendor-scout.git && cd vendor-scout && npm install",
+    "configure": "Nothing to configure for the two checks below. For the live agent, put NEBIUS_API_KEY and TAVILY_API_KEY in .env.local (full list in README.md).",
+    "run": "npm run test:fold && npm run test:outcomes"
+  },
+  "endpoints": [],
+  "deployment": {
+    "target": "vercel",
+    "instructions": "../../README.md"
+  },
+  "nextRecipe": "compute-the-price-then-distrust-it",
+  "authors": [
+    {
+      "name": "Jared Werba",
+      "url": "https://github.com/jaredwerba"
+    }
+  ],
+  "publishedAt": "2026-08-30",
+  "updatedAt": "2026-08-30"
+}

@@ -100,7 +100,7 @@
       "old": "V1 showed no cost. V2 showed a cost of $0.00 for every agent.",
       "new": "V2 reads the model identifier from the correct field. V2 removes the provider prefix before it reads the price table.",
       "why": "eve reports the model in `RuntimeIdentity.modelId`. The code read `runtime.model`. The trace also adds a provider prefix to the identifier, and the price table uses the identifier without the prefix. A later fault was larger: on the OpenAI-compatible wire `prompt_tokens` already contains `cached_tokens`, and the code added the two together.",
-      "result": "Cost became a real number for each step, each agent and each session. It was then wrong. Across 28 traced sessions the middle run showed $2.14 and the 90th percentile showed $6.07 — both inflated by about 1.9x, because cached input tokens were billed twice. One real traced plan reported $1.50 and actually cost $0.80."
+      "result": "Cost became a real number for each step, each agent and each session — and was then wrong twice. The first figures were inflated about 1.9x because cached input tokens were billed twice. Recomputing from stored tokens on read corrected the whole history rather than only what came next. Across 33 traced sessions on 2026-08-30: median run $0.939, p90 $3.31, most expensive $9.21, a tail 9.8 times the median."
     },
     {
       "id": "evals",
@@ -137,6 +137,16 @@
           "$1.50 reported to $0.80 actual on one traced plan, 47% lower",
           "~1.9x inflation on every cost this project published before 2026-08-29",
           "verified on the wire: a 2,024-token prompt reported 2,016 cached"
+        ]
+      },
+      {
+        "name": "Grade two architectures with one grader",
+        "kind": "measured",
+        "mechanism": "Both the eve build and a LangGraph rebuild emit the same RunResult and are scored by code that sees nothing about either stack beyond its label. Two graders that do the same thing is how a comparison quietly becomes marketing.",
+        "numbers": [
+          "eve-vercel: 48/53, $0.539, 114s, 14 vendors, 6 agents",
+          "langgraph-nebius: 49/53, $0.097, 56s, 19 vendors, 7 agents",
+          "same brief, same models, same guards, same fixed dataset"
         ]
       },
       {
@@ -216,10 +226,10 @@
     ],
     "limits": [
       "V1's cost cannot be stated at all. At commit adacb10 there was no pricing, no trace store and no report — `agent/lib` held six files, none of them about cost. So \"V2 is N% cheaper\" is not a sentence this project is entitled to. The V1 to V2 delta is a delta in measurability: V1 could not have produced a cost figure, and V2 produced one and then caught it being wrong by 1.9x.",
-      "The $2.14 and $6.07 figures were recorded before the double-billing fix and have not been re-run. They are about 1.9x too high. They are left in place, marked, rather than quietly divided — the arithmetic is not the point, the staleness is.",
+      "The run statistics are a dated snapshot, not a constant. `npm run report` recomputes cost from stored tokens every time it runs, so the median moves as sessions accumulate — it read $1.07 earlier the same day and $0.939 an hour later, because another run landed in between. Any figure here is only true of the population named beside it.",
       "No cost figure here has ever been checked against an invoice. Every one is list price multiplied by measured tokens, and cached reads are charged at the full rate on purpose, so these numbers err high.",
       "\"About 15% of cost for the planner, about 80% for the specialists\" is asserted in code comments and never measured. No script in this repo computes a cost share per role.",
-      "Only one side of the LangGraph comparison exists on disk so far, so no head-to-head cost number is available yet."
+      "The two architectures have now been graded on one brief each, by identical code. That is n=1 per arm on a single brief — enough to show the harness matters, not enough to rank them."
     ],
     "charts": {
       "correction": {

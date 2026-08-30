@@ -1,0 +1,77 @@
+{
+  "$schema": "../schema/recipe.schema.json",
+  "slug": "route-a-model-per-job",
+  "order": 1,
+  "eyebrow": "Foundation",
+  "title": "Route a Model per Job",
+  "tagline": "One model per role, each swap a line of configuration an eval can veto.",
+  "difficulty": "beginner",
+  "estimatedReadingTime": "9 min",
+  "estimatedRunTime": "12 min",
+  "stack": {
+    "primary": [
+      "nebius-token-factory",
+      "typescript",
+      "ai-sdk"
+    ],
+    "secondary": [
+      "eve",
+      "next",
+      "zod",
+      "node"
+    ]
+  },
+  "tags": [
+    "model-routing",
+    "model-selection",
+    "structured-output",
+    "evals",
+    "configuration",
+    "cost"
+  ],
+  "story": {
+    "problem": "One model served every job, so the question of which model should do which job was never written down anywhere a reviewer could argue with. When it finally got asked, a single sweep over fifteen labelled vendor replies ranked a cheaper model first and the classifier was switched to it \u2014 and the very next run of the same fifteen cases scored 11/15 with six schema failures.",
+    "solution": "A per-role registry in agent/lib/models.ts: four roles (planner, scout, classifier, judge), each with a default id, an env override, a context window and a written rationale that the app renders. Resolution runs through one function, and assertKnownModel turns the Token Factory price snapshot into an allowlist so a typo'd id stops the process instead of silently benchmarking a different model.",
+    "outcome": "Two cheap swaps were measured and refused. The classifier stayed on Qwen after probe:schema recorded 0/30 structured-output failures against the cheaper candidate's 4/30, and the scout role was reverted after every specialist session failed with not one vendor recorded against a 46/50 baseline. models:compare now runs three rounds and ranks on the worst one."
+  },
+  "prerequisites": [
+    "Node 24.x (pinned in package.json engines)",
+    "A Nebius Token Factory API key as NEBIUS_API_KEY in .env.local",
+    "npm install at the repo root",
+    "A current price snapshot: npm run pricing:refresh",
+    "A labelled dataset for at least one role (evals/data/vendor-replies.json)"
+  ],
+  "models": [
+    {
+      "id": "Qwen/Qwen3-235B-A22B-Instruct-2507",
+      "role": "planner"
+    },
+    {
+      "id": "Qwen/Qwen3-235B-A22B-Instruct-2507",
+      "role": "primary"
+    },
+    {
+      "id": "deepseek-ai/DeepSeek-V4-Pro",
+      "role": "critic"
+    }
+  ],
+  "quickstart": {
+    "clone": "git clone https://github.com/jaredwerba/vendor-scout.git && cd vendor-scout",
+    "configure": "npm install && echo 'NEBIUS_API_KEY=...' >> .env.local",
+    "run": "npm run models:compare"
+  },
+  "endpoints": [],
+  "deployment": {
+    "target": "vercel",
+    "instructions": "../../README.md"
+  },
+  "nextRecipe": "a-smaller-tool-surface",
+  "authors": [
+    {
+      "name": "Jared Werba",
+      "url": "https://github.com/jaredwerba"
+    }
+  ],
+  "publishedAt": "2026-08-30",
+  "updatedAt": "2026-08-30"
+}

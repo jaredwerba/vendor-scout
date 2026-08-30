@@ -1,0 +1,60 @@
+{
+  "$schema": "../schema/recipe.schema.json",
+  "slug": "record-findings-as-you-find-them",
+  "order": 3,
+  "eyebrow": "Durability",
+  "title": "Record Findings as You Find Them",
+  "tagline": "Partial progress survives a truncation; an end-of-context array does not.",
+  "difficulty": "intermediate",
+  "estimatedReadingTime": "9 min",
+  "estimatedRunTime": "10 min",
+  "stack": {
+    "primary": ["eve", "next", "nebius-token-factory", "upstash-redis"],
+    "secondary": ["typescript", "tavily", "langsmith", "vercel"]
+  },
+  "tags": [
+    "durability",
+    "subagents",
+    "partial-progress",
+    "state",
+    "redis",
+    "failure-detection",
+    "observability"
+  ],
+  "story": {
+    "problem": "A research specialist returned every vendor it found in one closing JSON blob, which made each finding hostage to the last token. A truncated reply, a transient provider error or a cancelled turn lost the whole category — and lost it silently, because an empty result from a specialist is indistinguishable from a market with nothing in it.",
+    "solution": "Each vendor is written to the KV research store the moment it is verified, through a record_vendor tool that takes exactly one finding. The planner reads them back with get_research, which joins the findings to the live trace so a truncated specialist, a stalled one, an all-refused one and a genuinely empty category each produce a different instruction. The subagent's outputSchema was deleted outright: a structured return on a long-running child escalates a formatting miss to OUTPUT_SCHEMA_NOT_FULFILLED and kills the session, and it guarantees nothing the durable store does not already hold.",
+    "outcome": "Partial progress survives an interruption and 'recorded 0' became a detectable failure the planner can act on, re-running only the specialist that was cut off. The run that measured it recorded 3-4 vendors per specialist with zero truncations and scored 52/53 on npm run eval:scout; the configuration that carried the schema had failed 10 of 10 child sessions with no vendor recorded."
+  },
+  "prerequisites": [
+    "Node 24 and npm",
+    "An Upstash Redis REST endpoint (UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN, or the KV_REST_API_* pair injected by the Vercel integration)",
+    "A Nebius Token Factory API key (NEBIUS_API_KEY) and a Tavily key (TAVILY_API_KEY)",
+    "A declared subagent whose tool surface you control — see recipe 02",
+    "A brief in evals/data/briefs.json to drive an end-to-end run"
+  ],
+  "models": [
+    { "id": "Qwen/Qwen3-235B-A22B-Instruct-2507", "role": "primary" },
+    { "id": "Qwen/Qwen3-235B-A22B-Instruct-2507", "role": "planner" },
+    { "id": "deepseek-ai/DeepSeek-V4-Pro", "role": "critic" }
+  ],
+  "quickstart": {
+    "clone": "git clone https://github.com/jaredwerba/vendor-scout.git && cd vendor-scout && npm install",
+    "configure": "Create .env.local with NEBIUS_API_KEY, TAVILY_API_KEY and the Upstash REST pair (UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN). Without the store, record_vendor returns not_configured and the run degrades to closing reports.",
+    "run": "npm run test:fold   # the fold, no keys or credits; then npm run run:eve -- boston-boho for a real end-to-end run"
+  },
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/observe/session/{id}",
+      "description": "One agent tree — the planner, every specialist, their recorded event logs, and the live per-category count of vendors written to the research store."
+    }
+  ],
+  "deployment": {
+    "target": "vercel",
+    "instructions": "../../README.md"
+  },
+  "authors": [{ "name": "Jared Werba", "url": "https://github.com/jaredwerba" }],
+  "publishedAt": "2026-08-30",
+  "updatedAt": "2026-08-30"
+}

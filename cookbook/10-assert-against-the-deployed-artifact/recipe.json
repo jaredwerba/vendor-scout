@@ -1,0 +1,78 @@
+{
+  "$schema": "../schema/recipe.schema.json",
+  "slug": "assert-against-the-deployed-artifact",
+  "order": 10,
+  "eyebrow": "Verification",
+  "title": "Assert Against the Deployed Artifact",
+  "tagline": "A local gate cannot see a production-only failure.",
+  "difficulty": "advanced",
+  "estimatedReadingTime": "12 min",
+  "estimatedRunTime": "3 min",
+  "stack": {
+    "primary": [
+      "eve",
+      "next",
+      "typescript"
+    ],
+    "secondary": [
+      "nebius-token-factory",
+      "vercel",
+      "playwright",
+      "node"
+    ]
+  },
+  "tags": [
+    "verification",
+    "ci",
+    "exit-codes",
+    "bundling",
+    "silent-failure",
+    "screenshots",
+    "smoke-test",
+    "deployment"
+  ],
+  "story": {
+    "problem": "Three faults reached production while every local gate stayed green. A build was checked with `npx eve build 2>&1 | grep -i error`, and the failure message contained neither word, so grep printed nothing and the pipeline's exit status — which belonged to grep, not to the build — went unread. A page section read its data with readFileSync against an import.meta.url path, which resolves on a laptop and finds nothing inside a bundled serverless function; a try/catch turned that into an empty array and a length>0 render guard turned the empty array into no section at all. And the observability panel carried the palette of the reference architecture diagram it had been drawn from, with six agent cards pushing the live event stream off the bottom of the viewport during a fan-out. Typecheck, both builds and the evals passed on all three.",
+    "solution": "One gate, exit-code honest: `npm run verify` chains typecheck, next build, eve build, the guard tests, the outcome-taxonomy test, the trace-fold test and the cookbook drift check with `&&`, with no pipe anywhere in it. The vanishing section was fixed by importing the JSON as a module so the bundler carries it, rather than reading it from a path that only exists on the machine the gate runs on. The panel was checked by rendering it: scripts/shot.mjs drives the installed Chrome against a base URL that defaults to production, at 1440x900, 1180x800 and 390x844, and scripts/smoke-chat.mjs sends one real turn to the deployed host and reads the serving model id back off the session.started event rather than off local config.",
+    "outcome": "No further broken deploys; production never served the bad build. The taxonomy test reports 22 status literals across 26 sources with one runtime-assembled site vetted, and the fold test drives agent/lib/trace.ts with the event shapes eve actually delivers so a refusal is never counted as a failure. The gap is published rather than closed: no script in this repository fetches a deployed page and asserts its content, so the check that found the vanishing section is still run by hand, shot.mjs renders PNGs and asserts nothing about them, and the decision record's own claim of five visible tiles does not match the four vtile sections the component renders."
+  },
+  "prerequisites": [
+    "Node 24 (engines in package.json) and npm install at the repository root",
+    "A deployed URL to point at — both remote scripts default to the production host and take a base URL as argv[2]",
+    "Playwright for scripts/shot.mjs: npm i -D playwright, deliberately not a dependency of the app",
+    "The deployment configured (NEBIUS_API_KEY, the KV vars) for the smoke turn — it reads no local env of its own",
+    "Recipe 09 (Evaluation) first: evals score what the agent decides, and nothing in them opens the page it decided on"
+  ],
+  "models": [
+    {
+      "id": "Qwen/Qwen3-235B-A22B-Instruct-2507",
+      "role": "planner"
+    },
+    {
+      "id": "Qwen/Qwen3-235B-A22B-Instruct-2507",
+      "role": "primary"
+    },
+    {
+      "id": "deepseek-ai/DeepSeek-V4-Pro",
+      "role": "critic"
+    }
+  ],
+  "quickstart": {
+    "clone": "git clone https://github.com/jaredwerba/vendor-scout.git && cd vendor-scout && npm install",
+    "configure": "Nothing to configure for the two local checks. For the full gate, npm run verify needs no keys either; the smoke turn and the screenshots take a deployed base URL as their first argument.",
+    "run": "npm run test:outcomes && npm run test:fold"
+  },
+  "endpoints": [],
+  "deployment": {
+    "target": "vercel",
+    "instructions": "../../README.md"
+  },
+  "authors": [
+    {
+      "name": "Jared Werba",
+      "url": "https://github.com/jaredwerba"
+    }
+  ],
+  "publishedAt": "2026-08-30",
+  "updatedAt": "2026-08-30"
+}

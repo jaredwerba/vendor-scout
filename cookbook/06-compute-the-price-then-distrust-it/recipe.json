@@ -1,0 +1,76 @@
+{
+  "$schema": "../schema/recipe.schema.json",
+  "slug": "compute-the-price-then-distrust-it",
+  "order": 6,
+  "eyebrow": "Cost",
+  "title": "Compute the Price, Then Distrust It",
+  "tagline": "A plausible number nobody cross-checks is indistinguishable from a correct one.",
+  "difficulty": "advanced",
+  "estimatedReadingTime": "12 min",
+  "estimatedRunTime": "5 min",
+  "stack": {
+    "primary": [
+      "nebius-token-factory",
+      "eve",
+      "typescript"
+    ],
+    "secondary": [
+      "next",
+      "upstash-redis",
+      "vercel"
+    ]
+  },
+  "tags": [
+    "cost",
+    "token-accounting",
+    "prompt-caching",
+    "observability",
+    "model-registry",
+    "silent-failure"
+  ],
+  "story": {
+    "problem": "Token Factory returns token counts and no price, so every dollar figure has to be computed locally — and a locally computed figure can be wrong without anything failing. Two faults landed in sequence: the model id was read from a field the runtime does not populate, so every cost was $0; then, once the id was fixed, prompt_tokens turned out to already contain cached_tokens, and both were being billed, so every cost was plausible and roughly double.",
+    "solution": "Generate the price table from GET /v1/models?verbose=true instead of typing it, and refuse to route to a model the snapshot cannot price. Read RuntimeIdentity.modelId and peel provider prefixes until one matches the catalog id. Request usage on streamed turns. Bill inputTokens once, because it is already the whole prompt. Recompute cost from stored tokens on read through one shared function, so a pricing fix corrects the history rather than only the future.",
+    "outcome": "One traced plan reads back at $1.50 stored against $0.800 recomputed from its own tokens, with 3,486,160 of 3,938,369 input tokens served from cache; across 33 agents the prefix cache carried 90.7% of all input. The fleet report prices 12 spending runs at a median of $1.07 and a maximum of $9.21, a tail 8.6x the median. No figure here has been checked against an invoice, and cached reads are charged at the full prompt rate on purpose, so all of them err high."
+  },
+  "prerequisites": [
+    "NEBIUS_API_KEY — the Token Factory catalog endpoint is authenticated",
+    "KV_REST_API_URL and KV_REST_API_TOKEN — the trace store holds the tokens cost is derived from",
+    "Node 24 (package.json `engines`) and `npm install` at the repository root",
+    "Recipe 03 (Durability): tokens must be recorded per agent before cost can be recomputed from them",
+    "More than one traced session — a single run cannot show a cost tail"
+  ],
+  "models": [
+    {
+      "id": "Qwen/Qwen3-235B-A22B-Instruct-2507",
+      "role": "planner"
+    },
+    {
+      "id": "Qwen/Qwen3-235B-A22B-Instruct-2507",
+      "role": "primary"
+    },
+    {
+      "id": "deepseek-ai/DeepSeek-V4-Pro",
+      "role": "critic"
+    }
+  ],
+  "quickstart": {
+    "clone": "git clone https://github.com/jaredwerba/vendor-scout.git && cd vendor-scout && npm install",
+    "configure": "Create .env.local with NEBIUS_API_KEY, KV_REST_API_URL and KV_REST_API_TOKEN. Then npm run pricing:refresh to regenerate agent/lib/pricing.generated.ts from the live catalog.",
+    "run": "npm run report"
+  },
+  "endpoints": [],
+  "deployment": {
+    "target": "vercel",
+    "instructions": "../../README.md"
+  },
+  "nextRecipe": "spend-round-trips-not-calls",
+  "authors": [
+    {
+      "name": "Jared Werba",
+      "url": "https://github.com/jaredwerba"
+    }
+  ],
+  "publishedAt": "2026-08-30",
+  "updatedAt": "2026-08-30"
+}
