@@ -254,6 +254,20 @@ The failures that cost the most are the ones that look like success.
 
 <sub>commits `5823f6f` · runs `wrun_41M1C6R9FV0GMZE9E158CGCPGE` · tests `scripts/test-vendor-guards.mjs`</sub>
 
+### Ten briefs in parallel, zero weddings in chat: the question tool was the deadlock
+
+**Wrong.** A 10-brief parallel load test on production returned 0 of 10 complete three-option presentations in chat within 12 minutes. Seven briefs never reached a plan: scouts and planners paused on questions ('use directories, or slow down?', a rate-limit process question, how to work around one blocked site), and one planner wrote itself a to-do list after announcing 'coming right up' and went silent. The three that saved a plan to the gallery gave the couple's thread a 500-700 character stub with no photos and no tables. A concurrent single-run verification hit the same wall: four scouts done, the music scout parked on input.requested at minute 13, save_wedding_plan never reached.
+
+**Why.** Three framework tools nobody had decided to grant. ask_question was live on every scout, and a child lane's question renders in no UI — nobody can ever answer it, the scout() call never returns, and the planner cannot even reach get_research's stall guard, which sits behind the return. web_fetch was live on scouts, an unbudgeted retrieval path past the recipe's 'two tools' sentence. todo was live on the root, and bookkeeping ended the turn the couple was waiting on. Under parallel load, retrieval errors made all three attractive.
+
+**Changed.** Three disableTool() shadows — scout ask_question, scout web_fetch, root todo — the same slot mechanism as the six existing scout disablements, validated by name at build. Instructions state the spine the shadows enforce: questions exist for exactly two moments (the one brief check, the tier pick), never for process; a scout has nobody to ask and recovers or reports; the full plan streams to the couple BEFORE save_wedding_plan, whose result note now repeats the rule. The landing checklist says research starts after the couple's first answer.
+
+**Outcome.** build:eve resolves the graph with the three shadows (a wrong filename throws, listing valid names), the recipe-02 proof commands print the same two-file scout surface, and all eight verify gates pass. The mechanical guarantees are the removals; present-before-save and no-process-questions remain prompt rules, the decayable kind. Not yet re-measured under 10-brief parallel load; the single-run verification is queued behind this deploy.
+
+> A tool surface is what the framework grants minus what you explicitly refuse — not what your instructions describe. Every capability you never disabled is a failure mode you never designed, and load is what finds it.
+
+<sub>commits `8c9a66f` · runs `wrun_41M1C8DE2Y0GVK9ZRKNXTPGCTS`, `wrun_41M1C80F110GXWHXCV00BP7TGZ`, `wrun_41M1C80EZ50GXAYHS38QVGE41T` · tests `cookbook/02-a-smaller-tool-surface/README.md`</sub>
+
 ---
 
 ## How to read the outcomes
