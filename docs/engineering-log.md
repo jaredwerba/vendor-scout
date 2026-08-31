@@ -224,6 +224,20 @@ The failures that cost the most are the ones that look like success.
 
 <sub>commits `c6f86f0`</sub>
 
+### The radius rule lived only in the prompt, and a settled run measured what that is worth
+
+**Wrong.** A settled eval run failed the radius judge in four of five categories — 10 of 18 sampled vendors out of region for a brief stating one hour. The recorded towns included Jackson NH (~98 straight-line miles, the White Mountains), Tamworth NH (~79) and Keene NH (~57). Every town was recorded honestly; that is how the judge caught it.
+
+**Why.** The death-spiral fix had removed the required drive time because no tool here can produce one, and the rule fell back to prose: 'you know roughly where towns are.' The model states towns truthfully and cannot do the arithmetic between them, so the hard limit decayed the way any rule that lives only in a prompt decays.
+
+**Changed.** record_vendor measures the distance itself. The scout echoes the couple's town and radius from its brief (couple_location, max_drive_minutes — optional, so a schema mismatch can never kill a child session), both towns geocode through Nominatim with one cached lookup per town, and a vendor beyond ~0.75 straight-line miles per stated drive minute is refused as rejected_outside_radius. Every failure to judge falls open, the liveness guard's rule. Drive time stays unproducible; distance was checkable all along — the same boundary the guards recipe draws, read more carefully.
+
+**Outcome.** First guarded run: five radius refusals in the traces and all twelve recorded vendors within 38 straight-line miles of the couple. Next scored run settled 5/5 at 49/54 (91%), 13 of 14 recorded vendors within 40 miles; one 55-mile caterer recorded through the deliberate fail-open when its scout omitted the brief echoes. The eval's radius judge, which reasons in drive time, still flagged six of fourteen — the two instruments now disagree in public, and the guard is the one with arithmetic behind it. Nothing yet measures how often scouts omit the optional echoes.
+
+> The boundary is not facts your tools can produce but facts your tools can check. The drive time was neither, and the rule written in its place decayed in prose; the distance was always checkable, and the tool that measures it beats the prompt that remembers it.
+
+<sub>commits `b661640` · runs `wrun_41M1AHFAF50GVR8AVD8TNN9M5N`, `wrun_41M1AJKFEP0GP2F1JBV4D5ND81`</sub>
+
 ---
 
 ## How to read the outcomes

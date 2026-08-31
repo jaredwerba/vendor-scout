@@ -294,9 +294,10 @@ rationale says what to do about it: re-test any candidate with `npm run eval:sco
 the role.
 
 Three briefs, fifteen replies, four sampled vendors per category, both `RunResult` files committed
-and no scorecard over them, and nothing geocodes — so the radius judge reasons about a drive it
-cannot measure. Those are the real ceilings on every number here, and listing them costs less than
-defending a figure that was never that strong.
+and no scorecard over them. The radius judge reasons about a drive it cannot measure — though since
+the write boundary began measuring straight-line distance itself, the judge is the second opinion on
+that question rather than the only one. Those are the real ceilings on every number here, and
+listing them costs less than defending a figure that was never that strong.
 
 ### Taking it somewhere that is not a wedding
 

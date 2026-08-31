@@ -23,7 +23,7 @@ That specialist was not confused. It was obedient. It had been told to state a d
 ```
 agent/
   lib/
-    vendor-guards.ts             # four checks: directory, foreign email, contact form, liveness
+    vendor-guards.ts             # five checks: directory, foreign email, contact form, liveness, radius
     search-budget.ts             # the cap the counter-lesson exhausted
   subagents/scout/
     instructions.md              # what the model is told — and what it stopped being asked for
@@ -206,7 +206,40 @@ With the drive note optional and the rule moved into prose, the decision record 
 scout quality: 52/53 (98%) | radius judge: 100% across all five categories
 ```
 
-The volume is the obvious number and the less interesting one. What the second line says is that the radius discipline survived the relaxation — the guard was removed and the behaviour it was protecting stayed.
+The volume is the obvious number and the less interesting one. What the second line says is that the radius discipline survived the relaxation — on the day it was measured.
+
+### The prompt held for a day
+
+A settled run the following day read differently:
+
+```text
+scout quality: 46/53 (87%) | radius judge: 10/18 in region
+recorded for a stated hour: Jackson NH ~98 straight-line mi | Tamworth NH ~79 | Keene NH ~57
+```
+
+The model was honest about every town — that is how the judge caught it. What it cannot do is the
+arithmetic between them, and "you know roughly where towns are" decays the way any rule that lives
+only in prose decays. Which sends the question this recipe asked back for a better answer. *Why is
+the town still required and the drive time not?* Because the town is on a page and the drive is on
+none — but the **distance** between two towns is a third thing: not producible by the model, and
+checkable by the tool. Two coordinates and a formula.
+
+So the rule came back at the write boundary as [`outsideRadius`](../../agent/lib/vendor-guards.ts).
+The scout echoes the couple's town and radius from its brief, both towns geocode through Nominatim
+(one cached lookup per town), and a vendor beyond ~0.75 straight-line miles per stated drive minute
+is refused as `rejected_outside_radius` — nothing searches, nothing asks a model, and every failure
+to judge falls open, the liveness check's rule.
+
+```text
+first guarded run:  rejected_outside_radius x5 | 12 of 12 recorded within 38 straight-line mi
+next settled run:   scout quality: 49/54 (91%) | 13 of 14 recorded within 40 mi
+```
+
+One 55-mile caterer still recorded, on purpose: the brief echoes are optional, because a schema a
+model cannot satisfy kills a whole child session, and a scout that omits them gets the old
+behaviour. **A guard with a deliberate hole is honest about the hole.** The radius judge — which
+reasons in drive time, the way the couple will — stays as the second instrument, and where the two
+disagree, the trace shows which one did arithmetic.
 
 ### Where this transfers
 
@@ -240,7 +273,7 @@ The suite is built from rows of a real production run — the findings the scout
 - **Give a guard an appeal path before you make it strict.** A scout cannot argue with a rejection; it can only try again or give up. The liveness check is written to fail toward *let it through*; every status that does reject — directory source, missing source, missing location, dead source, foreign email — returns a note naming what to do instead.
 - **Look at what your rejections cost.** The liveness check spends one request per recorded vendor and runs before the email check, which is free — so a vendor with a foreign address pays for a fetch nothing needed. Reordering is a small change; knowing which of your guards are cheap is the part worth doing first.
 - **Audit your prompt for facts your tools cannot reach.** Read the instructions as a list of demands and ask, for each one, which tool call would answer it. The ones with no answer are the death spirals.
-- **Check the guard against the eval, not against itself.** The radius held at 100% across all five categories only because a separately-pinned judge measures it; the guard's own unit test cannot tell you that.
+- **Check the guard against the eval, not against itself.** The unit suite proves the arithmetic; only the separately-pinned judge caught the day the prose rule decayed, and only the eval shows what the guard's deliberate fail-open lets through.
 - **Next: [Governance — Budget the Retrieval](../05-budget-the-retrieval/README.md)**, which is the cap this recipe's counter-lesson exhausted, and what a specialist does when it runs out.
 
 ## License

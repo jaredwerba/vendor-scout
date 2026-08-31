@@ -215,7 +215,7 @@ The instruction replaces the search with a judgement the model can make unaided:
 scout quality: 52/53 (98%) | radius judge: 100% in all five categories
 ```
 
-The volume came back and the discipline held — the radius rule did not loosen, it stopped being enforced through a tool that could not enforce it. **A budget makes a bad requirement cheap, not correct.** If your cap keeps being reached, read the last ten queries before you raise it; a spiral and a genuinely hard research problem look identical in the aggregate and nothing alike in the transcript.
+The volume came back and the discipline held, on the day it was measured — the radius rule did not loosen, it stopped being enforced through a tool that could not enforce it. It later decayed and returned at the write boundary as straight-line arithmetic, a follow-up that belongs to [Refuse in the Tool](../04-refuse-in-the-tool/README.md); what stands here is the death-spiral lesson — the guard that replaced the prose geocodes, and never searches. **A budget makes a bad requirement cheap, not correct.** If your cap keeps being reached, read the last ten queries before you raise it; a spiral and a genuinely hard research problem look identical in the aggregate and nothing alike in the transcript.
 
 ### Where this goes that is not weddings
 
