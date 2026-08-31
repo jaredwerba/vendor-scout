@@ -198,11 +198,12 @@ export default function ComparePage() {
           <p className="mt-2 text-muted-foreground text-xs">
             V1 is commit <code>{v1.commit}</code>. V2 is commit <code>{v2.commit}</code>.
           </p>
-          {/* The table says what changed; the map says what the thing IS. It is a
-              static artifact on purpose — the live view of a run in flight is the
-              rail on the front door and /observe, which read real trace events.
-              Generated from docs/venus.architecture.json, so the picture is
-              regenerable rather than drawn once and left to rot. */}
+          {/* The table says what changed; the map says what the thing IS. Its
+              motion is authored and reader-controlled — it is a drawing, not a
+              live view; the live view of a run in flight is the rail on the front
+              door and /observe, which read real trace events. Generated from
+              docs/venus.architecture.json, so the picture is regenerable rather
+              than drawn once and left to rot. */}
           <a
             className="mt-4 inline-flex items-center gap-2 rounded-xl border bg-card/70 px-4 py-2.5 text-sm hover:bg-muted"
             href="/venus-architecture.html"

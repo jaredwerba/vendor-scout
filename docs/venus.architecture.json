@@ -21,32 +21,32 @@
         "id": "fan-out",
         "label": "Five specialists, one category each",
         "focus": [
+          "models",
           "venus",
           "scout",
           "tavily"
         ],
-        "note": "The planner dispatches up to five scouts in one batch. Each gets its own session, its own search budget and its own lane."
+        "note": "A per-role registry answers which model runs where, then the planner dispatches up to five scouts in one batch."
       },
       {
         "id": "write-boundary",
         "label": "The write boundary",
         "focus": [
-          "scout",
-          "guards",
           "geo",
-          "kv"
+          "guards",
+          "kv",
+          "observe"
         ],
-        "note": "Five guards run before anything is stored: directory source, foreign email, dead page, missing town, and distance."
+        "note": "Six guards run before anything is stored. What survives, and every refusal, lands in KV, which is what the live rail renders."
       },
       {
         "id": "read-back",
         "label": "What the planner reads back",
         "focus": [
           "kv",
-          "venus",
-          "observe"
+          "venus"
         ],
-        "note": "Findings are written per vendor, so a truncated scout loses nothing. The planner reads the store, never the child's message."
+        "note": "Findings are written per vendor, so a truncated scout loses nothing. The store is the primary channel; the child's report is the fallback."
       },
       {
         "id": "outreach",
@@ -110,7 +110,7 @@
       "id": "guards",
       "type": "security",
       "label": "record_vendor",
-      "sublabel": "5 guards",
+      "sublabel": "6 guards",
       "row": 1,
       "col": 4
     },
@@ -290,7 +290,7 @@
       "title": "The write boundary",
       "items": [
         "A scout has two tools: search and record. It cannot email anyone",
-        "record_vendor refuses directory sources, foreign emails, dead pages and out-of-radius towns",
+        "record_vendor refuses a directory source, a missing or dead source page, a missing town, an out-of-radius town, and an email that is not the vendor's",
         "Every guard fails open \u2014 only positive evidence of a problem refuses"
       ]
     },

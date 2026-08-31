@@ -22,7 +22,7 @@
     "eval:all": "npm run test:guards && npm run eval:replies && npm run simulate && npm run eval:scout && npm run eval",
     "eval:slow": "eve eval --tag slow",
     "test:guards": "node --import ./scripts/ts-resolve.mjs scripts/test-vendor-guards.mjs",
-    "verify": "npm run typecheck && npm run build && npm run build:eve && npm run test:guards && npm run test:outcomes && npm run test:fold && npm run test:clock && npm run cookbook:check",
+    "verify": "npm run typecheck && npm run build && npm run build:eve && npm run test:guards && npm run test:outcomes && npm run test:fold && npm run test:clock && npm run cookbook:check && npm run arch:check",
     "models:compare": "node --env-file=.env.local --import ./scripts/ts-resolve.mjs scripts/compare-models.ts",
     "probe:schema": "node --env-file=.env.local --import ./scripts/ts-resolve.mjs scripts/probe-structured-output.ts",
     "report": "node --env-file=.env.local --import ./scripts/ts-resolve.mjs scripts/report.ts",
@@ -35,7 +35,8 @@
     "test:clock": "node --import ./scripts/ts-resolve.mjs scripts/test-research-clock.mjs",
     "cookbook:validate": "node scripts/validate-cookbook.mjs",
     "cookbook:readme": "node scripts/build-cookbook-readme.mjs",
-    "cookbook:check": "npm run cookbook:validate && node scripts/build-cookbook-readme.mjs --check"
+    "cookbook:check": "npm run cookbook:validate && node scripts/build-cookbook-readme.mjs --check",
+    "arch:check": "node scripts/check-architecture-drift.mjs"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "^3.0.39",
