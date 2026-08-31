@@ -263,9 +263,9 @@ for (const brief of selected) {
   const categories = Object.keys(findings);
 
   note(
-    tree.children.length >= 2,
+    tree.children.length >= 1,
     `${brief.id} · fan-out`,
-    ">=2 specialists",
+    ">=1 specialist (venue-first)",
     `${tree.children.length} specialists`,
   );
 

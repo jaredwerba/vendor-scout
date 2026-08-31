@@ -189,7 +189,7 @@ export default defineTool({
         category: input.category,
         recorded_in_category: total,
         note: photolessVenue
-          ? "Recorded — but a venue with no photos cannot carry a tier of the plan (a proof " +
+          ? "Recorded — but a venue with no photos cannot carry an option in the plan (a proof " +
             "run duplicated another venue's tier over exactly this gap). Run ONE web_search " +
             `for "${input.name} wedding venue" with include_images: true, then record this ` +
             "venue again with 5-7 https image_urls — a re-record updates in place."

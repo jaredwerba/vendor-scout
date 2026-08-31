@@ -16,7 +16,7 @@ export default defineTool({
   description:
     "Read everything your research specialists have recorded so far, with a per-specialist " +
     "health check (how many vendors each recorded, and whether any was cut off). Call this " +
-    "after your scout calls return, before writing the three options.",
+    "after your scout calls return, before presenting options or composing the plan.",
   inputSchema: z.object({
     category: z
       .string()
@@ -107,6 +107,14 @@ export default defineTool({
       .filter((f) => !(f.imageUrls ?? []).some((u) => u.startsWith("https://")))
       .map((f) => f.name);
 
+    // Which phase is this read serving? The tool cannot be told, but it can
+    // observe honestly: phase 1 dispatches venue scouts only, and phase 2's
+    // service scouts register as children the moment they are dispatched. So
+    // any non-venue specialist in the tree means the venue is already chosen.
+    const ancillaryPhase = specialists.some(
+      (s) => s.category && !/venue/i.test(String(s.category)),
+    );
+
     return {
       status: "ok",
       total_vendors: total,
@@ -115,25 +123,24 @@ export default defineTool({
       venue_images: venueImages,
       venue_images_note:
         withPhotos > 0
-          ? `${withPhotos} vendors have verified photos above. Put ALL of a venue's photos on ONE line under its tier heading — that line becomes the carousel.`
+          ? `${withPhotos} vendors have verified photos above. Put ALL of a venue's photos on ONE line under its heading — that line becomes the carousel.`
           : "No verified photos were recorded. Run one web_search with include_images per venue before presenting.",
       venue_supply: {
         recorded: venueFindings.length,
         with_photos: venuesWithPhotos,
-        note:
-          venuesWithPhotos >= 3
-            ? "Enough venues WITH photos for three DISTINCT tiers — never feature the same " +
-              "venue in two of them."
+        note: ancillaryPhase
+          ? "Venue already chosen — informational only."
+          : venuesWithPhotos >= 3
+            ? "Enough venues WITH photos for three DISTINCT options — never show the same " +
+              "venue twice."
             : venueFindings.length >= 3
               ? `${venuesWithPhotos} of ${venueFindings.length} recorded venues have photos, and ` +
-                "a venue without photos cannot carry a tier. Fetch the missing ones FIRST — one " +
+                "a venue without photos cannot carry an option. Fetch the missing ones FIRST — one " +
                 `web_search with include_images: true for: ${photolessVenues.join(", ")} — then ` +
-                "compose with three DIFFERENT venues."
-              : `Only ${venueFindings.length} in-radius venue(s) recorded — three tiers need three ` +
-                "venues. Delegate ONE more venue scout now (same radius, different towns inside it) " +
-                "before presenting. If that re-run also comes back thin, a venue may repeat across " +
-                "tiers — but say so to the couple plainly, and make the two visions differ in " +
-                "everything else.",
+                "present three DIFFERENT venues."
+              : `Only ${venueFindings.length} in-radius venue(s) recorded — three options need ` +
+                "three venues. Delegate ONE more venue scout now (same radius, different towns " +
+                "inside it) before presenting.",
       },
       findings,
       stalled_specialists: stalledCount,
@@ -144,11 +151,19 @@ export default defineTool({
           ? "Nothing recorded yet. If your specialists have returned, treat this as a failure to research, not as an empty market."
           : specialists.length > 0 &&
               specialists.every((s) => s.status === "completed" || s.status === "failed")
-            ? "Every specialist is settled — the findings above are final. Compose the three " +
-              "options and call save_wedding_plan NOW, in THIS turn, with the complete markdown: " +
-              "the tool call keeps your turn alive, and its receipt walks you through delivery. " +
-              "Do not end this turn with a status update or an unsaved presentation — the couple " +
-              "cannot re-open your turn, and 'hang tight' leaves them waiting forever."
+            ? ancillaryPhase
+              ? "Every specialist is settled — the findings above are final. Compose the curated " +
+                "slate around the chosen venue and call save_wedding_plan NOW, in THIS turn, with " +
+                "the complete markdown: the tool call keeps your turn alive, and its receipt walks " +
+                "you through delivery. Do not end this turn with a status update or an unsaved " +
+                "presentation — the couple cannot re-open your turn."
+              : "Every specialist is settled — the findings above are final. Present the three " +
+                "venue options NOW, in THIS turn — each with its photo carousel line, price " +
+                "signal, and why it fits — and end the turn ONLY with the ask_question tool: the " +
+                "three venues as tappable options plus one escape hatch. Do NOT call " +
+                "save_wedding_plan — the archive happens after the venue is chosen. Do not end " +
+                "with a status update or an ungated presentation — the couple cannot re-open your " +
+                "turn, and 'hang tight' leaves them waiting forever."
             : undefined,
     };
   },

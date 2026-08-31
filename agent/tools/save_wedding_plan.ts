@@ -10,9 +10,10 @@ import { curatedConfigured, saveCuratedWedding } from "../lib/curated";
  */
 export default defineTool({
   description:
-    "Save the wedding plan you just presented into the Curated by Venus gallery. Call this " +
-    "EXACTLY ONCE right after presenting the three options, passing the COMPLETE plan markdown " +
-    "verbatim (all three options, images, tables). Use the couple's first name only.",
+    "Save the couple's wedding plan into the Curated by Venus gallery. Call this once the " +
+    "complete plan (chosen venue + curated slate) is composed, BEFORE streaming it to the " +
+    "couple, passing the COMPLETE plan markdown verbatim (images, tables, every word). " +
+    "Use the couple's first name only.",
   inputSchema: z.object({
     title: z
       .string()
@@ -34,8 +35,8 @@ export default defineTool({
       .string()
       .min(200)
       .describe(
-        "The COMPLETE three-option presentation, BYTE-FOR-BYTE as shown to the couple — every " +
-          "image line, every financial breakdown table, every word. Never summarize or omit.",
+        "The COMPLETE plan presentation, BYTE-FOR-BYTE as it will be shown to the couple — " +
+          "every image line, every financial breakdown table, every word. Never summarize or omit.",
       ),
     hero_image_url: z
       .string()
@@ -57,7 +58,7 @@ export default defineTool({
         intimate: z.number().int(),
       })
       .optional()
-      .describe("The estimated total for each of the three options, in USD."),
+      .describe("Legacy three-tier flow only — OMIT for a curated slate plan."),
     research_markdown: z
       .string()
       .optional()
@@ -81,8 +82,9 @@ export default defineTool({
       gallery_path: `/curated/${rec.id}`,
       note:
         "Archived to Curated by Venus. NOW deliver it: stream the COMPLETE plan to the couple " +
-        "in this same turn — every photo line, every table, word for word — then end with the " +
-        "ask_question tier gate: three tiers with prices, plus one escape hatch. The gallery " +
+        "in this same turn — the venue, every pick, every photo line, the full cost table, " +
+        "word for word — then end the turn with the ask_question tool: want me to send these " +
+        "inquiries? Options: Send them all / Swap a pick first / Hold off for now. The gallery " +
         "is the archive; the chat message is the product.",
     };
   },

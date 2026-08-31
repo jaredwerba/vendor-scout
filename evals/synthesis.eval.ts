@@ -23,7 +23,10 @@ const BUDGET = 45_000;
 const TOTAL_LINE = /(?:estimated\s+total|total)[^\n$]{0,40}\$([\d,]+)/gi;
 
 export default defineEval({
-  description: "Every one of the three visions fits inside the stated budget.",
+  // Venue-first flow: a single send settles at the venue gate, so this eval
+  // guards PHASE 1 — three venue options, photos and price signals, nothing
+  // emailed, and no presented figure above the budget.
+  description: "Phase 1: three venue options inside the stated budget, nothing sent.",
   tags: ["slow", "money"],
   timeoutMs: 900_000,
   // The judge is pinned away from the model under test on purpose: swapping
@@ -44,8 +47,9 @@ export default defineEval({
     t.noFailedActions();
 
     // Research must go through the narrow specialist, and nothing may be
-    // emailed before the couple has picked a tier.
-    t.calledTool("scout", { count: (n) => n >= 2 });
+    // emailed before the couple has picked a venue. Phase 1 dispatches one
+    // venue scout; venue_supply may add a second — one is the honest floor.
+    t.calledTool("scout", { count: (n) => n >= 1 });
     t.notCalledTool("send_outreach");
 
     // Every dollar total presented must fit the budget.
@@ -59,13 +63,17 @@ export default defineEval({
         const n = Number(m[1].replace(/,/g, ""));
         if (Number.isFinite(n) && n > 1000) totals.push(n);
       }
-      return totals.length > 0 && totals.every((n) => n <= BUDGET);
+      // Phase 1 presents price signals rather than guaranteed "estimated
+      // total" lines, so presence is the judge's burden; any figure that IS
+      // presented as a total must still fit.
+      return totals.every((n) => n <= BUDGET);
     });
 
     t.judge.autoevals
       .closedQA(
-        "Presents three distinct wedding visions, each naming a real venue with a link, and " +
-          "each with a cost breakdown. Marks any figure not backed by a vendor quote as an estimate.",
+        "Presents three distinct venue options, each naming a real venue with a link, each " +
+          "with photos and a price signal, and ends by asking the couple to choose one. Marks " +
+          "any figure not backed by a vendor quote as an estimate.",
       )
       .atLeast(0.7);
   },
