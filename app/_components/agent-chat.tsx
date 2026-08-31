@@ -48,7 +48,7 @@ const COPY = {
     "Real vendors, real emails — I write them in your voice, send them the moment you pick your plan, and gently nudge anyone who doesn't reply. Say the word and I'll stop any thread.",
   question:
     "Close your eyes for a moment. It's the evening of your wedding — where are you standing, who is around you, and what does it feel like? Tell me everything you can see. I'll take it from there.",
-  checklistIntro: "For your perfect plan, tell me:",
+  checklistIntro: "I'll open with one question — answer it and my specialists start researching. For your perfect plan, tell me:",
   checklist: [
     "Season or date (+ how flexible)",
     "Location & how far you'll travel",

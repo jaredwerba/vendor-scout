@@ -42,6 +42,8 @@ agent/
         read_file.ts                # disableTool()
         write_file.ts               # disableTool()
         todo.ts                     # disableTool()
+        ask_question.ts             # disableTool() — a child's question renders in no UI
+        web_fetch.ts                # disableTool() — retrieval outside the search budget
       hooks/
         observe.ts                  # re-export: a child nobody can watch is not observable
   lib/

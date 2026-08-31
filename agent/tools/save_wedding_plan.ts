@@ -79,7 +79,10 @@ export default defineTool({
       status: "saved",
       id: rec.id,
       gallery_path: `/curated/${rec.id}`,
-      note: "Archived to Curated by Venus.",
+      note:
+        "Archived to Curated by Venus. The couple must ALREADY have this full plan in their " +
+        "chat — every photo line and table. If you sent them a summary instead, stream the " +
+        "complete plan now, then ask the tier question.",
     };
   },
 });
