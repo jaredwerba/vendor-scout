@@ -81,11 +81,13 @@ export default defineTool({
       id: rec.id,
       gallery_path: `/curated/${rec.id}`,
       note:
-        "Archived to Curated by Venus. NOW deliver it as ONE ask_question call: the prompt is " +
-        "this COMPLETE plan markdown word for word — the venue, every pick, every photo line, " +
-        "the full cost table — ending with: want me to send these inquiries? Options: Send " +
-        "them all / Swap a pick first / Hold off for now. One tool call carries the whole " +
-        "delivery; a plan streamed without its question strands the couple.",
+        "Archived to Curated by Venus. ONE thing remains, and the turn may not end without " +
+        "it: the ask_question gate — 'want me to send these inquiries?' with options Send " +
+        "them all / Swap a pick first / Hold off for now. If the couple has NOT yet seen the " +
+        "plan, the question's prompt carries the COMPLETE markdown word for word; if you " +
+        "already streamed it, keep the prompt to the question itself. Either way, your very " +
+        "next output is that ask_question call — a saved plan with no gate stranded a couple " +
+        "in production.",
     };
   },
 });
