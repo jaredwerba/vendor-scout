@@ -39,7 +39,7 @@
     "items": 15
   },
   "assets": {
-    "architecture": "README.md"
+    "architecture": "public/venus-architecture.html"
   },
   "quickstart": {
     "clone": "git clone https://github.com/jaredwerba/vendor-scout && cd vendor-scout",

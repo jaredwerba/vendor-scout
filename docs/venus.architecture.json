@@ -1,0 +1,253 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Venus \u2014 a wedding planner that emails real vendors",
+    "subtitle": "One planner, five research specialists, and the write boundary between them and a stranger's inbox",
+    "quality_profile": "showcase",
+    "output": "venus-architecture.html"
+  },
+  "layout": {
+    "mode": "grid",
+    "origin": [
+      40,
+      110
+    ],
+    "cols": 7,
+    "gapX": 74,
+    "gapY": 74,
+    "cellW": 124,
+    "cellH": 62
+  },
+  "components": [
+    {
+      "id": "couple",
+      "type": "external",
+      "label": "Couple",
+      "sublabel": "chat",
+      "row": 1,
+      "col": 0
+    },
+    {
+      "id": "venus",
+      "type": "backend",
+      "label": "Venus",
+      "sublabel": "root planner",
+      "row": 1,
+      "col": 1
+    },
+    {
+      "id": "scout",
+      "type": "backend",
+      "label": "scout x5",
+      "sublabel": "one per category",
+      "row": 1,
+      "col": 2
+    },
+    {
+      "id": "tavily",
+      "type": "external",
+      "label": "Tavily",
+      "sublabel": "4 queries / call",
+      "row": 1,
+      "col": 3
+    },
+    {
+      "id": "guards",
+      "type": "security",
+      "label": "record_vendor",
+      "sublabel": "5 guards",
+      "row": 1,
+      "col": 4
+    },
+    {
+      "id": "kv",
+      "type": "database",
+      "label": "KV store",
+      "sublabel": "findings + traces",
+      "row": 1,
+      "col": 5
+    },
+    {
+      "id": "models",
+      "type": "cloud",
+      "label": "Token Factory",
+      "sublabel": "4 model roles",
+      "row": 0,
+      "col": 1
+    },
+    {
+      "id": "geo",
+      "type": "external",
+      "label": "Nominatim",
+      "sublabel": "radius check",
+      "row": 0,
+      "col": 4
+    },
+    {
+      "id": "observe",
+      "type": "frontend",
+      "label": "/observe",
+      "sublabel": "live rail",
+      "row": 0,
+      "col": 6
+    },
+    {
+      "id": "outreach",
+      "type": "backend",
+      "label": "send_outreach",
+      "sublabel": "caps + roster",
+      "row": 3,
+      "col": 2
+    },
+    {
+      "id": "resend",
+      "type": "external",
+      "label": "Resend",
+      "sublabel": "OUTREACH_MODE",
+      "row": 3,
+      "col": 3
+    },
+    {
+      "id": "vendor",
+      "type": "external",
+      "label": "Vendor inbox",
+      "sublabel": "a real stranger",
+      "row": 3,
+      "col": 4
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Venus on Vercel (Next 16 + eve)",
+      "wraps": [
+        "venus",
+        "scout",
+        "guards",
+        "outreach"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "from": "couple",
+      "to": "venus",
+      "variant": "emphasis"
+    },
+    {
+      "from": "venus",
+      "to": "scout",
+      "variant": "emphasis",
+      "label": "fan out x5"
+    },
+    {
+      "from": "scout",
+      "to": "tavily"
+    },
+    {
+      "from": "tavily",
+      "to": "guards"
+    },
+    {
+      "from": "guards",
+      "to": "kv",
+      "variant": "emphasis",
+      "label": "per finding"
+    },
+    {
+      "from": "geo",
+      "to": "guards",
+      "variant": "security",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "from": "models",
+      "to": "venus",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "from": "kv",
+      "to": "venus",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "left",
+      "label": "get_research",
+      "via": [
+        [
+          1090,
+          400
+        ],
+        [
+          200,
+          400
+        ],
+        [
+          200,
+          276
+        ]
+      ],
+      "labelAt": [
+        700,
+        388
+      ]
+    },
+    {
+      "from": "venus",
+      "to": "outreach",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "via": [
+        [
+          298,
+          470
+        ],
+        [
+          496,
+          470
+        ]
+      ]
+    },
+    {
+      "from": "outreach",
+      "to": "resend",
+      "variant": "security"
+    },
+    {
+      "from": "resend",
+      "to": "vendor",
+      "variant": "emphasis"
+    },
+    {
+      "from": "kv",
+      "to": "observe",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "bottom"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "The write boundary",
+      "items": [
+        "A scout has two tools: search and record. It cannot email anyone",
+        "record_vendor refuses directory sources, foreign emails, dead pages and out-of-radius towns",
+        "Every guard fails open \u2014 only positive evidence of a problem refuses"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "What bounds a run",
+      "items": [
+        "25 searches per specialist, 40 for the planner; cap_reached is a normal outcome",
+        "Findings are written per vendor, so a truncated scout loses nothing",
+        "Every step is priced from a generated catalog and traced to KV and LangSmith"
+      ]
+    }
+  ]
+}

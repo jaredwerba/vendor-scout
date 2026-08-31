@@ -198,6 +198,25 @@ export default function ComparePage() {
           <p className="mt-2 text-muted-foreground text-xs">
             V1 is commit <code>{v1.commit}</code>. V2 is commit <code>{v2.commit}</code>.
           </p>
+          {/* The table says what changed; the map says what the thing IS. It is a
+              static artifact on purpose — the live view of a run in flight is the
+              rail on the front door and /observe, which read real trace events.
+              Generated from docs/venus.architecture.json, so the picture is
+              regenerable rather than drawn once and left to rot. */}
+          <a
+            className="mt-4 inline-flex items-center gap-2 rounded-xl border bg-card/70 px-4 py-2.5 text-sm hover:bg-muted"
+            href="/venus-architecture.html"
+            rel="noreferrer"
+            target="_blank"
+          >
+            <span aria-hidden>◇</span>
+            <span>
+              <b className="font-medium">Open the V2 system map</b>
+              <span className="block text-muted-foreground text-xs">
+                Interactive — trace a route from the couple&rsquo;s brief to a vendor&rsquo;s inbox
+              </span>
+            </span>
+          </a>
         </section>
 
         {/* Economics: which levers moved cost, and what cannot be claimed. */}
