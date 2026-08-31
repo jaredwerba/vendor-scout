@@ -268,6 +268,20 @@ The failures that cost the most are the ones that look like success.
 
 <sub>commits `8c9a66f` · runs `wrun_41M1C8DE2Y0GVK9ZRKNXTPGCTS`, `wrun_41M1C80F110GXWHXCV00BP7TGZ`, `wrun_41M1C80EZ50GXAYHS38QVGE41T` · tests `cookbook/02-a-smaller-tool-surface/README.md`</sub>
 
+### Venue-first phases, and a gate that had to move inside the tool call
+
+**Wrong.** The single research turn — five scouts, three full visions, save, stream, gate — dropped its tail about every other run: one closing run saved a PASS plan while the couple's chat got a stub. Ancillary scouts starved before a venue existed (catering and music at 0 in most runs), searching on guesses instead of a venue town and a date. And the instructions had accreted a live contradiction: save-first in one block, gate-first-archive-after-pick in another.
+
+**Why.** One turn carried too much, and every handoff in it was prose. A text-only step ends an eve turn; after ~3,000 characters of generation the model closes narratively and stops — 'in the SAME response' co-emission that never fails for short-kickoff-plus-scouts failed twice for long-presentation-plus-gate.
+
+**Changed.** Three phases. Phase 1 researches venues only and gates on three venue options; the venue tap's first tool call is send_outreach to that venue; phase 2 fans out service scouts carrying the venue town and date, composes one curated slate, saves it (the turn-alive anchor), and gates on 'send these inquiries?'; phase 3 sends the rest. get_research reads the phase from the trace tree and steers each ending. When the trailing ask_question kept dropping anyway, the gate went atomic: the question card renders markdown now, and the ENTIRE presentation rides inside the ask_question prompt — one tool call that cannot be half-emitted.
+
+**Outcome.** Proven end to end on production: brief to three venue options in ~4 minutes; a real availability email to weddings@lakemoreyresort.com the moment the venue was chosen; service scouts recorded vendors instead of starving (florals 1, catering 2, music 3); slate plan 1d865e79 saved and streamed whole — 7,303 characters, 20 photos, one cost table totalling ~$41,000 under a $71,000 budget — ending on the send-them-all gate. $0.247 of tokens, 8m25s. Honest residual: the atomic gate fired in 4 of 6 runs; in both misses a typed reply recovered the flow (2 of 2), so a missed gate now degrades instead of stranding.
+
+> When a trailing tool call keeps getting dropped after long generation, stop repeating the instruction and restructure so the content rides inside the tool call. Reliability lives in turn topology, not emphasis.
+
+<sub>commits `25cbb82`, `55927cb`, `52d31f4` · runs `wrun_41M1CJ300T0GG5AYJHB07ESC0N`, `wrun_41M1CEM19Q0GZZJHZMMPP23JJ4`, `wrun_41M1CE5YQF0GXVN9NB9BSQRYFD` · tests `evals/synthesis.eval.ts`, `scripts/eval-scout.ts`</sub>
+
 ---
 
 ## How to read the outcomes
