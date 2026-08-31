@@ -7,6 +7,7 @@ import {
   type Milestone,
   type TimelineMeta,
 } from "@/agent/lib/timeline";
+import { SiteNav } from "@/app/_components/site-nav";
 
 export const dynamic = "force-dynamic";
 
@@ -100,12 +101,11 @@ export default async function MyWeddingPage() {
   );
 
   return (
-    <main className="min-h-dvh bg-background px-4 py-10 text-foreground sm:px-6">
-      <div className="mx-auto w-full max-w-2xl">
+    <main className="min-h-dvh bg-background text-foreground">
+      <SiteNav current="/my-wedding" />
+      <div className="mx-auto w-full max-w-2xl px-4 py-10 sm:px-6">
         <header className="mb-8 flex flex-col items-center gap-2 text-center">
-          <Link className="venus-script text-5xl text-primary leading-none" href="/">
-            Venus
-          </Link>
+          <p className="venus-script text-5xl text-primary leading-none">Venus</p>
           <h1 className="venus-serif text-2xl">My Wedding</h1>
           <p className="max-w-md text-muted-foreground text-sm leading-relaxed">
             Where everything stands — updated the moment vendors reply and decisions land.

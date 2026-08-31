@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { SiteNav } from "@/app/_components/site-nav";
 
 export const dynamic = "force-dynamic";
 
@@ -68,12 +69,11 @@ export default function CookbookPage() {
   const recipes = loadRecipes();
 
   return (
-    <main className="min-h-dvh bg-background px-4 py-10 text-foreground sm:px-6">
-      <div className="mx-auto w-full max-w-4xl">
+    <main className="min-h-dvh bg-background text-foreground">
+      <SiteNav current="/cookbook" />
+      <div className="mx-auto w-full max-w-4xl px-4 py-10 sm:px-6">
         <header className="mb-8 flex flex-col items-center gap-2 text-center">
-          <Link className="venus-script text-5xl text-primary leading-none" href="/">
-            Venus
-          </Link>
+          <p className="venus-script text-5xl text-primary leading-none">Venus</p>
           <h1 className="venus-serif text-2xl">Blueprint Recipes</h1>
           <p className="max-w-2xl text-muted-foreground text-sm leading-relaxed">
             Ten things a wedding-planning agent taught, extracted so they transfer to a domain that

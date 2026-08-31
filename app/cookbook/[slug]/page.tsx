@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { RecipeBody } from "../recipe-body";
+import { SiteNav } from "@/app/_components/site-nav";
 
 export const dynamic = "force-dynamic";
 
@@ -101,8 +102,9 @@ export default async function RecipePage({ params }: { params: Promise<{ slug: s
   const body = resolveRepoLinks(stripFrontMatter(markdown).trimStart());
 
   return (
-    <main className="min-h-dvh bg-background px-4 py-10 text-foreground sm:px-6">
-      <article className="mx-auto w-full max-w-3xl">
+    <main className="min-h-dvh bg-background text-foreground">
+      <SiteNav current="/cookbook" />
+      <article className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6">
         <nav className="mb-6 text-muted-foreground text-xs">
           <Link className="hover:text-foreground" href="/cookbook">
             ← all recipes

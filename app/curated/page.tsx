@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { listCuratedWeddings } from "@/agent/lib/curated";
+import { SiteNav } from "@/app/_components/site-nav";
 
 export const dynamic = "force-dynamic";
 
@@ -11,12 +12,11 @@ export default async function CuratedPage() {
   const weddings = await listCuratedWeddings();
 
   return (
-    <main className="min-h-dvh bg-background px-4 py-10 text-foreground sm:px-6">
-      <div className="mx-auto w-full max-w-4xl">
+    <main className="min-h-dvh bg-background text-foreground">
+      <SiteNav current="/curated" />
+      <div className="mx-auto w-full max-w-4xl px-4 py-10 sm:px-6">
         <header className="mb-8 flex flex-col items-center gap-2 text-center">
-          <Link className="venus-script text-5xl text-primary leading-none" href="/">
-            Venus
-          </Link>
+          <p className="venus-script text-5xl text-primary leading-none">Venus</p>
           <h1 className="venus-serif text-2xl">Curated by Venus</h1>
           <p className="max-w-md text-muted-foreground text-sm leading-relaxed">
             Every wedding I've composed — real venues, real numbers, three visions each. Tap one

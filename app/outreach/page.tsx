@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { listRecords, type OutreachRecord } from "@/agent/lib/roster";
 import { OutreachList } from "./outreach-list";
+import { SiteNav } from "@/app/_components/site-nav";
 
 export const dynamic = "force-dynamic";
 
@@ -31,12 +32,11 @@ export default async function OutreachPage() {
   const booked = records.filter((r) => r.booked).length;
 
   return (
-    <main className="min-h-dvh bg-background px-4 py-10 text-foreground sm:px-6">
-      <div className="mx-auto w-full max-w-3xl">
+    <main className="min-h-dvh bg-background text-foreground">
+      <SiteNav current="/outreach" />
+      <div className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6">
         <header className="mb-8 flex flex-col items-center gap-2 text-center">
-          <Link className="venus-script text-5xl text-primary leading-none" href="/">
-            Venus
-          </Link>
+          <p className="venus-script text-5xl text-primary leading-none">Venus</p>
           <h1 className="venus-serif text-2xl">Every email I sent</h1>
           <p className="max-w-lg text-muted-foreground text-sm leading-relaxed">
             These went out in your name, to real people. Open any one to read exactly what was

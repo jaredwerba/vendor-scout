@@ -5,6 +5,7 @@ import { fleetStats } from "@/agent/lib/report";
 import { formatUsd } from "@/agent/lib/pricing";
 import { type EvalSummary, listEvalSummaries, listTraces, type TraceSummary, traceConfigured } from "@/agent/lib/trace";
 import { ObserveConsole } from "./observe-client";
+import { SiteNav } from "@/app/_components/site-nav";
 
 export const dynamic = "force-dynamic";
 
@@ -150,12 +151,11 @@ export default async function ObservePage({
   }>;
 
   return (
-    <main className="min-h-dvh bg-background px-4 py-10 text-foreground sm:px-6">
-      <div className="mx-auto w-full max-w-4xl">
+    <main className="min-h-dvh bg-background text-foreground">
+      <SiteNav current="/observe" />
+      <div className="mx-auto w-full max-w-4xl px-4 py-10 sm:px-6">
         <header className="mb-8 flex flex-col items-center gap-2 text-center">
-          <Link className="venus-script text-5xl text-primary leading-none" href="/">
-            Venus
-          </Link>
+          <p className="venus-script text-5xl text-primary leading-none">Venus</p>
           <h1 className="venus-serif text-2xl">Under the hood</h1>
           <p className="max-w-md text-muted-foreground text-sm leading-relaxed">
             Every plan is an agent loop — plan, act, observe, decide — running on a model, tools,
