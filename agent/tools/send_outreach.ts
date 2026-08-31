@@ -14,6 +14,7 @@ import {
   underDailyCap,
   vendorEmailCount,
 } from "../lib/roster";
+import { countByCategory } from "../lib/research";
 import { OUTREACH_MODE, replyAddressFor, sendModeAware } from "../lib/resend";
 
 /**
@@ -125,7 +126,7 @@ export default defineTool({
     }
     return { type: "approved", reason: "Pre-authorized follow-up within caps." };
   },
-  async execute(input) {
+  async execute(input, ctx) {
     const {
       vendor_name,
       vendor_email,
@@ -135,6 +136,27 @@ export default defineTool({
       couple_email,
       authorize_followups,
     } = input;
+
+    // Is this the venue availability send? Before the service scouts have
+    // recorded anything, the research store holds venue findings only — and
+    // this receipt is the one thing the model reads next. A production run
+    // answered a venue pick with "on it!" and stopped; the receipt now
+    // carries the rest of the phase, on EVERY outcome — a duplicate-blocked
+    // venue send must push the turn onward exactly like a delivered one.
+    let phaseNote: string | undefined;
+    try {
+      const rootId = ctx.session.parent?.rootSessionId ?? ctx.session.id;
+      const cats = Object.keys(await countByCategory(rootId));
+      if (cats.length > 0 && cats.every((c) => /venue/i.test(c))) {
+        phaseNote =
+          "The venue is handled. NOW, in this same response chain: fan out the service " +
+          "scouts — catering, florals, music (photography and styling per the brief) — " +
+          "then get_research, the slate, save_wedding_plan, and the send-these-inquiries " +
+          "question. Do not end your turn before that question is asked.";
+      }
+    } catch {
+      // The nudge is best-effort; a store hiccup must never fail a real send.
+    }
 
     // --- execute-time re-checks (approval is a gate, not authorization) ---
     if (rosterConfigured()) {
@@ -146,6 +168,7 @@ export default defineTool({
         return {
           status: "blocked",
           note: `${vendor_name} has already responded (${existing.status}). Not sending — check the thread with check_outreach_status instead.`,
+          ...(phaseNote ? { next: phaseNote } : {}),
           outreach_id: existing.id,
         };
       }
@@ -161,6 +184,7 @@ export default defineTool({
         return {
           status: "blocked",
           note: `${vendor_name} already has an active outreach (${existing.id}, status ${existing.status}) — automatic follow-ups will chase them. Not sending a duplicate.`,
+          ...(phaseNote ? { next: phaseNote } : {}),
           outreach_id: existing.id,
         };
       }
@@ -236,6 +260,7 @@ export default defineTool({
 
     return {
       ...outcome,
+      ...(phaseNote ? { next: phaseNote } : {}),
       outreach_id: record?.id ?? null,
       followups: record
         ? record.followups_authorized
