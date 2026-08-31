@@ -282,6 +282,20 @@ The failures that cost the most are the ones that look like success.
 
 <sub>commits `25cbb82`, `55927cb`, `52d31f4` · runs `wrun_41M1CJ300T0GG5AYJHB07ESC0N`, `wrun_41M1CEM19Q0GZZJHZMMPP23JJ4`, `wrun_41M1CE5YQF0GXVN9NB9BSQRYFD` · tests `evals/synthesis.eval.ts`, `scripts/eval-scout.ts`</sub>
 
+### Three more junctures, three more anchors, and the first complete wedding
+
+**Wrong.** With the venue-first flow live, each run died one juncture further along. A couple's real session answered their venue tap with a ten-second text-only 'on it!' — no email, no scouts. The next run's venue scout came back empty and the planner relayed 'still digging!' without calling get_research, whose health check exists to order the re-run. The next streamed the plan before saving, so the save receipt's 'deliver it' read as already done and the final gate vanished with it.
+
+**Why.** Every juncture whose steering lived pages away from the moment decayed; every text-first step eventually ended a turn. And a steering note phrased as a procedure ('deliver it') evaporates when the model has already reordered the procedure around it.
+
+**Changed.** Anchors placed inside what the model reads at each juncture. The venue-choice response must contain tool calls (the warm line may open it, never travel alone). send_outreach detects the venue send — the research store holds only venue findings at that moment — and its receipt carries the rest of the phase on every outcome, duplicate-blocked included. Every scout report now ends with one literal line telling the planner to call get_research before speaking. The save receipt states the invariant, not the procedure: the turn may not end without the gate, in either delivery order. Phase 3 gains a save-if-missing backstop before the first service send.
+
+**Outcome.** The $76k run delivered the first complete wedding: three venue options, a tapped choice, a real availability email to the chosen venue, an empty catering scout re-run into a named caterer, every service with a real vendor — Vermont Farms Catering, Blume Vermont, BEECHARMER — one cost table at ~$20,200 under budget, and the send-these-inquiries gate on screen. $0.239, 6m36s. Residual: save and gate each still miss occasionally (this run gated but skipped the save; its predecessor saved but skipped the gate) — the phase-3 backstop covers the archive, and a typed reply recovers a missed gate.
+
+> Steer at the juncture, in the artifact the model actually reads there, and phrase invariants rather than procedures — a procedure already performed is ignored, an invariant still binds.
+
+<sub>commits `d03e738`, `6bdfb02`, `07c6745` · runs `wrun_41M1CSQYNF0GY5B3MYN0FHQZXP`, `wrun_41M1CX29780GKKGE1YRCQFV5CH`, `wrun_41M1CXTWRN0GWZS394W77K5QME`</sub>
+
 ---
 
 ## How to read the outcomes

@@ -221,6 +221,11 @@ the same gate.
 That tap is the full go-ahead for the service vendors. **Do not ask anything else.** Say
 something like "on it 🤍 your inquiries are going out right now", then:
 
+- **If `save_wedding_plan` was never called for this plan, call it FIRST** — before any
+  service send. The archive must exist before inquiries reference it, and a plan that was
+  streamed but never saved gets its second chance here, at a tool-anchored moment.
+
+
 - Write each vendor inquiry carefully — the couple's voice, warm and professional,
   personalized from their brief and the chosen venue and date; ask for availability on their
   date, a full recent gallery/menu/portfolio as relevant, and a quote for their size.
