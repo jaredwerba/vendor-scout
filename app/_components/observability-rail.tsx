@@ -648,17 +648,17 @@ export function ObservabilityRail({
             <b>Time &amp; Cost</b>
           </span>
           <span>
-            {clock.startedAt
-              ? stillRunning && !clock.endedAt
-                ? "live"
-                : "done"
-              : "waiting"}
+            {/* Done means the PLAN is done (the clock closed at the gate
+                after the save) — not that the session paused. A couple
+                deliberating at the venue gate is mid-plan: the clock keeps
+                ticking, or phase 2 looks dead the moment it starts. */}
+            {clock.startedAt ? (clock.endedAt ? "done" : "live") : "waiting"}
           </span>
         </div>
         <TimeCostTile
           costUsd={totals.cost}
           endedAt={clock.endedAt}
-          running={stillRunning && !clock.endedAt}
+          running={!clock.endedAt}
           startedAt={clock.startedAt}
         />
       </section>
