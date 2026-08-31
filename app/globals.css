@@ -718,6 +718,15 @@ input[type="range"].venus-slider:focus-visible {
     color-mix(in srgb, var(--card) 55%, transparent);
 }
 .vbento[data-variant="console"] { padding: 0; background: none; border: 0; }
+/* The lg column wrapper stretches to the viewport but, as a plain block
+   parent, never hands that height down — the bento grew to its content, the
+   page's overflow-hidden clipped the growth, and the `overflow-y: auto`
+   above had nothing to engage against: the wheel moved nothing and the
+   bottom tiles were unreachable. Below lg the same markup rides the bottom
+   sheet, where the sheet body is the scroller, so this stays lg-only. */
+@media (min-width: 1024px) {
+  .vbento[data-variant="rail"] { height: 100%; }
+}
 
 /* Two columns once there is room; the diagram and the log take the full width. */
 @media (min-width: 1536px) {
@@ -829,11 +838,10 @@ input[type="range"].venus-slider:focus-visible {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--rose) 25%, transparent);
 }
 .vlane[data-role="root"] { background: color-mix(in srgb, var(--accent) 45%, var(--card)); }
-/* Between lg and 2xl the panel is one column, so the vertical budget is the
-   scarce thing: more padding must be paid for by a shorter lane list, or the
-   event stream drops below the fold — which is exactly when it matters. */
+/* The 6rem clamp that used to live here bought "whole panel on screen"
+   by showing two lanes and hiding the rest. The column scrolls now, so the
+   lane list keeps its full base height at every width. */
 @media (min-width: 1280px) {
-  .vlanes { gap: 0.35rem; max-height: 6rem; }
   .vlane { padding: 0.6rem 0.8rem; border-radius: 0.95rem; }
 }
 /* Two columns: the room is there, so the list can be long again. */
@@ -865,9 +873,10 @@ input[type="range"].venus-slider:focus-visible {
 }
 .vrail-log-row:last-child { border-bottom: 0; }
 @media (min-width: 1280px) {
-  /* The log scrolls internally, so a shorter window at this breakpoint costs
-     nothing but keeps the whole panel on screen at 1440x900. */
-  .vrail-log { font-size: 0.66rem; max-height: 3.75rem; }
+  /* 3.75rem here kept the whole panel on screen at 1440x900 — at the cost
+     of a two-row window on the event stream. The panel scrolls now, so the
+     log keeps its full 15rem and shows a real slice of the run. */
+  .vrail-log { font-size: 0.66rem; }
   .vrail-log-row { padding: 0.22rem 0.7rem; gap: 0.55rem; }
 }
 @media (min-width: 1536px) {
