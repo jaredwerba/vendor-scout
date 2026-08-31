@@ -81,12 +81,11 @@ export default defineTool({
       id: rec.id,
       gallery_path: `/curated/${rec.id}`,
       note:
-        "Archived to Curated by Venus. NOW deliver it in ONE response: write the COMPLETE " +
-        "plan — the venue, every pick, every photo line, the full cost table, word for word — " +
-        "AND call the ask_question tool in that same response: want me to send these " +
-        "inquiries? Options: Send them all / Swap a pick first / Hold off for now. Text then " +
-        "tool call, one response — a plan without the question strands the couple. The " +
-        "gallery is the archive; the chat message is the product.",
+        "Archived to Curated by Venus. NOW deliver it as ONE ask_question call: the prompt is " +
+        "this COMPLETE plan markdown word for word — the venue, every pick, every photo line, " +
+        "the full cost table — ending with: want me to send these inquiries? Options: Send " +
+        "them all / Swap a pick first / Hold off for now. One tool call carries the whole " +
+        "delivery; a plan streamed without its question strands the couple.",
     };
   },
 });

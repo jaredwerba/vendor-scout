@@ -157,13 +157,12 @@ export default defineTool({
                 "the complete markdown: the tool call keeps your turn alive, and its receipt walks " +
                 "you through delivery. Do not end this turn with a status update or an unsaved " +
                 "presentation — the couple cannot re-open your turn."
-              : "Every specialist is settled — the findings above are final. In your NEXT " +
-                "response, write the three venue options — each with its photo carousel line, " +
-                "price signal, and why it fits — AND call the ask_question tool in that SAME " +
-                "response: the three venues as tappable options plus one escape hatch. Text " +
-                "then tool call, one response — a presentation without the question strands " +
-                "the couple with nothing to tap. Do NOT call save_wedding_plan — the archive " +
-                "happens after the venue is chosen."
+              : "Every specialist is settled — the findings above are final. Call ask_question " +
+                "NOW: its prompt is the ENTIRE three-option presentation (option headings, photo " +
+                "carousel lines, price signals, why each fits) and its options are the three " +
+                "venues — price on each label — plus one escape hatch. ONE tool call carries " +
+                "everything; do not stream the options as a plain message first, and do NOT " +
+                "call save_wedding_plan — the archive happens after the venue is chosen."
             : undefined,
     };
   },

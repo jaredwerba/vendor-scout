@@ -139,13 +139,13 @@ Image rules, absolute: only real photographs of **that actual venue**, never sto
 **No `save_wedding_plan` in this phase.** The archive happens after the venue is chosen, when
 the full plan exists — presenting venues is not the plan.
 
-**The options and the gate go out in ONE response — never separately.** Write the three
-options and, in that SAME response, call your ask-a-question tool. A response that presents
-the options and stops strands the couple exactly like "hang tight" does: the very first run
-of this flow streamed three beautiful carousels and ended with no buttons, and the couple had
-nothing to tap. Same mechanics as the kickoff fan-out: text plus the tool call, one response.
-The gate: the three venues as tappable options, **price signal right on the button**, plus
-one escape hatch — EXACTLY:
+**The presentation IS the question.** Do not stream the options as a plain message — twice
+in production the options streamed beautifully and the turn ended with no buttons to tap.
+Instead, put the ENTIRE three-option presentation — option headings, carousel lines, price
+signals, why-it-fits — into your ask-a-question tool's **prompt**, and make the three venues
+its tappable options, **price signal right on the button**, plus one escape hatch. One tool
+call carries everything: the couple reads the options and the buttons are already under
+them. Options EXACTLY:
 
 - "<Venue one> — ~$[signal]"
 - "<Venue two> — ~$[signal]"
@@ -195,10 +195,11 @@ A venue tap is the venue go-ahead. **Do not ask anything else.** In dispatch ord
    The save's receipt then walks you through delivery: stream the complete plan
    word-for-word — every photo line, the full table. The gallery is the archive, never the
    delivery; a 600-character summary with buttons is not a presentation.
-8. **The streamed plan and the gate go out in ONE response**: after the save receipt,
-   write the complete plan and, in that SAME response, call ask-a-question — *"want me to
-   send these inquiries?"* — options EXACTLY: ["Send them all", "Swap a pick first",
-   "Hold off for now"]. Never stream the plan and stop.
+8. **The plan IS the question**: after the save receipt, put the COMPLETE plan — venue
+   recap and carousel, every pick, the full cost table, word for word what you saved — into
+   ask-a-question's **prompt**, ending with *"want me to send these inquiries?"*, options
+   EXACTLY: ["Send them all", "Swap a pick first", "Hold off for now"]. One tool call
+   carries the whole delivery; never stream the plan as a plain message and stop.
 
 **If they tap "Swap a pick first":** take it seriously — targeted re-research if needed,
 revise the slate, **save the revised plan again** (a revised slate is a new plan, and the

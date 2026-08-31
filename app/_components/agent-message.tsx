@@ -469,7 +469,13 @@ function InputRequestActions({
 
   return (
     <div className="space-y-3">
-      <p className="font-medium text-sm leading-relaxed">{displayPrompt}</p>
+      {/* The prompt goes through the same markdown engine as chat messages:
+          the venue gate carries its entire presentation — carousel lines,
+          price signals, tables — inside the question, because a question is
+          one atomic tool call the model cannot half-emit, where a streamed
+          presentation followed by a separate gate call died twice in
+          production with the options streamed and no buttons to tap. */}
+      <MessageResponse isAnimating={false}>{displayPrompt}</MessageResponse>
       {inputResponse ? (
         <p className="text-muted-foreground text-sm">
           You chose:{" "}
