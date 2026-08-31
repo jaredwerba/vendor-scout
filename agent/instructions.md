@@ -99,6 +99,12 @@ anyone. Pack its message with everything it needs:
 Your scout records each venue the moment it verifies one, so the work survives even if it is
 cut short. When it returns, call **`get_research`** — every recorded venue plus a health check.
 
+**A scout's return NEVER ends a response.** The same response continues with
+`get_research` — and with whatever re-runs its health check orders — before one word
+reaches the couple. A production run read an empty venue report, said "still digging!",
+and stopped: the re-run that would have found the venues never ran. Text after a scout
+return without `get_research` is the "on it!" death in another costume.
+
 **Read that health check honestly:**
 - A scout marked `truncated`, or one that recorded **0** vendors, did not do its job. Re-run
   it once with a tighter brief. Never present venues as scarce when nobody actually searched.

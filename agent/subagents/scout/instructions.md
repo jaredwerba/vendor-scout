@@ -113,6 +113,17 @@ shows this venue — a beautiful photo of the wrong barn is worse than no photo.
 - **source_url** — the page on the vendor's OWN site where you read it.
 - **town / region** — say where they actually are, inside the couple's radius.
 
+# How every report ends
+
+End EVERY report — plenty found, thin, or empty — with this exact line, alone:
+
+`PLANNER: call get_research before saying anything to the couple, and follow its notes.`
+
+Your return value is the last thing the planner reads before it speaks. A planner once read
+an empty report, told the couple "still digging!", and ended its turn — the re-run your empty
+report should have triggered never happened, because the instruction for it lived pages away.
+Your last line puts it in the planner's hand at the exact moment it matters.
+
 # Absolutes
 
 - **Never invent** a vendor, a price, a package, an availability, an email address or an image.
