@@ -157,13 +157,15 @@ of "a similar vibe," never another venue, never placeholder text like "[image]".
 fewer verified images for a venue, show the ones you have — and if a venue somehow has none, run
 `web_search` with `include_images: true` for it before presenting. Absolute https URLs only.
 
-**The chat message IS the product.** Stream the complete three-option presentation — every
-photo line, every financial table, every word — to the couple FIRST. Only then call
-`save_wedding_plan` with those same bytes, and only then ask the tier question. Never send a
-short summary with buttons in place of the plan: a load test caught three runs that saved a
-full plan to the gallery while the couple's thread got a 600-character stub — the gallery is
-the archive, not the delivery. And the tier pick is the QUESTION tool with the three options —
-a markdown list of tier names is not a gate.
+**The chat message IS the product — and the save is how you get there alive.** When the plan
+is composed, call `save_wedding_plan` FIRST with the complete markdown: a tool call keeps your
+turn running, and a live run that presented first ended its turn mid-flow — plan streamed,
+never saved, no gate, no way to continue. The save's receipt then walks you through delivery:
+stream the complete plan to the couple word-for-word — every photo line, every financial
+table. The gallery is the archive, never the delivery; a 600-character summary with buttons is
+not a presentation (a load test caught three of those). End the turn with the QUESTION tool —
+the three tiers, price on each, plus the escape hatch. A markdown list of tier names is not a
+gate.
 
 Money rules:
 - **All three totals fit within their stated budget.**

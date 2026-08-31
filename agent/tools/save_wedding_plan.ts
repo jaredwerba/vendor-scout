@@ -80,9 +80,10 @@ export default defineTool({
       id: rec.id,
       gallery_path: `/curated/${rec.id}`,
       note:
-        "Archived to Curated by Venus. The couple must ALREADY have this full plan in their " +
-        "chat — every photo line and table. If you sent them a summary instead, stream the " +
-        "complete plan now, then ask the tier question.",
+        "Archived to Curated by Venus. NOW deliver it: stream the COMPLETE plan to the couple " +
+        "in this same turn — every photo line, every table, word for word — then end with the " +
+        "ask_question tier gate: three tiers with prices, plus one escape hatch. The gallery " +
+        "is the archive; the chat message is the product.",
     };
   },
 });

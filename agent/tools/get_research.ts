@@ -132,10 +132,11 @@ export default defineTool({
           ? "Nothing recorded yet. If your specialists have returned, treat this as a failure to research, not as an empty market."
           : specialists.length > 0 &&
               specialists.every((s) => s.status === "completed" || s.status === "failed")
-            ? "Every specialist is settled — the findings above are final. Present the three " +
-              "options NOW, in THIS turn: stream the complete plan, save it, then ask the tier " +
-              "question. Do not end this turn with a status update — the couple cannot re-open " +
-              "your turn, and a message that ends on 'hang tight' leaves them waiting forever."
+            ? "Every specialist is settled — the findings above are final. Compose the three " +
+              "options and call save_wedding_plan NOW, in THIS turn, with the complete markdown: " +
+              "the tool call keeps your turn alive, and its receipt walks you through delivery. " +
+              "Do not end this turn with a status update or an unsaved presentation — the couple " +
+              "cannot re-open your turn, and 'hang tight' leaves them waiting forever."
             : undefined,
     };
   },
