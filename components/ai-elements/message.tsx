@@ -273,7 +273,16 @@ export const MessageBranchPage = ({ className, ...props }: MessageBranchPageProp
 export type MessageResponseProps = ComponentProps<typeof Streamdown>;
 
 const streamdownPlugins = { cjk, code, math, mermaid };
-const streamdownComponents = { p: VenueParagraph };
+/* Venue photos are hotlinked from vendors' own sites, and some hosts refuse
+   requests that carry a foreign Referer — four gallery heroes rendered blank.
+   Sending no referrer is the polite fix. The plain-object props spread keeps
+   VenueParagraph's image detection working: it recognizes an image by its
+   string src, not by the element type. */
+const MarkdownImg = ({ node: _node, ...props }: React.ComponentProps<"img"> & { node?: unknown }) => (
+  // eslint-disable-next-line @next/next/no-img-element
+  <img loading="lazy" {...props} referrerPolicy="no-referrer" />
+);
+const streamdownComponents = { img: MarkdownImg, p: VenueParagraph };
 
 export const MessageResponse = memo(
   ({ className, ...props }: MessageResponseProps) => (

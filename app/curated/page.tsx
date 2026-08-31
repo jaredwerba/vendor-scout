@@ -51,6 +51,7 @@ export default async function CuratedPage() {
                     <img
                       alt={w.title}
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                      referrerPolicy="no-referrer"
                       src={w.hero_image_url}
                     />
                   ) : (

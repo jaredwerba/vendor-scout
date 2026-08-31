@@ -82,9 +82,14 @@ async function searchOne(
 
   let res: Response | null = null;
   let lastError = "";
+  let lastStatus = 0;
   for (let attempt = 0; attempt < 3; attempt += 1) {
     if (attempt > 0) {
-      const backoff = 400 * 2 ** (attempt - 1) + Math.floor(Math.random() * 250);
+      // Rate limits get a real pause: 1.2s of total backoff cannot outlive a
+      // 429 window, and a 4-wedding parallel run showed what that costs — two
+      // plans' scouts finished with nothing. ~2.5s/5s waits usually can.
+      const base = lastStatus === 429 ? 2500 : 400;
+      const backoff = base * 2 ** (attempt - 1) + Math.floor(Math.random() * 250);
       await new Promise((r) => setTimeout(r, backoff));
     }
     try {
@@ -106,6 +111,7 @@ async function searchOne(
     if (res.ok) break;
     const transient = res.status === 429 || res.status >= 500;
     if (!transient) break;
+    lastStatus = res.status;
     lastError = `HTTP ${res.status}`;
   }
 

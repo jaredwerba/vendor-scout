@@ -46,7 +46,12 @@ export default async function CuratedDetailPage({
           </div>
         </header>
 
-        {w.image_urls && w.image_urls.length > 0 ? (
+        {/* The strip predates markdown-borne photos: legacy plans stored
+            image_urls but no images in the markdown. Newer plans carry every
+            photo inside plan_markdown as carousels, and rendering both showed
+            each venue's photo row twice, byte-identical. The strip now serves
+            only plans whose markdown has no images of its own. */}
+        {w.image_urls && w.image_urls.length > 0 && !/!\[[^\]]*\]\(/.test(w.plan_markdown) ? (
           <div
             className="mb-6 flex gap-2 overflow-x-auto rounded-2xl"
             style={{ scrollSnapType: "x mandatory", scrollbarWidth: "none" }}
@@ -57,6 +62,7 @@ export default async function CuratedDetailPage({
                 alt={w.title}
                 className="h-52 w-[85%] flex-none rounded-2xl object-cover sm:h-64 sm:w-[55%]"
                 key={url}
+                referrerPolicy="no-referrer"
                 src={url}
                 style={{ scrollSnapAlign: "center", scrollSnapStop: "always" }}
               />
