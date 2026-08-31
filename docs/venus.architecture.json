@@ -5,7 +5,61 @@
     "title": "Venus \u2014 a wedding planner that emails real vendors",
     "subtitle": "One planner, five research specialists, and the write boundary between them and a stranger's inbox",
     "quality_profile": "showcase",
-    "output": "venus-architecture.html"
+    "output": "venus-architecture.html",
+    "animation": "trace",
+    "views": [
+      {
+        "id": "the-brief",
+        "label": "The brief arrives",
+        "focus": [
+          "couple",
+          "venus"
+        ],
+        "note": "A couple states budget, town, travel radius and season in chat. Everything downstream is an echo of this one message."
+      },
+      {
+        "id": "fan-out",
+        "label": "Five specialists, one category each",
+        "focus": [
+          "venus",
+          "scout",
+          "tavily"
+        ],
+        "note": "The planner dispatches up to five scouts in one batch. Each gets its own session, its own search budget and its own lane."
+      },
+      {
+        "id": "write-boundary",
+        "label": "The write boundary",
+        "focus": [
+          "scout",
+          "guards",
+          "geo",
+          "kv"
+        ],
+        "note": "Five guards run before anything is stored: directory source, foreign email, dead page, missing town, and distance."
+      },
+      {
+        "id": "read-back",
+        "label": "What the planner reads back",
+        "focus": [
+          "kv",
+          "venus",
+          "observe"
+        ],
+        "note": "Findings are written per vendor, so a truncated scout loses nothing. The planner reads the store, never the child's message."
+      },
+      {
+        "id": "outreach",
+        "label": "The step that cannot be undone",
+        "focus": [
+          "venus",
+          "outreach",
+          "resend",
+          "vendor"
+        ],
+        "note": "Only the planner holds send_outreach. A scout has no path to this row at all."
+      }
+    ]
   },
   "layout": {
     "mode": "grid",
