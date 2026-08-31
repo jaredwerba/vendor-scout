@@ -182,13 +182,18 @@ export default defineTool({
         imageUrls: images,
         bySession: ctx.session.id,
       });
+      const photolessVenue = /venue/i.test(input.category) && images.length === 0;
       return {
         status: "recorded",
         name: input.name,
         category: input.category,
         recorded_in_category: total,
-        note:
-          total >= 4
+        note: photolessVenue
+          ? "Recorded — but a venue with no photos cannot carry a tier of the plan (a proof " +
+            "run duplicated another venue's tier over exactly this gap). Run ONE web_search " +
+            `for "${input.name} wedding venue" with include_images: true, then record this ` +
+            "venue again with 5-7 https image_urls — a re-record updates in place."
+          : total >= 4
             ? "You have enough for this category — finish your report."
             : "Recorded. Research the next vendor.",
       };

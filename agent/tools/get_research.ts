@@ -100,6 +100,12 @@ export default defineTool({
     const venuesWithPhotos = venueFindings.filter((f) =>
       (f.imageUrls ?? []).some((u) => u.startsWith("https://")),
     ).length;
+    // A venue without photos cannot carry a tier: the proof run recorded
+    // three venues, one photo-less, and the supply note's old >=3-recorded
+    // test said "enough" — the plan then carried one venue twice.
+    const photolessVenues = venueFindings
+      .filter((f) => !(f.imageUrls ?? []).some((u) => u.startsWith("https://")))
+      .map((f) => f.name);
 
     return {
       status: "ok",
@@ -115,13 +121,19 @@ export default defineTool({
         recorded: venueFindings.length,
         with_photos: venuesWithPhotos,
         note:
-          venueFindings.length >= 3
-            ? "Enough for three DISTINCT tiers — never feature the same venue in two of them."
-            : `Only ${venueFindings.length} in-radius venue(s) recorded — three tiers need three ` +
-              "venues. Delegate ONE more venue scout now (same radius, different towns inside it) " +
-              "before presenting. If that re-run also comes back thin, a venue may repeat across " +
-              "tiers — but say so to the couple plainly, and make the two visions differ in " +
-              "everything else.",
+          venuesWithPhotos >= 3
+            ? "Enough venues WITH photos for three DISTINCT tiers — never feature the same " +
+              "venue in two of them."
+            : venueFindings.length >= 3
+              ? `${venuesWithPhotos} of ${venueFindings.length} recorded venues have photos, and ` +
+                "a venue without photos cannot carry a tier. Fetch the missing ones FIRST — one " +
+                `web_search with include_images: true for: ${photolessVenues.join(", ")} — then ` +
+                "compose with three DIFFERENT venues."
+              : `Only ${venueFindings.length} in-radius venue(s) recorded — three tiers need three ` +
+                "venues. Delegate ONE more venue scout now (same radius, different towns inside it) " +
+                "before presenting. If that re-run also comes back thin, a venue may repeat across " +
+                "tiers — but say so to the couple plainly, and make the two visions differ in " +
+                "everything else.",
       },
       findings,
       stalled_specialists: stalledCount,
