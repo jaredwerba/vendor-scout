@@ -328,5 +328,27 @@
       ],
       "tests": []
     }
+  },
+  {
+    "date": "2026-08-31",
+    "title": "The outreach went out, and the last mile was an API, not a browser",
+    "symptom": "The finish-line requirement \u2014 find the services, then reach out on the couple's behalf \u2014 kept dying at the go-ahead juncture, and the Playwright driver's browser races (undelivered taps, swallowed keystrokes) burned twenty-minute runs to test one turn. The observability rail compounded it: the Time & Cost tile keyed its DONE label and its ticker on whether the session was busy, so the couple's own deliberation at the venue gate froze the clock over a plan mid-build even after the derivation was fixed.",
+    "cause": "Phase 3 carried the same text-first trap as every juncture before it ('say something warm, then send'), display logic encoded the old clock semantics its derivation had outgrown, and the probe treated the browser as the only door into a session.",
+    "change": "The go-ahead response must CONTAIN the send_outreach calls \u2014 the venue-choice rule, verbatim. The tile follows clock.endedAt alone. And the probe learned the direct door: the eve channel is public, POST /eve/v1/session/:id resumes a waiting session, and the continuationToken it requires is readable from the session's own durable stream \u2014 any parked production session can be finished headlessly.",
+    "outcome": "The finish-line session completed: venue emailed at the pick, services researched (venue x2, catering, florals, music lanes all traced), plan saved, and on the go-ahead the musician got a real inquiry while the venue-catering duplicate was correctly refused \u2014 the agent explained the refusal to the couple in its own close and armed the follow-ups. The clock read 'brief to plan' over the whole build. Demo guidance: the tap path is the reliable road; a typed 'go ahead' recovers any pause.",
+    "lesson": "When a UI driver keeps fighting you, look for the protocol underneath \u2014 the session API finished in one POST what three browser runs could not. And when semantics change, grep the consumers: a display that encodes the old meaning silently vetoes the new one.",
+    "evidence": {
+      "commits": [
+        "59f753f",
+        "8408943",
+        "54af506"
+      ],
+      "runs": [
+        "wrun_41M1D0SJDA0GM9TQ35Q2NAGCQQ"
+      ],
+      "tests": [
+        "scripts/test-research-clock.mjs"
+      ]
+    }
   }
 ]

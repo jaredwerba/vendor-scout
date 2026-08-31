@@ -296,6 +296,20 @@ The failures that cost the most are the ones that look like success.
 
 <sub>commits `d03e738`, `6bdfb02`, `07c6745` · runs `wrun_41M1CSQYNF0GY5B3MYN0FHQZXP`, `wrun_41M1CX29780GKKGE1YRCQFV5CH`, `wrun_41M1CXTWRN0GWZS394W77K5QME`</sub>
 
+### The outreach went out, and the last mile was an API, not a browser
+
+**Wrong.** The finish-line requirement — find the services, then reach out on the couple's behalf — kept dying at the go-ahead juncture, and the Playwright driver's browser races (undelivered taps, swallowed keystrokes) burned twenty-minute runs to test one turn. The observability rail compounded it: the Time & Cost tile keyed its DONE label and its ticker on whether the session was busy, so the couple's own deliberation at the venue gate froze the clock over a plan mid-build even after the derivation was fixed.
+
+**Why.** Phase 3 carried the same text-first trap as every juncture before it ('say something warm, then send'), display logic encoded the old clock semantics its derivation had outgrown, and the probe treated the browser as the only door into a session.
+
+**Changed.** The go-ahead response must CONTAIN the send_outreach calls — the venue-choice rule, verbatim. The tile follows clock.endedAt alone. And the probe learned the direct door: the eve channel is public, POST /eve/v1/session/:id resumes a waiting session, and the continuationToken it requires is readable from the session's own durable stream — any parked production session can be finished headlessly.
+
+**Outcome.** The finish-line session completed: venue emailed at the pick, services researched (venue x2, catering, florals, music lanes all traced), plan saved, and on the go-ahead the musician got a real inquiry while the venue-catering duplicate was correctly refused — the agent explained the refusal to the couple in its own close and armed the follow-ups. The clock read 'brief to plan' over the whole build. Demo guidance: the tap path is the reliable road; a typed 'go ahead' recovers any pause.
+
+> When a UI driver keeps fighting you, look for the protocol underneath — the session API finished in one POST what three browser runs could not. And when semantics change, grep the consumers: a display that encodes the old meaning silently vetoes the new one.
+
+<sub>commits `59f753f`, `8408943`, `54af506` · runs `wrun_41M1D0SJDA0GM9TQ35Q2NAGCQQ` · tests `scripts/test-research-clock.mjs`</sub>
+
 ---
 
 ## How to read the outcomes
