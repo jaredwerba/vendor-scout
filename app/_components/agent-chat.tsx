@@ -312,7 +312,7 @@ export function AgentChat({
 
   // One lane per agent in the tree: Venus, plus a live attachment to every
   // research specialist's own session stream (see use-agent-lanes.ts).
-  const { lanes, langsmithUrl, research } = useAgentLanes({
+  const { lanes, langsmithUrl, research, refresh: refreshLanes } = useAgentLanes({
     rootEvents: agent.events as readonly StackEvent[],
     rootSessionId: agent.session?.sessionId,
     status: agent.status,
@@ -546,6 +546,11 @@ export function AgentChat({
                 onInputResponses={(inputResponses) => {
                   setLastUserSentAt(Date.now());
                   void agent.send({ inputResponses });
+                  // A venue tap resumes the turn server-side; the lane poll
+                  // may be idling at 30s. Nudge it now and again shortly, so
+                  // the phase-2 scouts appear the moment they exist.
+                  refreshLanes();
+                  window.setTimeout(refreshLanes, 5000);
                 }}
               />
             ))}
@@ -553,8 +558,8 @@ export function AgentChat({
               <div className="venus-rise venus-texture rounded-3xl border bg-card/80 p-5 text-center">
                 <p className="venus-serif text-lg">All my specialists are back 🤍</p>
                 <p className="mx-auto mt-1.5 max-w-sm text-muted-foreground text-sm leading-relaxed">
-                  I'm weaving everything into your three visions right now — your wedding details
-                  are being finalized. Hang tight, this is the good part ✨
+                  I'm weaving everything into your plan right now — your wedding details are
+                  being finalized. Hang tight, this is the good part ✨
                 </p>
                 <div className="venus-progress mx-auto mt-4 max-w-xs" data-state="running">
                   <div className="venus-progress-fill" />

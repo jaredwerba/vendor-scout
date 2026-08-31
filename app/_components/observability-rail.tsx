@@ -699,7 +699,7 @@ function TimeCostTile({
       <div>
         <p className="vclock-figure venus-serif">{formatElapsed(elapsed)}</p>
         <p className="text-[10px] text-muted-foreground">
-          {endedAt ? "brief to venue options" : "since your brief"}
+          {endedAt ? "brief to plan" : "since your brief"}
         </p>
       </div>
       <div className="text-right">

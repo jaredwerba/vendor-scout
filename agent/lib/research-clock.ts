@@ -1,7 +1,14 @@
 /**
  * Wall clock for a wedding plan: starts on the couple's last context message
- * before specialists go out, and stops when the three visions (and their
- * pick) land.
+ * before specialists go out, and stops when the finished plan lands.
+ *
+ * The venue-first flow gates twice. The venue pick arrives BEFORE any save —
+ * the couple is choosing, the plan is not done — so that gate leaves the
+ * clock running (a frozen "DONE" at the venue pick made phase 2 look dead).
+ * The gate that follows `save_wedding_plan` is the plan gate, and it closes
+ * the clock. A run that never saves keeps its clock open until the caller
+ * says the session has settled after a save; unsaved, it keeps counting —
+ * which is the truth: the plan never finished.
  *
  * Pure so a script can assert the boundaries without a browser. The rail
  * only renders what this returns.
@@ -15,6 +22,7 @@ export interface ClockEvent {
   readonly user: boolean;
   readonly scout: boolean;
   readonly gate: boolean;
+  readonly save?: boolean;
 }
 
 export interface ClockOptions {
@@ -54,6 +62,11 @@ function isScoutRequested(data: Any): boolean {
   return actions.some(isScoutAction);
 }
 
+function isSaveRequested(data: Any): boolean {
+  const actions: Any[] = Array.isArray(data?.actions) ? data.actions : [];
+  return actions.some((a) => actionName(a) === "save_wedding_plan");
+}
+
 export function clockEventFromLive(ev: LiveClockSource): ClockEvent {
   const data = (ev.data ?? {}) as Any;
   return {
@@ -62,6 +75,7 @@ export function clockEventFromLive(ev: LiveClockSource): ClockEvent {
     user: ev.type === "message.received",
     scout: ev.type === "subagent.called" || (ev.type === "actions.requested" && isScoutRequested(data)),
     gate: ev.type === "input.requested",
+    save: ev.type === "actions.requested" && isSaveRequested(data),
   };
 }
 
@@ -75,6 +89,9 @@ export function clockEventFromEntry(entry: TraceEntry): ClockEvent {
       entry.type === "subagent.called" ||
       (entry.type === "actions.requested" && (tool === "scout" || tool === "agent")),
     gate: entry.type === "input.requested",
+    save:
+      tool === "save_wedding_plan" &&
+      (entry.type === "actions.requested" || entry.type === "action.result"),
   };
 }
 
@@ -90,8 +107,9 @@ export function clockEventsFrom(
 
 /**
  * Last `message.received` before the first specialist dispatch is the brief.
- * The first `input.requested` after that is the three-vision gate. Interview
- * questions (a gate before any scout) are ignored.
+ * The first `input.requested` AFTER a `save_wedding_plan` is the plan gate.
+ * Interview questions and the venue pick (gates before any save) are ignored
+ * — the clock runs through them, because the plan is still being built.
  */
 export function deriveResearchClock(
   events: readonly ClockEvent[],
@@ -101,14 +119,16 @@ export function deriveResearchClock(
   let startedAt: number | null = null;
   let endedAt: number | null = null;
   let lastAt: number | null = null;
+  let saveSeen = false;
 
   for (const ev of events) {
     if (ev.at !== null) lastAt = ev.at;
     if (ev.user && ev.at !== null) lastUser = ev.at;
+    if (ev.save) saveSeen = true;
     if (!startedAt && ev.scout) {
       startedAt = lastUser ?? options.fallbackUserAt ?? ev.at ?? options.fallbackStartAt ?? null;
     }
-    if (startedAt && !endedAt && ev.gate) {
+    if (startedAt && !endedAt && ev.gate && saveSeen) {
       endedAt = ev.at;
     }
   }
@@ -117,7 +137,9 @@ export function deriveResearchClock(
     startedAt = options.fallbackUserAt ?? options.fallbackStartAt;
   }
 
-  if (startedAt && !endedAt && !options.stillRunning) {
+  // Settled without reaching the plan gate: freeze only a SAVED run. An
+  // unsaved clock stays open — the plan genuinely never finished.
+  if (startedAt && !endedAt && saveSeen && !options.stillRunning) {
     endedAt = lastAt;
   }
 
