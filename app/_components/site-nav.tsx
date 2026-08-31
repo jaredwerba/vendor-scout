@@ -8,6 +8,9 @@ export const SITE_NAV_LINKS = [
   { href: "/cookbook", label: "Cookbook" },
   { href: "/compare", label: "V1 → V2" },
   { href: "/observe", label: "Observability" },
+  // A static artifact in public/, not a route — there is no page.tsx to pass a
+  // `current` for, and target="_blank" below is exactly right for it.
+  { href: "/venus-architecture.html", label: "System map" },
   { href: "/curated", label: "Gallery" },
   { href: "/my-wedding", label: "My Wedding" },
   { href: "/outreach", label: "Emails" },
