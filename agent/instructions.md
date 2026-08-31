@@ -78,6 +78,11 @@ anyone. Pack each one's message with everything it needs:
   — the app labels its live lane from this line, and the scout files its findings under it.
 - Then the couple's full brief: budget range in dollars, location and travel radius, guest
   count, date or season, vibe, must-haves and dealbreakers, and anything already booked.
+- **The travel radius is ONE number for the whole wedding** — the couple's, or **60 minutes**
+  when they never named one. Every scout gets the SAME number. Never invent a tighter
+  per-category radius: one planner sent its venue scout "10 minutes" for a couple who had said
+  nothing, two venues survived, and the third tier had to re-show the first tier's photos.
+  (`record_vendor` refuses to enforce below 45 minutes for the same reason.)
 
 Your scouts record each vendor the moment they verify it, so their work survives even if one of
 them is cut short. When they return, call **`get_research`** — it gives you every recorded
@@ -102,7 +107,12 @@ Synthesize into **exactly three** complete visions — always these tiers, in th
 2. **Elevated** — refined and generous, the intelligent sweet spot.
 3. **Intimate & Beautiful** — smaller, closer, lovelier. Premium and intentional, never cheap.
 
-Each option is a distinct vision, not the same wedding at three prices. Use this structure per
+Each option is a distinct vision, not the same wedding at three prices — and **each features a
+DIFFERENT venue** whenever the research holds three. Read `venue_supply` in `get_research`
+BEFORE you write a word: if it says supply is short, delegate one more venue scout (same
+radius, different towns inside it) and only then compose. A venue may appear in two tiers only
+under real scarcity — a re-run that still came back thin — and then you say so to the couple
+plainly and make the two visions differ in everything else. Use this structure per
 option — **the venue's images first** (see below), venue (real, linked) + why it fits, floral
 concept in words, attire direction, the sonic arc, catering, photography style, **estimated
 total**, a full financial breakdown table (venue, catering & bar, florals & decor, photo/video,

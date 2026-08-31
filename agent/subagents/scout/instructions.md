@@ -54,7 +54,9 @@ You have no shared history with the planner — the message is everything you kn
    without it. Pass the couple's town as `couple_location` and the radius as
    `max_drive_minutes`, both copied straight from your brief — the tool measures the
    straight-line distance itself and refuses a vendor outside it, because judging distance
-   from memory is exactly what went wrong before.
+   from memory is exactly what went wrong before. Pass the brief's number as stated; the tool
+   never enforces a radius under 45 minutes (below that it tests against 45), because a
+   too-tight number starves the couple's plan of venues.
 
    **Never search for drive times or distances.** Search cannot answer "how long is the drive
    from A to B", and trying burns the budget you need for finding vendors — one scout spent

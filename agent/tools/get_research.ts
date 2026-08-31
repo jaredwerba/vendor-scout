@@ -90,6 +90,17 @@ export default defineTool({
     }
     const withPhotos = Object.keys(venueImages).length;
 
+    // Three tiers need three venues. The Fairlee run recorded two — a
+    // 10-minute venue radius the planner had invented — and the third tier
+    // quietly re-showed the first tier's venue and photos; the couple
+    // noticed. Supply is countable here, at the last read before the
+    // options are written, so the shortfall arrives as an instruction
+    // instead of being discovered on the gallery page.
+    const venueFindings = all.venue ?? [];
+    const venuesWithPhotos = venueFindings.filter((f) =>
+      (f.imageUrls ?? []).some((u) => u.startsWith("https://")),
+    ).length;
+
     return {
       status: "ok",
       total_vendors: total,
@@ -100,6 +111,18 @@ export default defineTool({
         withPhotos > 0
           ? `${withPhotos} vendors have verified photos above. Put ALL of a venue's photos on ONE line under its tier heading — that line becomes the carousel.`
           : "No verified photos were recorded. Run one web_search with include_images per venue before presenting.",
+      venue_supply: {
+        recorded: venueFindings.length,
+        with_photos: venuesWithPhotos,
+        note:
+          venueFindings.length >= 3
+            ? "Enough for three DISTINCT tiers — never feature the same venue in two of them."
+            : `Only ${venueFindings.length} in-radius venue(s) recorded — three tiers need three ` +
+              "venues. Delegate ONE more venue scout now (same radius, different towns inside it) " +
+              "before presenting. If that re-run also comes back thin, a venue may repeat across " +
+              "tiers — but say so to the couple plainly, and make the two visions differ in " +
+              "everything else.",
+      },
       findings,
       stalled_specialists: stalledCount,
       note:

@@ -141,6 +141,21 @@ export function distanceMiles(
  */
 export const STRAIGHT_LINE_MILES_PER_DRIVE_MINUTE = 0.75;
 
+/**
+ * The smallest radius the guard will enforce, in drive minutes.
+ *
+ * The couple's number is law when they give one — but the UI never asks for
+ * a radius, and the 2026-08-31 Fairlee run showed what fills that silence:
+ * the planner delegated 10 minutes to its venue scout, 25 to catering and
+ * 60 to styling, for a couple who had named nothing. Ten minutes is a
+ * 7.5-mile circle in rural Vermont; two venues survived it, and the third
+ * tier had to re-show the first tier's photos. A radius the model invented
+ * can starve the plan; a floor cannot contradict a couple who was never
+ * asked. Values below the floor are widened before the arithmetic runs —
+ * ranking closer vendors first is still the planner's job.
+ */
+export const MIN_DRIVE_MINUTES = 45;
+
 export interface TownPoint {
   lat: number;
   lon: number;
@@ -208,14 +223,15 @@ export async function outsideRadius(
   coupleLocation: string | undefined | null,
   maxDriveMinutes: number | undefined | null,
   geocode: Geocoder = geocodeTown,
-): Promise<{ miles: number; limitMiles: number } | null> {
+): Promise<{ miles: number; limitMiles: number; minutes: number } | null> {
   if (!coupleLocation?.trim() || !maxDriveMinutes || !Number.isFinite(maxDriveMinutes)) return null;
-  const limitMiles = Math.round(maxDriveMinutes * STRAIGHT_LINE_MILES_PER_DRIVE_MINUTE);
+  const minutes = Math.max(maxDriveMinutes, MIN_DRIVE_MINUTES);
+  const limitMiles = Math.round(minutes * STRAIGHT_LINE_MILES_PER_DRIVE_MINUTE);
   const [vendor, couple] = await Promise.all([
     geocode(vendorLocation),
     geocode(coupleLocation),
   ]);
   if (!vendor || !couple) return null;
   const miles = distanceMiles(vendor, couple);
-  return miles > limitMiles ? { miles: Math.round(miles), limitMiles } : null;
+  return miles > limitMiles ? { miles: Math.round(miles), limitMiles, minutes } : null;
 }

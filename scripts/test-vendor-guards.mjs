@@ -85,6 +85,10 @@ const TOWNS = {
   "manchester, nh": { lat: 42.9956, lon: -71.4548 },
   "rowley, ma": { lat: 42.7137, lon: -70.8818 },
   "groton, ma": { lat: 42.6112, lon: -71.5745 },
+  // The 2026-08-31 Fairlee run, replayed. Coordinates pinned the same way.
+  "fairlee, vt": { lat: 43.9061, lon: -72.1587 },
+  "white river junction, vt": { lat: 43.6489, lon: -72.3193 },
+  "burlington, vt": { lat: 44.4759, lon: -73.2121 },
 };
 const tableGeocode = async (town) => TOWNS[town.trim().toLowerCase()] ?? null;
 
@@ -118,6 +122,26 @@ for (const [label, hit] of [
   const ok = hit === null;
   if (!ok) failures += 1;
   console.log(`${ok ? "✓" : "✗"} want PASS   got ${ok ? "PASS(open)" : "REJECT"}${" ".repeat(11)} fail-open: ${label}`);
+}
+
+// The floor. A planner once delegated a 10-minute venue radius and a
+// 25-minute catering radius for a couple who had named no number at all;
+// two venues survived and the third tier re-showed the first tier's photos.
+// Below 45 minutes the guard tests against 45 — White River Junction vs
+// Fairlee is the real caterer that was refused at 25 minutes by one mile,
+// and must pass now. A stated hour is above the floor and must not change.
+const FLOOR = [
+  // [want, vendor town, minutes, expected effective minutes]
+  ["PASS", "White River Junction, VT", 25, null], // ~20 mi vs floored ~34-mi limit
+  ["REJECT", "Burlington, VT", 10, 45],           // ~65 mi — out even at the floor
+  ["REJECT", "Burlington, VT", 60, 60],           // an hour is the couple's own number
+];
+for (const [want, town, minutes, effective] of FLOOR) {
+  const hit = await outsideRadius(town, "Fairlee, VT", minutes, tableGeocode);
+  const got = hit ? `REJECT(~${hit.miles}mi > ${hit.limitMiles} @${hit.minutes}min)` : "PASS";
+  const ok = got.startsWith(want) && (hit === null || hit.minutes === effective);
+  if (!ok) failures += 1;
+  console.log(`${ok ? "✓" : "✗"} want ${want.padEnd(6)} got ${got.padEnd(26)} ${town} vs Fairlee @${minutes}min`);
 }
 
 console.log(failures === 0 ? "\nvendor guards: all cases behave as intended" : `\nvendor guards: ${failures} MISMATCHES`);

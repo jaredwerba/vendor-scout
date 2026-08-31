@@ -65,7 +65,8 @@ export default defineTool({
       .optional()
       .describe(
         "The travel radius from your brief, in minutes — 'within ~1 hour' is 60. " +
-          "Copy it from the brief; omit only if the brief states no radius.",
+          "Copy it from the brief; omit only if the brief states no radius. Values under 45 " +
+          "are tested against 45 — a too-tight radius starves the couple's plan.",
       ),
     image_urls: z
       .array(z.string().max(500))
@@ -137,7 +138,7 @@ export default defineTool({
         note:
           `${input.location.trim()} is ~${radius.miles} miles straight-line from ` +
           `${(input.couple_location ?? "").trim()} — beyond the ~${radius.limitMiles} miles a ` +
-          `${input.max_drive_minutes}-minute drive covers. The radius is a hard limit: do not ` +
+          `${radius.minutes}-minute drive covers. The radius is a hard limit: do not ` +
           "record this vendor. Find someone closer, and do not search for drive times. If the " +
           "category is genuinely thin nearby, say so in your report instead.",
       };
