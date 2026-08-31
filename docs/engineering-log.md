@@ -238,6 +238,22 @@ The failures that cost the most are the ones that look like success.
 
 <sub>commits `b661640` · runs `wrun_41M1AHFAF50GVR8AVD8TNN9M5N`, `wrun_41M1AJKFEP0GP2F1JBV4D5ND81`</sub>
 
+## 2026-08-31
+
+### The guard obeyed a radius nobody had given, and the third tier repeated the first
+
+**Wrong.** First live run after the radius guard shipped: the planner delegated three different radii to three scouts for one couple — 10 minutes to venues, 25 to catering, 60 to styling — for a brief that named no radius at all. Twelve of sixteen recordings were refused as rejected_outside_radius, a White River Junction caterer (~20 straight-line miles) by one mile against a ~19-mile limit. The 7.5-mile venue circle left two venues for three tiers, and the plan's third tier re-showed the first tier's venue and photos, identical URLs. The couple noticed the repetition before any instrument did.
+
+**Why.** The guard enforces whatever number arrives, and the number arrives in the planner's delegation prose. The UI never asks for a travel radius, so silence is filled by invention — and the arithmetic at the boundary enforced an invented 10 exactly as faithfully as a stated 60. Guarding the write boundary had moved the failure upstream, not removed it.
+
+**Changed.** outsideRadius floors the enforced minutes at 45 (MIN_DRIVE_MINUTES): below the floor it tests against 45, a stated hour is untouched, and the rejection note now quotes the minutes actually enforced. get_research returns venue_supply — venues recorded, how many carry photos, and the instruction to delegate one more venue scout when three tiers face fewer than three venues — at the last tool read before the options are written. The planner's instructions pin ONE radius per wedding (the couple's, or 60 when unstated) and a different venue per tier whenever the research holds three.
+
+**Outcome.** Replayed in the guard tests with pinned coordinates: White River Junction vs Fairlee at 25 minutes — the real one-mile refusal — records now; Burlington stays refused at 10 and at 60; 20 of 20 cases hold. The floor and the supply count are the two pieces a tool now holds; one-radius-per-wedding and distinct-venues-per-tier remain prompt rules, the decayable kind, and no eval yet counts how often a plan repeats a venue.
+
+> A guard is only as good as the number it is handed. Arithmetic at the boundary cannot validate an invented input — but a floor on what the boundary will enforce turns the worst invention into a survivable one.
+
+<sub>commits `5823f6f` · runs `wrun_41M1C6R9FV0GMZE9E158CGCPGE` · tests `scripts/test-vendor-guards.mjs`</sub>
+
 ---
 
 ## How to read the outcomes
