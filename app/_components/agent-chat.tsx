@@ -132,6 +132,14 @@ function Petals() {
   );
 }
 
+/** A ⚙-prefixed user message is the app's own continuation ping — never rendered. */
+// biome-ignore lint/suspicious/noExplicitAny: eve message projection
+function isNudgeMessage(m: any): boolean {
+  if (m?.role !== "user") return false;
+  const first = (m.parts ?? []).find((p: any) => p?.type === "text");
+  return typeof first?.text === "string" && first.text.startsWith("⚙");
+}
+
 function usd(n: number): string {
   return n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 }
@@ -376,6 +384,62 @@ export function AgentChat({
     return delegations >= 2 && settled === delegations;
   }, [agent.data.messages, isBusy]);
 
+  // ------------------------------------------------------------------
+  // The stall watchdog. A planner turn can end owing the couple work —
+  // vibes with no scout, a plan with no gate — and nothing server-side can
+  // restart a turn. The tab can: the product already says "keep this tab
+  // open," so when the session sits ready for 90s with no unanswered
+  // question on screen and the brief already sent, the app itself sends an
+  // invisible ⚙ ping that tells Venus to continue. Capped at three per
+  // session; disarmed once two real sends exist (the wedding is in motion).
+  // ------------------------------------------------------------------
+  const agentRef = useRef(agent);
+  agentRef.current = agent;
+  const nudgeCountRef = useRef(0);
+  const lastActivityRef = useRef(Date.now());
+  useEffect(() => {
+    lastActivityRef.current = Date.now();
+  }, [agent.data.messages.length, agent.status]);
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      const a = agentRef.current;
+      if (a.status !== "ready") return;
+      if (nudgeCountRef.current >= 3) return;
+      if (Date.now() - lastActivityRef.current < 90_000) return;
+      const msgs = a.data.messages;
+      if (msgs.length === 0) return;
+      let users = 0;
+      let sends = 0;
+      let pendingGate = false;
+      for (const m of msgs) {
+        if (m.role === "user" && !isNudgeMessage(m)) users += 1;
+        for (const p of m.parts ?? []) {
+          // biome-ignore lint/suspicious/noExplicitAny: eve part projection
+          const part = p as any;
+          const meta = part.toolMetadata?.eve;
+          if (meta?.inputRequest && !meta.inputResponse) pendingGate = true;
+          if (
+            p.type === "dynamic-tool" &&
+            String(part.toolName ?? "").includes("send_outreach") &&
+            part.state === "output-available"
+          ) {
+            sends += 1;
+          }
+        }
+      }
+      if (users < 2 || pendingGate || sends >= 2) return;
+      nudgeCountRef.current += 1;
+      lastActivityRef.current = Date.now();
+      void a.send({
+        message:
+          "⚙ continue — pick up exactly where the plan left off and deliver the next step " +
+          "with its buttons.",
+      });
+      refreshLanes();
+    }, 15_000);
+    return () => window.clearInterval(id);
+  }, [refreshLanes]);
+
   // No broken image boxes, ever: any venue photo that fails to load vanishes.
   useEffect(() => {
     const hideBroken = (e: Event) => {
@@ -535,7 +599,8 @@ export function AgentChat({
       {isEmpty ? null : (
         <Conversation className="min-h-0 flex-1" data-venus-chat="">
           <ConversationContent className="mx-auto w-full max-w-3xl gap-6 px-4 pt-6 pb-36 sm:px-6">
-            {agent.data.messages.map((message, index) => (
+            {agent.data.messages.map((message, index) =>
+              isNudgeMessage(message) ? null : (
               <AgentMessage
                 canRespond={!isBusy}
                 isStreaming={
