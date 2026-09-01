@@ -6,7 +6,7 @@ This is recipe **07 of 10** in the Venus Blueprint Recipes arc:
 
 > Foundation → Delegation → Durability → Guards → Governance → Cost → **Latency** → Observability → Evaluation → Verification
 
-A couple watches a scout work. They see a lane that moves and a plan that takes minutes. The search provider is the natural suspect. One traced scout run shows a different cause:
+A couple watches a scout work. They see a lane that moves and a plan that takes minutes. The search provider seems to be the cause. One traced scout run shows a different cause:
 
 ```text
 Scout run: 220s wall clock | 166s deciding what to call next | 27s running tools
@@ -182,7 +182,7 @@ export default disableTool();
 
 **Examine the tool surface for round trips, not only for capability.** Recipe 02 removed the tools that a researcher must not hold. This deletion makes the same cut on a different axis.
 
-A scout has one category and a hard search cap, so a planning tool on it is bookkeeping that the run does not need. Each call to that tool is a full model turn over a transcript that grew since the last turn. `agent.ts` in the same directory contains the other deletion: the `outputSchema` is removed. Thus the closing turn is prose that the model can produce, not a shape that the model can fail to satisfy.
+A scout has one category and a hard search cap, so a planning tool on it is bookkeeping that the run does not need. Each call to that tool is a full model turn over a transcript that grew since the last turn. `agent.ts` in the same directory contains the other deletion: we removed the `outputSchema`. Thus the closing turn is prose that the model can produce, not a shape that the model can fail to satisfy.
 
 ### Not every round trip is worth removing
 
@@ -219,7 +219,7 @@ The batch cap has a cost: a category that needs eight angles still pays two roun
 
 ### Where this goes that is not weddings
 
-The point is not only weddings. The pattern applies to each domain where an agent runs a long tool loop over a growing transcript and the tool itself is fast. Examples are security triage that enriches indicators against threat-intel feeds, procurement that examines supplier catalogues, and clinical literature review over a licensed index. Another example is log investigation, where each query takes milliseconds and each decision about the next query does not. In each domain, the arithmetic is the same. The provider's latency is a constant that you rent, and the number of model turns is a variable that you design.
+The point is not only weddings. The pattern applies to each domain where an agent runs a long tool loop over a growing transcript and the tool itself is fast. Examples are security triage that enriches indicators against threat-intel feeds, procurement that examines supplier catalogues, and clinical literature review over a licensed index. Another example is log investigation, where each query takes milliseconds and each decision about the next query does not. In each domain, the arithmetic is the same. The provider's latency is a constant that you pay for and cannot change, and the number of model turns is a variable that you design.
 
 The four moves are also the same in each domain. Make the batch a required shape, not a requested habit. Put the consequence in the tool description, at the point of decision. Suppress the results that the transcript already contains. Delete the tools whose only output is another turn.
 

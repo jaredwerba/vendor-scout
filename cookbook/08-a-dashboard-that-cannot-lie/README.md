@@ -150,7 +150,7 @@ export const FAILED_STATUSES = [
 ```
 
 **Use three buckets, not two.** When a guard refuses a directory source, the system operates
-correctly. An outreach round where every send hit the daily cap must not look like a round where
+correctly. An outreach round where every send reached the daily cap must not look like a round where
 every send arrived. `dry_run` and `sent_to_test_inbox` are in `SUCCESS_STATUSES` by design. The
 deployment mode caused these statuses, not the input, and the tool did what the mode requires.
 
@@ -173,7 +173,7 @@ The counter `refusedActions` then stays at zero. The rail displayed one refusal 
 refused.
 
 **Test the fold that reads the taxonomy, not only the taxonomy.** A unit test of the table alone let
-a correct table and an incorrect reading of the table ship together, twice.
+a correct table and an incorrect reading of the table go into production together, twice.
 [`test-trace-fold.mjs`](../../scripts/test-trace-fold.mjs) tests the fold. Its `rejected` fixture
 carries the `error` key that eve really sends. Without that key, the fixture passes against the
 broken code.
@@ -225,7 +225,7 @@ wrong number.
 
 The same panel served `7/12, 58%` for research quality, while `/cookbook` cited 52/53 for the same
 command. Neither number was wrong. [`eval-scout.ts`](../../scripts/eval-scout.ts) waits until the
-fan-out is quiet before it reads anything. That wait exists because an early grade once scored
+fan-out stops before it reads anything. That wait exists because an early grade once scored
 "0 recorded" against specialists that still searched. But when the wait stops, the script grades the
 run and saves the result like any other summary.
 
@@ -279,13 +279,13 @@ is not.
 
 ### What this panel still cannot tell you
 
-The eval-versus-routing check is not built, and neither is any repair for an incomplete run. `incomplete` marks a summary unscored. Nothing re-runs it or expires it from KV. Live lanes are capped at `MAX_ATTACHED = 5` attached streams, root included. Each log is trimmed to `MAX_EVENTS = 600` rows on a 30-day TTL. Thus a long run is a summary plus its tail. A status assembled at runtime cannot be read out of the source at all. For this case,
+The eval-versus-routing check is not built, and neither is any repair for an incomplete run. `incomplete` marks a summary unscored. Nothing re-runs it or expires it from KV. The panel caps live lanes at `MAX_ATTACHED = 5` attached streams, root included. The store trims each log to `MAX_EVENTS = 600` rows on a 30-day TTL. Thus a long run is a summary plus its tail. The test script cannot read a status assembled at runtime out of the source at all. For this case,
 [`test-outcomes.mjs`](../../scripts/test-outcomes.mjs) carries a hand-maintained `DYNAMIC_ALLOWED` map
-that names every value one such site can take. And the store is redacted at write time. Nothing the couple typed reaches KV beyond the budget figure in the summary title — the store keeps only shape. This redaction makes `/observe` safe to leave public. No person can use this store to answer a question about *what was said*.
+that names every value one such site can take. And the fold redacts the store at write time. Nothing the couple typed reaches KV beyond the budget figure in the summary title — the store keeps only shape. This redaction makes `/observe` safe to leave public. No person can use this store to answer a question about *what was said*.
 
 ### Taking it somewhere that is not a wedding
 
-The point is not weddings specifically. This pattern transfers to any domain where tool-calling workers report their own progress and a downstream reader acts on the report. Examples: a document-review pipeline whose extractors return a per-page status; an incident-triage bot whose enrichment calls fail soft against a rate-limited vendor API; a procurement assistant that polls supplier catalogs; a moderation queue where a policy refusal and a classifier error look identical from outside. In all of them, a worker returns "I could not" as a well-formed success. Some counter is folded before the work happens. Some link points at an id from the wrong namespace. Give refusal
+The point is not weddings specifically. This pattern transfers to any domain where tool-calling workers report their own progress and a downstream reader acts on the report. Examples: a document-review pipeline whose extractors return a per-page status; an incident-triage bot whose enrichment calls fail without an error against a rate-limited vendor API; a procurement assistant that polls supplier catalogs; a moderation queue where a policy refusal and a classifier error look identical from outside. In all of them, a worker returns "I could not" as a well-formed success. The panel folds some counter before the work happens. Some link points at an id from the wrong namespace. Give refusal
 its own bucket; count work at the result, not the request; verify a deep link before rendering it;
 stamp every score with the configuration it measured. The domain changes what the workers do. It does
 not change that a panel is a program, and programs are wrong.
@@ -311,7 +311,7 @@ npm run verify   # typecheck · next build · eve build · test:guards · test:o
 ```
 
 What that suite guarantees is that the panel's readings are *derived* rather than asserted.
-`test:outcomes` reads every status literal back out of the tool sources and fails on one the taxonomy does not classify. Thus a renamed status breaks a build instead of zeroing a metric. `test:fold` drives `apply()` — the real fold, exported for this purpose — with events in eve's delivered shape. Thus a refusal is never counted as a failure. A capped search is never counted as a search. Neither asserts a number that appears on screen, and nothing offline can check a LangSmith link. The link is verified at request time, on every render: the server fetches the run before it returns the URL.
+`test:outcomes` reads every status literal back out of the tool sources and fails on one the taxonomy does not classify. Thus a renamed status breaks a build instead of zeroing a metric. `test:fold` drives `apply()` — the real fold, exported for this purpose — with events in eve's delivered shape. Thus a refusal is never counted as a failure. A capped search is never counted as a search. Neither asserts a number that appears on screen, and nothing offline can check a LangSmith link. The server verifies the link at request time, on every render: it fetches the run before it returns the URL.
 
 ## Going further
 
@@ -327,8 +327,8 @@ What that suite guarantees is that the panel's readings are *derived* rather tha
   generated [engineering log](../../docs/engineering-log.md) carry all four faults with their dates,
   including the two follow-up fixes that each failed for the same reason one level down.
 - **Next: [Evaluation — Hold the Set, Pin the Judge](../09-hold-the-set-pin-the-judge/).** A panel
-  that cannot lie about a run still says nothing about whether the run was any good. The next recipe is about the scores this one is careful to stamp. It shows where the scores come from, and what a passing suite is still unable to see.
+  that cannot lie about a run still says nothing about whether the run was good. The next recipe is about the scores this one is careful to stamp. It shows where the scores come from, and what a passing suite is still unable to see.
 
 ## License
 
-Part of the [Venus](../../README.md) repository, which carries no LICENSE file — no reuse rights are granted by default.
+Part of the [Venus](../../README.md) repository, which carries no LICENSE file — the repository grants no reuse rights by default.

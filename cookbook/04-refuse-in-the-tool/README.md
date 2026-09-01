@@ -112,11 +112,11 @@ if (dir) {
 }
 ```
 
-**A rejection is an instruction, not an error.** The tool returns a machine-readable `status` and a `note` for the model. The note tells the model the next steps: open the vendor's real site, take the email from that site, and record the vendor again. A refusal that only says *no* costs the scout a step and teaches the scout nothing.
+**A rejection is an instruction, not an error.** The tool returns a machine-readable `status` and a `note` for the model. The note tells the model the next steps: open the vendor's real site, take the email from that site, and record the vendor again. A rejection that only says *no* costs the scout a step and teaches the scout nothing.
 
-**One part of the check order is necessary, and one part is not.** The two checks with the lowest cost run first: is the URL a directory, and is the value a URL. They run before `sourceIsMissing`, which costs one network request. Thus a WeddingWire listing never causes a `GET`. The email check also has no cost, but it runs last, after the fetch. Thus a vendor with a foreign address causes one request before the tool refuses it. No code depends on this order today. Know this before you copy the order.
+**One part of the check order is necessary, and one part is not.** The two checks with the lowest cost run first: is the URL a directory, and is the value a URL. They run before `sourceIsMissing`, which costs one network request. Thus a WeddingWire listing never causes a `GET`. The email check also has no cost, but it runs last, after the fetch. Thus a vendor with a foreign address causes one request before the tool rejects it. No code depends on this order today. Know this before you copy the order.
 
-Two statuses in the same tool are intentionally *not* refusals. When the research store is not available, the tool returns `not_configured`. When a write fails, the tool returns `record_failed`. Both statuses tell the scout to keep the vendor in its final report. A guard rejects a bad finding. An outage must not reject a finding.
+Two statuses in the same tool are intentionally *not* rejections. When the research store is not available, the tool returns `not_configured`. When a write fails, the tool returns `record_failed`. Both statuses tell the scout to keep the vendor in its final report. A guard rejects a bad finding. An outage must not reject a finding.
 
 ### Match on host labels, not on substrings
 
@@ -180,7 +180,7 @@ Searches spent on one drive time: 7 | Search budget: 25 of 25 | Vendors recorded
 
 That is the full search budget of one scout, and three scouts recorded too few vendors in that run. The budget is not the important number here. The question is the important part.
 
-**Why does the tool require the town but not the drive time?** The town is printed on a page that the scout already opened. The drive time is on no page. That is the full test, and the recipe title states this rule. [`record_vendor.ts`](../../agent/subagents/scout/tools/record_vendor.ts) now encodes both sides of the test:
+**Why does the tool require the town but not the drive time?** A page that the scout already opened shows the town. The drive time is on no page. That is the full test, and the recipe title states this rule. [`record_vendor.ts`](../../agent/subagents/scout/tools/record_vendor.ts) now encodes both sides of the test:
 
 ```ts
 location: z
@@ -217,7 +217,7 @@ scout quality: 46/53 (87%) | radius judge: 10/18 in region
 recorded for a stated hour: Jackson NH ~98 straight-line mi | Tamworth NH ~79 | Keene NH ~57
 ```
 
-The model was honest about each town, and thus the judge caught it. But the model cannot do the
+The model was honest about each town, and thus the judge detected the error. But the model cannot do the
 arithmetic between towns. A rule that lives only in prose loses its effect with time. Thus the
 question of this recipe needs a better answer. *Why does the tool require the town but not the
 drive time?* The town is on a page, and the drive time is on no page. But the **distance** between
@@ -226,7 +226,7 @@ and a formula are sufficient.
 
 Thus the rule returned at the write boundary as [`outsideRadius`](../../agent/lib/vendor-guards.ts).
 The scout echoes the couple's town and radius from its brief. Nominatim geocodes both towns, with
-one cached lookup for each town. The tool refuses a vendor beyond ~0.75 straight-line miles per
+one cached lookup for each town. The tool rejects a vendor beyond ~0.75 straight-line miles per
 stated drive minute, with the status `rejected_outside_radius`. The check does no search and asks
 no model. Each failure to judge causes a pass, which is also the rule of the liveness check.
 
@@ -246,7 +246,7 @@ arithmetic.
 
 The point is not weddings. The pattern is this: an agent produces findings, and a human acts on the findings with permanent effects. Code can check the correctness of a finding, but code cannot produce the finding. Each such field of work gets the same two rules.
 
-A procurement assistant reads a supplier quote from an aggregator, not from the supplier. A legal research agent cites a case reference that points to nothing. A recruiting agent attaches a contact address from a data broker to a candidate's name. A literature-review agent records a DOI that returns a 404 status. In each example, the tool that writes the record can check the host, the domain match, and the liveness. The tool needs no knowledge of the field of work. And in each example, the temptation on the next day is the same: demand a field that the tools cannot reach. Examples are a delivery lead time with no logistics API, a contract tier with no CRM tool, and a compound's toxicity with no assay.
+A procurement assistant reads a supplier quote from an aggregator, not from the supplier. A legal research agent cites a case reference that points to nothing. A recruiting agent attaches a contact address from a data broker to a candidate's name. A literature-review agent records a DOI that returns a 404 status. In each example, the tool that writes the record can check the host, the domain match, and the liveness. The tool needs no knowledge of the field of work. And in each example, the risk on the next day is the same: a demand for a field that the tools cannot reach. Examples are a delivery lead time with no logistics API, a contract tier with no CRM tool, and a compound's toxicity with no assay.
 
 **Guard the facts that the tool can check from pages the agent already opened. All other demands are requests, not controls.**
 
@@ -267,14 +267,14 @@ A procurement assistant reads a supplier quote from an aggregator, not from the 
 npm run test:guards
 ```
 
-The suite contains rows from a real production run. The rows include the findings that the scout eval caught, and the legitimate findings from the same run that must continue to pass. The rows also include vendor-owned domains that only look like directories, and a page on a real florist's own site that does not exist. The suite runs with no model and no API key. Thus you can verify a guard change without a research run.
+The suite contains rows from a real production run. The rows include the findings that the scout eval detected, and the legitimate findings from the same run that must continue to pass. The rows also include vendor-owned domains that only look like directories, and a page on a real florist's own site that does not exist. The suite runs with no model and no API key. Thus you can verify a guard change without a research run.
 
 ## Going further
 
 - **Give a guard an appeal path before you make the guard strict.** A scout cannot object to a rejection. The scout can only try again or stop. The liveness check fails toward a pass. Each status that rejects — directory source, missing source, missing location, dead source, foreign email — returns a note that names the next action.
 - **Examine the cost of your rejections.** The liveness check spends one request for each recorded vendor. It runs before the email check, which has no cost. Thus a vendor with a foreign address causes one fetch that no check needed. A change to the order is small. First, learn which of your guards have a low cost.
 - **Examine your prompt for facts that your tools cannot reach.** Read the instructions as a list of demands. For each demand, find the tool call that answers it. A demand with no answer makes the scout search without end and use all of its budget.
-- **Check the guard against the eval, not against itself.** The unit suite proves the arithmetic. Only the separately pinned judge caught the day when the prose rule lost its effect. Only the eval shows what the guard's intentional gap passes.
+- **Check the guard against the eval, not against itself.** The unit suite proves the arithmetic. Only the separately pinned judge detected the day when the prose rule lost its effect. Only the eval shows what the guard's intentional gap passes.
 - **Next: [Governance — Budget the Retrieval](../05-budget-the-retrieval/README.md)**. That recipe covers the cap that this recipe's counter-lesson used fully, and what a scout does when the budget is empty.
 
 ## License

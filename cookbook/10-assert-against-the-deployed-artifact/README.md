@@ -154,7 +154,7 @@ Now each plane reads a `--vs-*` variable, declared beside the app's own palette 
 
 The color was the easy half, and the geometry was not. During a fan-out, the panel shows one card
 for each agent. A full stat card for each agent pushed the live event stream below the bottom of
-the viewport, at the moment when there is content to watch. From
+the viewport. This happened at the moment when there is content to watch. From
 [`observability-rail.tsx`](../../app/_components/observability-rail.tsx):
 
 ```tsx
@@ -198,7 +198,7 @@ deploy must install is soon removed from the deploy.
 ### One real turn, against the thing that is actually serving
 
 [`smoke-chat.mjs`](../../scripts/smoke-chat.mjs) has twenty-five lines. The script asserts the one
-property that no local run can assert: the deployed host, the public eve channel, and the Token
+property that no local run can assert. The deployed host, the public eve channel, and the Token
 Factory model plane operate together now:
 
 ```js
@@ -231,13 +231,13 @@ sections. A person compared only one of these two sources with the code.
 The point is not weddings. This pattern applies to each domain where the artifact that runs is not
 the artifact that you compiled. One example is a claims pipeline that reads PDF templates from the
 disk in development but from a bundle in production. A second is a legal-research tool whose
-citation panel renders below the fold on the laptops that associates use. A third is an internal
+citation panel renders below the bottom of the viewport on the laptops that associates use. A third is an internal
 support console that configures its model routing in one place and serves it from another place. A
 fourth is a nightly ETL job whose wrapper greps its own logs and reports success.
 
 Chain the gates with `&&`. Do not use a pipe. Import your data; do not read it from the disk.
 Fetch the deployed URL, and assert a string that must be on the page. Then render the page and
-examine it, because a green suite is only a statement about your machine.
+examine it, because a passing suite is only a statement about your machine.
 
 ## Failure modes
 

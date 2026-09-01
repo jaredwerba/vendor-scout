@@ -168,7 +168,7 @@ An `outputSchema` on a long-running child session looks like the safe choice, be
 
 **State the choice, then name the failure it avoids.** The schema is gone because the schema was unnecessary *and* fatal. Findings reach the planner through `record_vendor` and the research store, never through the child session's return value. Thus the guarantee gave no benefit, and its failure mode could remove a full run. The deletion also exposed one field that only traveled in the return value: venue photos. `get_research` now shows that field explicitly as `venue_images`, instead of hidden on one of forty objects.
 
-The record of each vendor stays best-effort. When the store is not reachable, the tool returns `record_failed`. The tool then tells the specialist to keep that vendor in its final report and to continue. That is the one correct use of a closing report: a fallback for a failed write, never the primary channel.
+The record of each vendor stays best-effort. When the store is not reachable, the tool returns `record_failed`. The tool then tells the specialist to keep that vendor in its final report and to continue. That is the one correct use of a final report: a fallback for a failed write, never the primary channel.
 
 ### Where this transfers
 
@@ -198,7 +198,7 @@ npm run eval:scout     # research quality end to end, against a running deployme
 
 `test:fold` asserts the properties that the recording design depends on. A refusal never counts as a recorded vendor. An unrecognised status never inflates the count. A capped search never counts as a search. A summary written before a field existed continues to count and does not become `NaN`. `trace.ts` contained live bugs of exactly that kind under a green suite, because no test called the fold.
 
-`eval:scout` grades each specialist on `vendorsRecorded >= 3` and `truncations === 0` for its category. It then judges the vendors with a model that is pinned away from the model under test. Thus a model swap can move the score, but the swap can never move the criteria.
+`eval:scout` grades each specialist on `vendorsRecorded >= 3` and `truncations === 0` for its category. It then judges the vendors with a model that the eval pins away from the model under test. Thus a model swap can move the score, but the swap can never move the criteria.
 
 ## Going further
 

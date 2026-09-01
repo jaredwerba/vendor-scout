@@ -8,7 +8,7 @@ Recipe **01 of 10** in the Venus Blueprint Recipes arc:
 
 A prototype configuration runs one model for every job. This configuration survives because no code disagrees with it. Every call site names the same environment variable. Thus nobody asks which model does each job. Nobody writes the answer down where a reviewer can examine it.
 
-Then the question comes up in the worst possible way. One sweep over fifteen labelled vendor replies ranked a cheaper model first on accuracy and on cost. The team switched the classifier to that model. The next run used the same fifteen cases and the same prompt:
+Then the question appears at the worst time. One sweep over fifteen labelled vendor replies ranked a cheaper model first on accuracy and on cost. The team switched the classifier to that model. The next run used the same fifteen cases and the same prompt:
 
 ```text
 First sweep: 15/15 | Next run, same cases: 11/15 | Schema failures: 6
@@ -118,13 +118,13 @@ export interface RoleSpec {
 }
 ```
 
-**The `rationale` field is not a comment.** `modelRouting()` returns it with the live id. [`app/observe/page.tsx`](../../app/observe/page.tsx) renders it as a column beside each role. The [observability rail](../../app/_components/observability-rail.tsx) on the home page shows it as the hover title on each role. When the reason ships next to the choice, a reader can see when the reason is out of date.
+**The `rationale` field is not a comment.** `modelRouting()` returns it with the live id. [`app/observe/page.tsx`](../../app/observe/page.tsx) renders it as a column beside each role. The [observability rail](../../app/_components/observability-rail.tsx) on the home page shows it as the hover title on each role. When the reason appears next to the choice, a reader can see when the reason is out of date.
 
 The four jobs have different demands, and the registry records them. The `planner` is the voice of Venus and its orchestrator. The planner causes a small share of a plan's cost, but the couple reads all of its output. Thus its model stays constant until an eval can measure prose quality.
 
 The `scout` runs long tool loops, and each step sends a growing transcript again. Thus input price and context length are the dominant costs for the scout. The `classifier` makes one structured-output call per reply, on untrusted email from the open internet. The `judge` grades the other roles.
 
-**The judge is pinned to a different model from every other role, on purpose.** When the model under test grades itself, the standard moves with the model. Every later comparison then measures nothing. The judge is the role whose id must change least often and for the fewest reasons.
+**The registry pins the judge to a different model from every other role, on purpose.** When the model under test grades itself, the standard moves with the model. Every later comparison then measures nothing. The judge is the role whose id must change least often and for the fewest reasons.
 
 ### One door in, one door out
 
@@ -152,7 +152,7 @@ function assertKnownModel(id: string, envVar: string): void {
 }
 ```
 
-**Why does a typo stop the process?** The alternative is the anti-pattern. A mistyped id falls through to a default, and the run completes. Sentinel's blueprint carries the same guard with the reason attached: a silent fallback lets *you benchmark the wrong model and not notice*. This repository attributes every published number to a named model. A silent fallback makes the attribution false while the dashboard stays green.
+**Why does a typo stop the process?** The alternative is the anti-pattern. A mistyped id falls through to a default, and the run completes. Sentinel's blueprint carries the same guard with the reason attached: a silent fallback lets *you benchmark the wrong model and not notice*. This repository attributes every published number to a named model. A silent fallback makes the attribution false while the dashboard shows no error.
 
 The price table is the correct allowlist because cost accounting reads the same table. An id that is not in the table is a typo, or the table is stale. The error names both fixes and the escape option. The escape option reports cost as `$0` and says so.
 
@@ -170,7 +170,7 @@ Qwen/Qwen3-30B-A3B-Instruct-2507      73% | $0.0013 | 1851ms
 
 Read the bottom two rows before the top two. The candidate with the lowest published per-token rate produced the most expensive run and the slowest median latency. Price per token is not cost. Output volume drives cost. The cheapest run got the worst score. On untrusted vendor email, a bad score causes misfiled replies and follow-up email to a vendor who already agreed.
 
-The action on the top row taught the sharper lesson. The team made the switch and ran the same fifteen cases again. The result is the text block at the top of this page. The team wrote [`scripts/probe-structured-output.ts`](../../scripts/probe-structured-output.ts) to test whether that result was noise. The script makes thirty structured-output calls per model and scores only whether an object comes back:
+The action on the top row showed the sharper lesson. The team made the switch and ran the same fifteen cases again. The result is the text block at the top of this page. The team wrote [`scripts/probe-structured-output.ts`](../../scripts/probe-structured-output.ts) to test whether that result was noise. The script makes thirty structured-output calls per model and scores only whether an object comes back:
 
 ```text
 Qwen/Qwen3-235B-A22B-Instruct-2507   0/30 failed
@@ -205,7 +205,7 @@ Also, after the classifier revert, the team did not run the eval again. The cons
 
 The point is not weddings only. The pattern applies to each domain where one system does several jobs with different demands. In such a domain, one job makes a structured artifact that a later step uses. Triage of insurance claims runs a cheap extractor over documents and an expensive reasoner over edge cases. Routing of support tickets classifies at volume and drafts at quality. Intake of clinical or legal documents needs the schema obeyed every time and can accept a slower model.
 
-Triage of logs and alerts has the same shape with a harder latency budget. In each domain, the cheap-swap argument is *correct about cost* and still loses. Only three things catch it: a fixed labelled set, more than one round, and a grader pinned to a separate model.
+Triage of logs and alerts has the same shape with a harder latency budget. In each domain, the cheap-swap argument is *correct about cost* and still loses. Only three things find it: a fixed labelled set, more than one round, and a grader pinned to a separate model.
 
 ## Failure modes
 
@@ -233,9 +233,9 @@ The proof is narrow, so state it precisely. The two harnesses hold the labelled 
 
 ## Going further
 
-- **Give the planner an eval before you touch it.** The planner is the only role kept constant on judgement, not on measurement, and its rationale says so. This file exists to prevent a swap of the product's voice without evidence.
+- **Give the planner an eval before you change it.** The planner is the only role the team keeps constant on judgement, not on measurement, and its rationale says so. This file exists to prevent a swap of the product's voice without evidence.
 - **Make the rationale expire.** The strings in `MODEL_ROLES` cite runs by eval name and score, and the date sits in a comment above them. No check confirms that the run still exists or still shows that result. A rationale that has become false is harder to find than a missing rationale.
-- **Close the loop between the eval record and live routing.** Every eval summary stores the model that it ran on. Compare that model against `modelIdFor(role)` at render time. This check finds a reverted model at the next render, not hours later.
+- **Connect the eval record to live routing.** Every eval summary stores the model that it ran on. Compare that model against `modelIdFor(role)` at render time. This check finds a reverted model at the next render, not hours later.
 - **Separate the variables before you record a verdict.** The `scout` revert combined a model change with a subagent `outputSchema` change. The registry recorded a clean conclusion from an experiment that was not clean.
 - **Next: [Delegation — Give the Specialist a Smaller Tool Surface](../02-a-smaller-tool-surface/README.md)** — this recipe shows a role that becomes a sub-agent with its own session, its own tool surface, and its own failure modes.
 

@@ -127,8 +127,8 @@ Thus `s.model` stayed null, `priceFor` returned null, and `costFor` returned `0`
 const m = d?.runtime?.modelId ?? d?.runtime?.model;
 ```
 
-**A metric that stays at zero looks like a quiet system, not a broken system.** Each other counter on the same
-summary — steps, tools, tokens — continued to move. Thus the dashboard looked healthy. No alert monitors a
+**A metric that stays at zero looks like a system with no activity, not a broken system.** Each other counter on the same
+summary — steps, tools, tokens — continued to move. Thus the dashboard showed no fault. No alert monitors a
 gauge that does not move.
 
 The same symptom has a second cause, in [`nebius.ts`](../../agent/lib/nebius.ts). Streaming is the default
@@ -162,7 +162,7 @@ for (let i = 0; i < 3; i += 1) {
 ```
 
 The limit of three permits the id as given plus two removals. That is sufficient for a provider prefix in
-front of a `vendor/model` catalog id. The limit also gives a hard stop on a malformed id. The function returns
+front of a `vendor/model` catalog id. The limit also stops the lookup on a malformed id. The function returns
 `null`, never a guessed rate. An invented price is worse than a gap, because a gap is visible.
 
 ### `prompt_tokens` already contains `cached_tokens`
@@ -209,9 +209,9 @@ the mobile strip could show two different dollar figures for the same run. Today
 [`report.ts`](../../agent/lib/report.ts) and
 [`observability-rail.tsx`](../../app/_components/observability-rail.tsx) both call `agentCost`.
 
-The last trap is the formatter. Two decimal places is the usual choice, but that choice shows a real
+The last failure is in the formatter. Two decimal places is the usual choice, but that choice shows a real
 classifier call as `$0.00`. `npm run models:compare` measures such a call at a fraction of a cent. The `$0.00`
-output shows the same defect that the rest of this recipe describes. `formatUsd` increases the precision when
+output shows the same failure that the rest of this recipe describes. `formatUsd` increases the precision when
 the amount decreases.
 
 ### What the number still is not
@@ -224,7 +224,7 @@ for each role.
 Also, `npm run report` does not print the fleet `cacheHitRate` that [`report.ts`](../../agent/lib/report.ts)
 computes. That figure reaches a reader only through the `/compare` dashboard, from a recorded figure
 in [`v1-v2.json`](../../evals/data/v1-v2.json). This recipe lists those gaps and does not close them, because a
-cost recipe that ends in confidence has missed its own lesson.
+cost recipe that ends in confidence does not apply its own lesson.
 
 ### Taking it somewhere that is not a wedding
 
@@ -264,7 +264,7 @@ dollar amount, and no unit test covers `costFor`.
 
 Two checks replace such a test. First, the report derives the cost and does not store it. `npm run report`
 reprices every session in the store against the current price table on each run. Thus a wrong rate moves the
-median of the whole fleet and does not hide in one row. Second, a person compared one call against the response
+median of the whole fleet and does not stay unnoticed in one row. Second, a person compared one call against the response
 of the provider.
 
 ## Going further
@@ -280,7 +280,7 @@ of the provider.
   specialists supports every model swap that this project considered. Today that split is only a comment.
   `fleetStats` already reads the model and the tokens for each agent, so one aggregation gives the number.
 - **Read the record that this recipe comes from.** [`decisions.json`](../../evals/data/decisions.json) and the
-  generated [engineering log](../../docs/engineering-log.md) hold both faults with dates, commits, and run
+  generated [engineering log](../../docs/engineering-log.md) hold both failures with dates, commits, and run
   ids. The record also holds the figures from before the fix. The record keeps those figures in their original
   form, without a later correction. The date on each entry is the marker.
 - **Next: [Latency — Spend Round Trips, Not Calls](../07-spend-round-trips-not-calls/).** Cost and wall clock

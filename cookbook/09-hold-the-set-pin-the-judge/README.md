@@ -144,7 +144,7 @@ const cheapestPerfect = rows.filter((r) => r.worstScore === 1).sort((a, b) => a.
 **The incorrect method is a rank on the mean.** A mean mixes a bad round into a good round,
 reports a number that no run produced, and recommends a model that already failed. The primary
 sort key is `worstScore`, and cost is only the third tiebreak, so a cheap candidate cannot pass a
-bad round. The script also does not close the argument. Its recommendation line tells you to run
+bad round. The script also does not treat its own result as final. Its recommendation line tells you to run
 the sweep one more time. A model that wins one sweep and fails the next is the exact failure that
 the harness must catch.
 
@@ -214,7 +214,7 @@ emails (`// The attacker is deliberately not the model under test.`), and the ju
 whether the defence held. Its summary line records both sides: `attacker ${modelIdFor("judge")} · defender
 ${modelIdFor("classifier")}`.
 
-The simulation also states the limits of a judge. The attacker labels its own emails with a `true_intent`. `simulate.ts` reports agreement with those labels as *advisory only*, because the labels are generated and are not ground truth. A suite that invents fresh cases on every run
+The simulation also states the limits of a judge. The attacker labels its own emails with a `true_intent`. `simulate.ts` reports agreement with those labels as *advisory only*, because the attacker generates the labels and they are not ground truth. A suite that invents fresh cases on every run
 is not a fixed set, even when the score looks good.
 
 Ask a pinned judge two questions, not one. Both graders give the judge one finding and two booleans. This is the schema in [`grade.ts`](../../scripts/grade.ts), and `eval-scout.ts` carries an almost identical schema:
@@ -250,8 +250,8 @@ runs/graph-boston-boho.json | langgraph-nebius 0.1.0 | 7 agents |  55571ms | com
 ```
 
 Neither line is a result. The lines are inputs, and the collectors that write them do no grading.
-That property matters, because a collector that scores its own stack has an opinion. **Two graders
-that "do the same thing" turn a comparison into marketing.** The system uses one contract, one
+That property matters, because a collector that scores its own stack is not neutral. **Two graders
+that "do the same thing" make the comparison favour one stack.** The system uses one contract, one
 grader, and one set of briefs. The stack is only a string.
 
 ### The eval that spends money is a different kind of eval
@@ -261,7 +261,7 @@ The three evals above run fixed sets against one function call.
 Venus. The hard part is to know *when* to read the result. The comments in the script record two
 of its own bugs.
 
-First, Venus parks at the moment she dispatches her scouts. An early read then scored `0 recorded`
+First, Venus's turn settles at the moment she dispatches her scouts. An early read then scored `0 recorded`
 against scouts that were still searching. Second, the nudge loop counted `subagent.called`, which
 eve 0.24.4 never delivers on the parent stream. The loop concluded that no delegation occurred and
 caused one extra full fan-out per re-prompt. **An eval that measures the system incorrectly costs
@@ -277,8 +277,8 @@ eval:scout · boston-boho | DeepSeek-V4-Flash in the scout role: 10/22 (45%)
 
 The model was not the whole cause. The scout carried an `outputSchema`, added to guarantee a
 structured return. When the model cannot produce the schema, eve escalates the fault to
-`OUTPUT_SCHEMA_NOT_FULFILLED` and fails the full child session, so several scouts failed before
-one search. A revert of the model and a deletion of the schema gave 33/37, then 52/53 after the
+`OUTPUT_SCHEMA_NOT_FULFILLED` and fails the full child session. Several scouts therefore failed
+before one search. A revert of the model and a deletion of the schema gave 33/37, then 52/53 after the
 next fix. The schema was also redundant. Findings reach the planner through the research store,
 never through the child's return value.
 

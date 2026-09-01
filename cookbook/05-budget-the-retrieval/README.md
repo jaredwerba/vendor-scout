@@ -217,9 +217,9 @@ The instruction replaces the search with a judgement that the model can make wit
 scout quality: 52/53 (98%) | radius judge: 100% in all five categories
 ```
 
-On the day of the measurement, the volume returned and the discipline held. The radius rule did not become weaker. It only stopped its dependence on a tool that could not enforce it. The rule later decayed, and it returned at the write boundary as straight-line arithmetic. That follow-up belongs to [Refuse in the Tool](../04-refuse-in-the-tool/README.md). The lesson that stands here is the lesson of the endless loop: the guard that replaced the prose computes the location, and it never searches.
+On the day of the measurement, the scout recorded full results again, and it obeyed the rule. The radius rule did not become weaker. It only stopped its dependence on a tool that could not enforce it. The rule later lost its effect, and it returned at the write boundary as straight-line arithmetic. That follow-up belongs to [Refuse in the Tool](../04-refuse-in-the-tool/README.md). The lesson that stands here is the lesson of the endless loop: the guard that replaced the prose computes the location, and it never searches.
 
-**A budget makes a bad requirement cheap, not correct.** When the cap is reached again and again, read the last ten queries before you increase the cap. An endless retry loop and a genuinely hard research problem look identical in the aggregate. In the transcript, they look fully different.
+**A budget makes a bad requirement cheap, not correct.** When a scout reaches the cap again and again, read the last ten queries before you increase the cap. An endless retry loop and a genuinely hard research problem look identical in the aggregate. In the transcript, they look fully different.
 
 ### Where this goes that is not weddings
 
@@ -260,7 +260,7 @@ outcome taxonomy: complete and correct
 
 ## Going further
 
-- **Put the cap on the billed unit, not on the calls.** Search here is metered per query, so the query is the unit. When your provider bills per returned document, put `max_results` in the reservation too. `web_search.ts` sends `search_depth: "advanced"` when `time_range` is set, and that setting costs two credits instead of one. A counter that counts only calls cannot see that difference.
+- **Put the cap on the billed unit, not on the calls.** The provider meters search here per query, so the query is the unit. When your provider bills per returned document, put `max_results` in the reservation too. `web_search.ts` sends `search_depth: "advanced"` when `time_range` is set, and that setting costs two credits instead of one. A counter that counts only calls cannot see that difference.
 - **Give every budgeted tool a `_left` field.** Pacing data in the success payload lets a model spend its last searches on the gaps, not on a fourth angle at the same vendor.
 - **Dedupe inside the counted unit.** `filterSeen` in [`agent/lib/search-budget.ts`](../../agent/lib/search-budget.ts) drops the URLs that this session already saw. It operates across the whole batch, not per query. A tool-calling transcript re-sends every prior turn, so a duplicate result costs tokens again on every model call for the rest of the run.
 - **Next:** the budget limits retrieval, not spend. [Recipe 06 — Compute the Price, Then Distrust It](../06-compute-the-price-then-distrust-it/README.md) turns token usage into dollars, and then it explains why its first printed number was wrong.
