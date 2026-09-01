@@ -1,22 +1,22 @@
 # Delegation — Give the Specialist a Smaller Tool Surface
 
-> The capability a sub-agent must not have is the one it should not be given.
+> Do not give a subagent a capability that it must not use.
 
 Recipe **02 of 10** in the Venus Blueprint Recipes arc:
 
 > Foundation → **Delegation** → Durability → Guards → Governance → Cost → Latency → Observability → Evaluation → Verification
 
-Venus plans a wedding by fanning out: one research specialist per category, up to five at once, each digging through the open web for venues, caterers, photographers, florists, music. The first version delegated with eve's built-in `agent` tool. Nothing looked wrong — the plans were good, the builds were green, no run failed.
+Venus plans a wedding with parallel research: one scout for each category, and a maximum of five at one time. Each scout searches the open web for venues, caterers, photographers, florists, and music. The first version delegated the research with eve's built-in `agent` tool. Nothing looked wrong. The plans were good, the builds passed, and no run failed.
 
-The built-in runs a copy of the *root* agent: same instructions, same tools. The root's tools include `send_outreach`, which puts a real email in a real stranger's inbox. So every research child was also an outreach agent. Nobody decided that. The capability arrived by inheritance, and a researcher was one bad inference away from using it.
+The built-in tool runs a copy of the *root* agent, with the same instructions and the same tools. The tools of the root agent include `send_outreach`, which sends a real email to a real stranger. Thus each child agent was also an outreach agent. Nobody decided that. The child agent received the capability through inheritance. One bad inference was sufficient for the child agent to use it.
 
-Research moved into a declared subagent with no such tool. The decision record for a production session traced after that change reads:
+We moved the research into a declared subagent, the scout, which does not have this tool. The decision record below comes from a production session traced after that change:
 
 ```text
 scout calls: 10 | agent calls: 3 | session: 1
 ```
 
-The guardrails section of [`agent/instructions.md`](../../agent/instructions.md) states that `scout` is the planner's *only* way to delegate. The interesting number is not three. It is that the sentence forbidding those three calls was in the context window for every one of them.
+The guardrails section of [`agent/instructions.md`](../../agent/instructions.md) states that `scout` is the *only* delegation path for the root agent. The important number is not three. The sentence that forbids those three calls was in the context window for each of them.
 
 ## What you'll build
 
@@ -54,11 +54,11 @@ agent/
 
 ## Prerequisites
 
-- Node 24.x — the `engines` pin in `package.json` — and this repository checked out. The commands below inspect the real agent, not a sample.
+- Node 24.x — the `engines` pin in `package.json` — and a checkout of this repository. The commands below inspect the real agent, not a sample.
 - `eve` ^0.24.4. `eve build` writes the manifest the checks read.
 - `jq`, for reading `.eve/agent-summary.json`.
-- `NEBIUS_API_KEY` in `.env.local` if you intend to *run* the agent rather than only inspect its surface.
-- A look at [`agent/lib/models.ts`](../../agent/lib/models.ts) first: `planner` and `scout` are separate roles, and this recipe assumes you know why.
+- `NEBIUS_API_KEY` in `.env.local` if you want to *run* the agent and not only inspect its surface.
+- Read [`agent/lib/models.ts`](../../agent/lib/models.ts) first: `planner` and `scout` are separate roles. This recipe assumes that you know why.
 
 ## Run it
 
@@ -98,19 +98,19 @@ agent/subagents/scout/tools/record_vendor.ts
 agent/subagents/scout/tools/web_search.ts
 ```
 
-Those two listings are the whole recipe. `send_outreach` appears in one of them and not the other, and no sentence anywhere is responsible for keeping it that way.
+Those two listings are the full recipe. `send_outreach` appears in one listing and not in the other. No sentence anywhere keeps it that way.
 
 ## Walk-through
 
 ### The built-in delegate is a clone, not a specialist
 
-eve ships an `agent` tool. Calling it starts a child session running a copy of the root agent — same instructions, same tools. That is a genuinely useful default for "go do this same job on a different input", and it is exactly wrong for "go do a *narrower* job".
+eve supplies an `agent` tool. A call to this tool starts a child session that runs a copy of the root agent, with the same instructions and the same tools. That is a useful default for "do this same job on a different input". It is wrong for "do a *narrower* job".
 
-**Inheritance is the failure, not the child.** The child agent never misbehaved. It searched, it summarised, it came back. But its tool set included the one tool that reaches outside the process, and the only thing standing between a wedding inquiry and a stranger's inbox was the model choosing not to call it.
+**Inheritance is the failure, not the child.** The child agent never did a wrong action. It searched, it summarised, and it returned. But its tool set included the one tool that reaches outside the process. Only the model's decision not to call that tool kept a wedding inquiry out of a stranger's inbox.
 
 ### A declared subagent inherits nothing
 
-A directory under `agent/subagents/` with its own `agent.ts` is a different agent, not a copy. From [`agent/subagents/scout/agent.ts`](../../agent/subagents/scout/agent.ts):
+A directory under `agent/subagents/` with its own `agent.ts` is a different agent, not a copy. The code below comes from [`agent/subagents/scout/agent.ts`](../../agent/subagents/scout/agent.ts):
 
 ```ts
 export default defineAgent({
@@ -124,7 +124,7 @@ export default defineAgent({
   modelContextWindowTokens: contextWindowFor("scout"),
 ```
 
-The `description` states the boundary — *it never contacts a vendor* — in the same place the capability is advertised. **State the choice, then name the failure the choice avoids.** The scout has no `send_outreach` import, no `send_outreach` file under its `tools/`, and therefore no `send_outreach` in the schema it sees.
+The `description` states the boundary — *it never contacts a vendor* — in the same place that advertises the capability. **State the choice, then name the failure that the choice prevents.** The scout has no `send_outreach` import and no `send_outreach` file under its `tools/`. Thus the schema that the scout sees has no `send_outreach`.
 
 ### Two tools, and one of them is a re-export
 
@@ -137,13 +137,13 @@ The `description` states the boundary — *it never contacts a vendor* — in th
 export { default } from "../../../tools/web_search";
 ```
 
-Inheriting nothing cuts both ways: every capability you *do* want has to be granted explicitly. Re-export rather than copy — a forked second implementation of search is a second place for the budget accounting to drift.
+Zero inheritance has a second effect: you must explicitly grant each capability that you *do* want. Re-export the tool, and do not copy it. A second implementation of search is a second place where the budget accounting can drift.
 
-The other tool is [`record_vendor`](../../agent/subagents/scout/tools/record_vendor.ts), and it exists only under the subagent. The root has no way to record a vendor and the scout has no way to email one. Research and outreach never share a context.
+The other tool is [`record_vendor`](../../agent/subagents/scout/tools/record_vendor.ts), and it exists only under the scout. The root agent cannot record a vendor, and the scout cannot email one. Research and outreach never share a context.
 
 ### The absences have to be re-authored too
 
-The root disables eve's default shell and filesystem tools. The scout does not get those disablements — it gets its own default set, and has to disable them again. [`agent/subagents/scout/tools/bash.ts`](../../agent/subagents/scout/tools/bash.ts):
+The root agent disables eve's default shell and filesystem tools. The scout does not receive those disablements. It receives its own default set, and it must disable those tools again. See [`agent/subagents/scout/tools/bash.ts`](../../agent/subagents/scout/tools/bash.ts):
 
 ```ts
 import { disableTool } from "eve/tools";
@@ -152,7 +152,7 @@ import { disableTool } from "eve/tools";
 export default disableTool();
 ```
 
-Six files in that directory are a comment and a `disableTool()`. One of them is not about safety at all — [`todo.ts`](../../agent/subagents/scout/tools/todo.ts):
+Six files in that directory contain only a comment and a `disableTool()`. One of those files is not about safety — [`todo.ts`](../../agent/subagents/scout/tools/todo.ts):
 
 ```ts
 import { disableTool } from "eve/tools";
@@ -164,13 +164,13 @@ import { disableTool } from "eve/tools";
 export default disableTool();
 ```
 
-A tool the model *can* call is a tool the model *will* call, and every call it makes is a round trip the couple waits through. That cost is not a safety problem. It is still a reason to remove the tool.
+The model *will* call each tool that it *can* call. Each call is a round trip, and the couple waits through each round trip. That cost is not a safety problem. It is still a reason to remove the tool.
 
-The same rule reaches the observability plane. [`agent/subagents/scout/hooks/observe.ts`](../../agent/subagents/scout/hooks/observe.ts) re-exports the root's hook, because hooks are not inherited either — and a specialist that writes no trace is a specialist nobody can watch fail.
+The same rule applies to observability. The scout does not inherit hooks. Thus [`agent/subagents/scout/hooks/observe.ts`](../../agent/subagents/scout/hooks/observe.ts) re-exports the hook of the root agent. A scout that writes no trace is a scout that nobody can watch.
 
 ### A rule in a prompt is not a control
 
-The scout shipped, the instructions named it as the only delegation path, and the built-in was still there. Hence the numbers at the top of this recipe. The fix is [`agent/tools/agent.ts`](../../agent/tools/agent.ts):
+We released the scout, and the instructions named it as the only delegation path. But the built-in tool was still available. That condition caused the numbers at the top of this recipe. The correction is [`agent/tools/agent.ts`](../../agent/tools/agent.ts):
 
 ```ts
 export default defineTool({
@@ -192,13 +192,15 @@ export default defineTool({
 });
 ```
 
-`disableTool()` does not work here — it covers eve's *authored* framework tools, not the built-in delegate. An authored root tool at the same name takes priority over the built-in, so the refusal is what the model gets instead. **The refusal is a redirect, not a wall.** It names the correct tool, states what that tool can and cannot do, and gives the exact first line to re-issue with. A refusal that only says no costs a round trip and teaches nothing.
+`disableTool()` does not operate here. It covers eve's *authored* framework tools, not the built-in delegate. An authored root tool with the same name has priority over the built-in tool. Thus the model receives the refusal instead.
 
-Notice that `agent` still shows up in the manifest listing above. That is the point: the name is occupied, by something harmless.
+**The refusal is a redirect, not a wall.** It names the correct tool, and it states what that tool can and cannot do. It also gives the exact first line for the new call. A refusal that only says no costs a round trip and teaches nothing.
+
+Note that `agent` continues to appear in the manifest listing above. That is the intent: a harmless tool occupies the name.
 
 ### The findings leave through a tool, not a return value
 
-The scout deliberately has no `outputSchema`, and the comment in its definition explains what that bought:
+The scout intentionally has no `outputSchema`. The comment in its definition explains the reason:
 
 ```ts
   // NO outputSchema, deliberately.
@@ -218,11 +220,15 @@ DeepSeek-V4-Flash · specialist sessions failed: 10 of 10 | vendors recorded: 0 
 Qwen/Qwen3-235B-A22B-Instruct-2507 · vendors per specialist: 3-4 | 46/50
 ```
 
-Read past the scores. The schema was survivable on one model and lethal on another, which makes it a dependency on the model rather than a guarantee — and several of those ten sessions died before they had searched even once. It was also redundant. Findings reach the planner through `record_vendor` and the research store, which [`get_research`](../../agent/tools/get_research.ts) joins to the live trace; the child's closing message is prose, and the planner is instructed to read findings from the store, not from that message. The schema bought nothing and could cost everything.
+Do not read only the scores. One model could satisfy the schema, and one model could not. Thus the schema was a dependency on the model, not a guarantee. Several of those ten sessions failed before they searched even once.
+
+The schema was also redundant. Findings reach the root agent through `record_vendor` and the research store, and [`get_research`](../../agent/tools/get_research.ts) joins that store to the live trace. The closing message of the scout is prose, and the instructions tell the root agent to read findings from the store. The schema gave no benefit, and it could cause the loss of a full session.
 
 ### What this transfers to
 
-The point is not weddings specifically. This pattern transfers to any domain where a researching step and an irreversible step live in the same agent, and where the research is the part you want to parallelise: a procurement assistant that gathers supplier quotes and then places an order; a support agent that reads a ticket history and then issues a refund; a recruiting agent that sources candidates and then emails them; a coding agent that reads a repository and then opens a pull request. In every one of those, the fan-out step is the one you want many of and the commit step is the one you want exactly one of — held in the session a human is actually watching.
+The point is not weddings only. This pattern applies when a research step and an irreversible step are in the same agent, and the research must run in parallel. Examples: a procurement assistant collects supplier quotes and then places an order. A support agent reads a ticket history and then issues a refund. A recruiting agent finds candidates and then emails them. A coding agent reads a repository and then opens a pull request.
+
+In each example, you want many instances of the fan-out step. You want exactly one instance of the commit step, and you keep that step in the session that a person watches.
 
 ## Failure modes
 
@@ -247,16 +253,18 @@ npm run eval:scout
 tools/agent.ts
 ```
 
-The `jq -e` exits non-zero if that tool is not in the built manifest, which proves the shadow is compiled into the deployed surface rather than merely present in the source tree — piping into `grep` would only have told you about `grep`. The second drives a fixed brief against the live deployment, waits for the fan-out to settle, and grades what the specialists actually recorded — coverage, distinct vendors, a working contact path, sources on the vendor's own site, addresses that belong to the vendor, a stated town, live URLs, venue photos, and two judge questions. A specialist whose tool surface is wrong does not throw; it records nothing, and that is what this catches.
+The `jq -e` command exits non-zero if that tool is not in the built manifest. This result proves that the build compiles the shadow into the deployed surface, and that the shadow is not only in the source tree. A pipe into `grep` would only report the status of `grep`.
+
+The second command runs a fixed brief against the live deployment, and it waits for the fan-out to complete. Then it grades what the scouts recorded: coverage, distinct vendors, a contact path that operates, sources on the vendor's own site, addresses that belong to the vendor, a stated town, live URLs, venue photos, and two judge questions. A scout with an incorrect tool surface does not throw an error. It records nothing, and that is what this test finds.
 
 ## Going further
 
-- **Give the specialist its own budget, not the root's.** [`agent/lib/search-budget.ts`](../../agent/lib/search-budget.ts) sets `SPECIALIST_SEARCH_CAP` to 25 and `ROOT_SEARCH_CAP` to 40 — a research child needs room to iterate, the root only needs the occasional lookup between conversations. The anti-pattern is the unbounded search loop: a specialist that keeps refining its query looks busy and converges on nothing.
-- **Split the model as well as the tools.** A specialist's cost is dominated by input tokens across a long tool loop, not by prose quality, and [`agent/lib/models.ts`](../../agent/lib/models.ts) keeps `planner` and `scout` as separate lines of config for exactly that reason. Read the `scout` rationale before you swap it.
-- **Put the boundary in the child's own instructions too.** The Role section of [`agent/subagents/scout/instructions.md`](../../agent/subagents/scout/instructions.md) reads *you never contact anyone — no emails, no forms, no bookings. You have no way to, and you should never claim you did.* Belt and braces: the tool is absent, and the agent is told it is absent, so it does not hallucinate having sent something.
-- **Next — [Durability: Record Findings as You Find Them](../03-record-findings-as-you-find-them/).** A narrow specialist can still be cut off mid-run, and what it already found has to survive that. That is what [`record_vendor`](../../agent/subagents/scout/tools/record_vendor.ts) and [`agent/lib/research.ts`](../../agent/lib/research.ts) exist for, and it is why the scout reports back in prose instead of a closing array.
+- **Give the scout its own budget, not the budget of the root agent.** [`agent/lib/search-budget.ts`](../../agent/lib/search-budget.ts) sets `SPECIALIST_SEARCH_CAP` to 25 and `ROOT_SEARCH_CAP` to 40. A scout needs room for many search iterations. The root agent only needs an occasional lookup between conversations. The unbounded search loop is the anti-pattern: a scout that continues to refine its query looks busy and finds nothing.
+- **Split the model as well as the tools.** Input tokens across a long tool loop, not prose quality, cause most of the cost of a scout. For that reason, [`agent/lib/models.ts`](../../agent/lib/models.ts) keeps `planner` and `scout` as separate lines of configuration. Read the `scout` rationale before you change the model.
+- **Put the boundary in the scout's own instructions also.** The Role section of [`agent/subagents/scout/instructions.md`](../../agent/subagents/scout/instructions.md) reads *you never contact anyone — no emails, no forms, no bookings. You have no way to, and you should never claim you did.* This is a double protection: the tool is absent, and the instructions tell the scout that the tool is absent. Thus the scout does not report an email that it did not send.
+- **Next — [Durability: Record Findings as You Find Them](../03-record-findings-as-you-find-them/).** A stop can still occur in the middle of a scout run, and the found data must survive that stop. [`record_vendor`](../../agent/subagents/scout/tools/record_vendor.ts) and [`agent/lib/research.ts`](../../agent/lib/research.ts) exist for that reason. This need is also why the scout reports back in prose and not in a closing array.
 
 ## License
 
 
-Part of the [Venus](../../README.md) repository, which carries no LICENSE file — no reuse rights are granted by default.
+This recipe is part of the [Venus](../../README.md) repository. The repository has no LICENSE file, and thus it grants no reuse rights by default.

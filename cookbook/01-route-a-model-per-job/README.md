@@ -1,14 +1,14 @@
 # Foundation — Route a Model per Job
 
-> One model per role, each swap a line of configuration an eval can veto.
+> Each role has one model. Each swap is one line of configuration, and an eval can veto it.
 
 Recipe **01 of 10** in the Venus Blueprint Recipes arc:
 
 > **Foundation** → Delegation → Durability → Guards → Governance → Cost → Latency → Observability → Evaluation → Verification
 
-Running one model for everything is the prototype configuration. It survives because nothing in the code disagrees with it: every call site names the same environment variable, so the question "which model does this job" never gets asked, and the answer is never written down anywhere a reviewer can argue with.
+A prototype configuration runs one model for every job. This configuration survives because no code disagrees with it. Every call site names the same environment variable. Thus nobody asks which model does each job. Nobody writes the answer down where a reviewer can examine it.
 
-Then the question gets asked in the worst possible way. A sweep over fifteen labelled vendor replies ranked a cheaper model first on accuracy and on cost, so the reply classifier was switched to it. The very next run, same fifteen cases, same prompt:
+Then the question comes up in the worst possible way. One sweep over fifteen labelled vendor replies ranked a cheaper model first on accuracy and on cost. The team switched the classifier to that model. The next run used the same fifteen cases and the same prompt:
 
 ```text
 First sweep: 15/15 | Next run, same cases: 11/15 | Schema failures: 6
@@ -16,7 +16,7 @@ First sweep: 15/15 | Next run, same cases: 11/15 | Schema failures: 6
 
 The saving was real. The tie was not.
 
-What fixes this is not a better model. It is a place for the question to live: a per-role registry where the choice, the environment override, the context window and the *reason* sit in one struct, resolution runs through one function, and an unknown id stops the process instead of quietly becoming something else.
+A better model does not fix this. A permanent home for the question fixes it. A per-role registry holds the choice, the override, the context window, and the *reason* in one struct. One function resolves every id. An unknown id stops the process and does not become a different id.
 
 ## What you'll build
 
@@ -35,15 +35,15 @@ evals/data/
 
 ## Prerequisites
 
-- Node 24.x — the repo pins it in `engines`, and the scripts run through `node --env-file=.env.local --import ./scripts/ts-resolve.mjs`.
+- Node 24.x. The repo pins it in `engines`. The scripts run through `node --env-file=.env.local --import ./scripts/ts-resolve.mjs`.
 - `npm install` at the repo root.
-- A Nebius Token Factory key as `NEBIUS_API_KEY` in `.env.local`. This is Token Factory (`https://api.tokenfactory.nebius.com/v1`), not Nebius AI Cloud, and the model ids come from its own `GET /v1/models`.
+- A Nebius Token Factory key as `NEBIUS_API_KEY` in `.env.local`. This is Token Factory (`https://api.tokenfactory.nebius.com/v1`), not Nebius AI Cloud. The model ids come from its `GET /v1/models`.
 - A current price table. `npm run pricing:refresh` regenerates [`agent/lib/pricing.generated.ts`](../../agent/lib/pricing.generated.ts) from `GET /v1/models?verbose=true`.
-- A labelled set for at least one role. Here it is fifteen real vendor replies with ground-truth intents in [`evals/data/vendor-replies.json`](../../evals/data/vendor-replies.json).
+- A labelled set for at least one role. This recipe uses fifteen real vendor replies with ground-truth intents in [`evals/data/vendor-replies.json`](../../evals/data/vendor-replies.json).
 
 ## Run it
 
-These commands run the registry that is deployed. There is no separate sample app to clone — the files under **What you'll build** are the ones serving production.
+These commands run the deployed registry. There is no separate sample app to clone. The files under **What you'll build** serve production.
 
 ```bash
 npm install
@@ -83,7 +83,7 @@ Error: NEBIUS_CLASSIFIER_MODEL="Qwen/Qwen3-235B-A22B-Instruc" is not in the Toke
 
 ### One client, four callers
 
-Every role shares a single OpenAI-compatible client in [`agent/lib/nebius.ts`](../../agent/lib/nebius.ts). Three of its options exist because something went silently wrong without them.
+Every role shares one OpenAI-compatible client in [`agent/lib/nebius.ts`](../../agent/lib/nebius.ts). Three of its options exist because, without them, a fault occurred and gave no error.
 
 ```ts
 const tokenFactory = createOpenAICompatible({
@@ -95,15 +95,17 @@ const tokenFactory = createOpenAICompatible({
 });
 ```
 
-`includeUsage` asks for the usage block on the streamed final chunk. Without it every streamed turn reports zero tokens, so the console shows `$0` for every session and there is nothing to compare models *on*. A model comparison whose cost column is structurally zero is not a cheap comparison, it is a broken one.
+`includeUsage` requests the usage block on the final streamed chunk. Without it, every streamed turn reports zero tokens. The console then shows `$0` for every session, and no cost data exists for a comparison. A comparison whose cost column is always zero is not a cheap comparison. It is a broken comparison.
 
-`supportsStructuredOutputs` tells the AI SDK that Token Factory honours `response_format` `json_schema`. Without the flag the SDK drops the schema on `generateObject`, and [`classifyReply`](../../agent/lib/classify.ts) falls back to its keyword heuristic — a fallback that returns a plausible object and no error. It was the reply eval that caught it, not a stack trace.
+`supportsStructuredOutputs` tells the AI SDK that Token Factory accepts `response_format` `json_schema`. Without the flag, the SDK removes the schema from `generateObject`. Then [`classifyReply`](../../agent/lib/classify.ts) falls back to its keyword heuristic. The heuristic returns a plausible object and no error. The reply eval found this fault, not a stack trace.
 
-The `fetch` wrapper reads the key per request because `createOpenAICompatible` would otherwise snapshot `process.env` at module load, which is empty during `eve build` and on Vercel. `tokenFactoryModel` also trims the id: `vercel env` stored from stdin keeps a trailing newline, and Token Factory then 404s `chat/completions` for an id that looks correct in the dashboard. Both are one-line defences against a failure that presents as "the model is wrong" rather than "the config is wrong".
+The `fetch` wrapper reads the key for each request. Without the wrapper, `createOpenAICompatible` copies `process.env` at module load. That copy is empty during `eve build` and on Vercel.
+
+`tokenFactoryModel` also trims the id. When `vercel env` stores a value from stdin, the value keeps a trailing newline. Token Factory then returns 404 on `chat/completions` for an id that looks correct in the dashboard. Each defence is one line. Each stops a failure that looks like a model fault but is a configuration fault.
 
 ### The registry is the argument, not the value
 
-[`agent/lib/models.ts`](../../agent/lib/models.ts) declares four roles, and each spec carries more than an id:
+[`agent/lib/models.ts`](../../agent/lib/models.ts) declares four roles. Each spec carries more than an id:
 
 ```ts
 export type ModelRole = "planner" | "scout" | "classifier" | "judge";
@@ -116,11 +118,13 @@ export interface RoleSpec {
 }
 ```
 
-**The `rationale` field is not a comment.** `modelRouting()` returns it alongside the live id; [`app/observe/page.tsx`](../../app/observe/page.tsx) renders it as a column beside each role, and the [observability rail](../../app/_components/observability-rail.tsx) on the home page carries it as the hover title on each role. A justification that ships next to the choice is a justification someone will notice has gone stale.
+**The `rationale` field is not a comment.** `modelRouting()` returns it with the live id. [`app/observe/page.tsx`](../../app/observe/page.tsx) renders it as a column beside each role. The [observability rail](../../app/_components/observability-rail.tsx) on the home page shows it as the hover title on each role. When the reason ships next to the choice, a reader can see when the reason is out of date.
 
-The four jobs demand different things, and the registry says so. The `planner` is Venus's voice and her orchestration — a small share of a plan's cost and all of what the couple reads, so it is held constant until an eval can measure prose quality. The `scout` specialists run long tool loops that re-send a growing transcript, which makes input price and context length the dominant terms. The `classifier` makes one structured-output call per reply on untrusted email from the open internet. The `judge` grades the others.
+The four jobs have different demands, and the registry records them. The `planner` is the voice of Venus and its orchestrator. The planner causes a small share of a plan's cost, but the couple reads all of its output. Thus its model stays constant until an eval can measure prose quality.
 
-**The judge is pinned away from every other role on purpose.** Grading with the model under test moves the bar along with it, and every comparison you run afterwards measures nothing. It is the one role whose id should change least often and for the fewest reasons.
+The `scout` runs long tool loops, and each step sends a growing transcript again. Thus input price and context length are the dominant costs for the scout. The `classifier` makes one structured-output call per reply, on untrusted email from the open internet. The `judge` grades the other roles.
+
+**The judge is pinned to a different model from every other role, on purpose.** When the model under test grades itself, the standard moves with the model. Every later comparison then measures nothing. The judge is the role whose id must change least often and for the fewest reasons.
 
 ### One door in, one door out
 
@@ -133,7 +137,9 @@ export function modelIdFor(role: ModelRole): string {
 }
 ```
 
-Everything else is built on this: `modelFor(role)` wraps it into a `LanguageModel`, `contextWindowFor(role)` feeds `defineAgent`, `modelRouting()` reports it. The env override wins, so a swap really is one line — and because the read happens at call time rather than at module load, an override set in the deployment environment takes effect without a rebuild. `modelRouting()` returns an `overridden` flag alongside the id, so a role running on something other than its declared default says so on the page rather than in someone's shell history.
+All other functions build on this one. `modelFor(role)` wraps it into a `LanguageModel`. `contextWindowFor(role)` feeds `defineAgent`. `modelRouting()` reports it. The override wins, so a swap is one line.
+
+The function reads the override at call time, not at module load. Thus an override set in the deployment environment applies without a rebuild. `modelRouting()` also returns an `overridden` flag with the id. When a role does not run on its declared default, the page shows this fact, not a shell history.
 
 ### The price table is the allowlist
 
@@ -146,9 +152,9 @@ function assertKnownModel(id: string, envVar: string): void {
 }
 ```
 
-**Why stop the process over a typo?** Because the alternative is the anti-pattern: a mistyped id falls through to a default and the run completes. Sentinel's blueprint carries the same guard with the reason attached — a silent fallback means *you could benchmark the wrong model without noticing*. That is worse in a repository whose every published number is attributed to a named model, because the attribution becomes quietly false while the dashboard stays green.
+**Why does a typo stop the process?** The alternative is the anti-pattern. A mistyped id falls through to a default, and the run completes. Sentinel's blueprint carries the same guard with the reason attached: a silent fallback lets *you benchmark the wrong model and not notice*. This repository attributes every published number to a named model. A silent fallback makes the attribution false while the dashboard stays green.
 
-The snapshot is the right allowlist because it is the same table cost accounting reads. An id that is not in it either is a typo or means the table is stale — and the error names both fixes plus the escape hatch, which reports cost as `$0` and says so.
+The price table is the correct allowlist because cost accounting reads the same table. An id that is not in the table is a typo, or the table is stale. The error names both fixes and the escape option. The escape option reports cost as `$0` and says so.
 
 ### Two swaps the registry refused
 
@@ -162,22 +168,24 @@ nvidia/Nemotron-3_5-Lightning         80% | $0.0077 | 6613ms
 Qwen/Qwen3-30B-A3B-Instruct-2507      73% | $0.0013 | 1851ms
 ```
 
-Read the bottom two rows before the top two. The candidate with the lowest published per-token rate produced the most expensive run in the field and the slowest median of the five, because price per token is not cost — output volume is. And the cheapest run in the field got the worst score, which on untrusted vendor email means misfiled replies and follow-ups chasing someone who already said yes.
+Read the bottom two rows before the top two. The candidate with the lowest published per-token rate produced the most expensive run and the slowest median latency. Price per token is not cost. Output volume drives cost. The cheapest run got the worst score. On untrusted vendor email, a bad score causes misfiled replies and follow-up email to a vendor who already agreed.
 
-Acting on the top row is what taught the sharper lesson. The switch went in, the same fifteen cases were run again, and the result was the strip in the hook. [`scripts/probe-structured-output.ts`](../../scripts/probe-structured-output.ts) was written to settle whether that was noise — thirty structured-output calls per model, scoring only whether an object came back at all:
+The action on the top row taught the sharper lesson. The team made the switch and ran the same fifteen cases again. The result is the text block at the top of this page. The team wrote [`scripts/probe-structured-output.ts`](../../scripts/probe-structured-output.ts) to test whether that result was noise. The script makes thirty structured-output calls per model and scores only whether an object comes back:
 
 ```text
 Qwen/Qwen3-235B-A22B-Instruct-2507   0/30 failed
 deepseek-ai/DeepSeek-V4-Flash        4/30 failed | 2× "the model did not return a response" | 2× "could not parse the response"
 ```
 
-**An accuracy sweep is structurally blind to this.** A call that never returns an object is not a wrong answer, it is no answer, and averaged into a score it reads as a tie. Correctness of the content and reliability of the shape are different axes, and for a job reading untrusted email the second one decides.
+**An accuracy sweep cannot see this fault.** A call that returns no object is not a wrong answer. It is no answer. When the average includes it, the score shows a tie. Correctness of the content and reliability of the shape are different axes. For a job that reads untrusted email, the second axis decides.
 
-The `scout` role refused a swap too, and its record is less flattering to the registry. The cost argument there was strong — the specialists dominate a plan's spend, the cheaper candidate is cheaper on input and carries four times the context window — and `npm run eval:scout` returned every specialist session failed with not one vendor recorded, against a 46/50 baseline. The decision record for that run is explicit that the model was **not the only cause**: the subagent also carried an `outputSchema` that eve escalates to `OUTPUT_SCHEMA_NOT_FULFILLED`, killing the child session outright. The registry recorded a verdict that a confounded experiment produced. That is worth knowing about your own evidence.
+The `scout` role also refused a swap, and its record shows a weakness in the registry. The cost argument was strong. The scout sessions dominate a plan's spend. The cheaper candidate has a lower input price and four times the context window. But `npm run eval:scout` reported that every scout session failed with not one vendor recorded, against a 46/50 baseline.
+
+The decision record states that the model was **not the only cause**. The subagent also carried an `outputSchema`, which eve escalates to `OUTPUT_SCHEMA_NOT_FULFILLED`, and this stops the child session. The registry recorded a verdict from an experiment with two changed variables. Know this about your own evidence.
 
 ### The harness that learned from being wrong
 
-[`scripts/compare-models.ts`](../../scripts/compare-models.ts) now defaults to three rounds and ranks on the worst one:
+[`scripts/compare-models.ts`](../../scripts/compare-models.ts) now runs three rounds by default and ranks on the worst round:
 
 ```ts
 const ROUNDS = Number(process.env.COMPARE_ROUNDS ?? 3);
@@ -187,13 +195,17 @@ rows.sort((a, b) => b.worstScore - a.worstScore || b.score - a.score || a.costUs
 const cheapestPerfect = rows.filter((r) => r.worstScore === 1).sort((a, b) => a.costUsd - b.costUsd)[0];
 ```
 
-**Rank on the worst round, not the mean.** A mean hides the bad round; the bad round is the entire signal. Three is the configured default because one pass over fifteen cases can only rule out the clearly worse — it cannot separate two candidates near the top. The script's own closing line tells you to run the sweep again before switching, which is the advice the first sweep did not give.
+**Rank on the worst round, not the mean.** A mean hides the bad round, and the bad round is the entire signal. The default is three rounds because one pass over fifteen cases only removes the clearly worse candidates. One pass cannot separate two candidates near the top. The last line of the script tells you to run the sweep again before a switch. The first sweep did not give that advice.
 
-Two failures are still open. A specialist that swaps into the `scout` role must be re-tested with `npm run eval:scout` before it takes the job, and nothing in the code enforces that — the rationale string asks. And when the classifier was reverted, the eval was not re-run, so the console kept serving the losing model's summary and publicly reported a score for a configuration that had not been deployed for hours. The structural fix — having the console flag any eval summary whose recorded model no longer matches live routing — is recommended and not yet built. Observability that lies is worse than none, and that was the observability lying about itself.
+Two failures stay open. Test a new model for the `scout` role with `npm run eval:scout` before the model takes the job. No code enforces this test. Only the rationale string asks for it.
+
+Also, after the classifier revert, the team did not run the eval again. The console then served the summary of the losing model. The console reported a score for a configuration that was hours out of date. The structural fix is a console flag on each eval summary whose recorded model does not match live routing. This fix is recommended and not yet built. Observability that reports false data is worse than no observability, and here it reported false data about itself.
 
 ### Where this transfers
 
-The point is not weddings specifically. This pattern transfers to any domain where one system does several jobs with genuinely different demands, and at least one of them produces a structured artifact another step depends on. Insurance claims triage runs a cheap extractor over documents and an expensive reasoner over edge cases. Support-ticket routing classifies at volume and drafts at quality. Clinical or legal document intake needs the schema honoured every time and can tolerate a slower model to get it. Log and alert triage is the same shape with a harder latency budget. In every one of them the cheap-swap argument is *correct about cost* and still loses, and the only thing that catches it is a fixed labelled set, more than one round, and a separately-pinned grader.
+The point is not weddings only. The pattern applies to each domain where one system does several jobs with different demands. In such a domain, one job makes a structured artifact that a later step uses. Triage of insurance claims runs a cheap extractor over documents and an expensive reasoner over edge cases. Routing of support tickets classifies at volume and drafts at quality. Intake of clinical or legal documents needs the schema obeyed every time and can accept a slower model.
+
+Triage of logs and alerts has the same shape with a harder latency budget. In each domain, the cheap-swap argument is *correct about cost* and still loses. Only three things catch it: a fixed labelled set, more than one round, and a grader pinned to a separate model.
 
 ## Failure modes
 
@@ -217,17 +229,17 @@ npm run eval:replies     # the routed classifier against the labelled set
 npm run typecheck        # ModelRole is a union — an unrouted role will not compile
 ```
 
-What this proves is narrow and worth stating precisely: the two harnesses hold the dataset and the prompt constant and vary exactly one line of configuration, so a difference between candidates is attributable to the candidate. They do not prove the incumbent is the best available model — only that the two swaps that were tried were measured, and refused on evidence a single pass would have hidden.
+The proof is narrow, so state it precisely. The two harnesses hold the labelled set and the prompt constant and change exactly one line of configuration. Thus a difference between candidates comes from the candidate. The harnesses do not prove that the current model is the best available model. They prove only that the team measured the two attempted swaps and refused them on evidence that a single pass hides.
 
 ## Going further
 
-- **Give the planner an eval before you touch it.** It is the only role held constant on judgement rather than measurement, and the registry says so in its own rationale. Swapping the voice of the product on a hunch is precisely the move this file exists to prevent.
-- **Make the rationale expire.** The strings in `MODEL_ROLES` cite runs by eval name and score, and the date sits in a comment above them. Nothing checks whether the run still exists or still says that, and a rationale that has quietly become fiction is harder to spot than a missing one.
-- **Close the loop between the eval record and live routing.** Every eval summary already stores the model it ran on; comparing that against `modelIdFor(role)` at render time would have caught the console reporting a reverted model at the next render instead of hours later.
-- **Separate the confounds before you record a verdict.** The `scout` revert bundled a model change with a subagent `outputSchema` change, and the registry recorded a clean-sounding conclusion from an experiment that was not clean.
-- **Next: [Delegation — Give the Specialist a Smaller Tool Surface](../02-a-smaller-tool-surface/README.md)** — what happens when one of these roles stops being a model call and becomes a sub-agent with its own session, its own tool surface, and its own way to fail.
+- **Give the planner an eval before you touch it.** The planner is the only role kept constant on judgement, not on measurement, and its rationale says so. This file exists to prevent a swap of the product's voice without evidence.
+- **Make the rationale expire.** The strings in `MODEL_ROLES` cite runs by eval name and score, and the date sits in a comment above them. No check confirms that the run still exists or still shows that result. A rationale that has become false is harder to find than a missing rationale.
+- **Close the loop between the eval record and live routing.** Every eval summary stores the model that it ran on. Compare that model against `modelIdFor(role)` at render time. This check finds a reverted model at the next render, not hours later.
+- **Separate the variables before you record a verdict.** The `scout` revert combined a model change with a subagent `outputSchema` change. The registry recorded a clean conclusion from an experiment that was not clean.
+- **Next: [Delegation — Give the Specialist a Smaller Tool Surface](../02-a-smaller-tool-surface/README.md)** — this recipe shows a role that becomes a sub-agent with its own session, its own tool surface, and its own failure modes.
 
 ## License
 
 
-Part of the [Venus](../../README.md) repository, which carries no LICENSE file — no reuse rights are granted by default.
+This recipe is part of the [Venus](../../README.md) repository. The repository has no LICENSE file, so it grants no reuse rights by default.

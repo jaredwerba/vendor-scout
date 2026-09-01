@@ -4,7 +4,7 @@
   "order": 4,
   "eyebrow": "Guards",
   "title": "Refuse in the Tool, Not in the Prompt",
-  "tagline": "Move a broken rule into the tool — but only where the tool can actually check it.",
+  "tagline": "Move a broken rule into the tool. Do this only where the tool can check the rule.",
   "difficulty": "intermediate",
   "estimatedReadingTime": "9 min",
   "estimatedRunTime": "1 min",
@@ -14,9 +14,9 @@
   },
   "tags": ["guardrails", "tool-design", "validation", "subagents", "evals"],
   "story": {
-    "problem": "A research specialist recorded a caterer with the inquiry address inquiries@hideseekmedia.com, read off a WeddingWire page for a different business. Outreach runs live, so that address was one plan away from a real stranger's inbox — and the scout's instructions already forbade directory sources and already required a published address on the vendor's own site.",
-    "solution": "record_vendor refuses at the write boundary: a source URL on any of 20 known directories, matched on host labels rather than as a substring of the URL; an email whose corporate domain shares nothing with the vendor's name or website, with free mail passing untouched; and a source page that returns a definitive 404 or 410. Every refusal returns a note naming the next action. The counter-lesson is enforced too — a required drive time, which no tool in the system can produce, was demoted to an optional field the scout is explicitly told never to search for. When the prose rule decayed under measurement, the radius came back as arithmetic: record_vendor geocodes the vendor's town against the couple's and refuses beyond the straight-line miles the stated drive covers, failing open wherever it cannot judge.",
-    "outcome": "The guards are unit-tested without a model against real rows from a production run: the findings the scout eval caught reject, and every legitimate finding from the same run still passes, including gmail addresses and contact-form-only vendors. Removing the unreachable drive-time requirement read 52/53 with the radius judge at 100% on the day it was measured; a later settled run measured the prose rule failing, and the distance guard's first runs read five refusals with every recorded vendor within 38 straight-line miles, then 49/54 (91%) with 13 of 14 within 40."
+    "problem": "A scout recorded a caterer with the inquiry address inquiries@hideseekmedia.com. The scout read the address from a WeddingWire page for a different business. Outreach runs live. Thus one more plan could send a wedding inquiry to the inbox of a real stranger. The scout's instructions already forbid directory sources, and they already require a published address on the vendor's own site.",
+    "solution": "record_vendor refuses at the write boundary. The tool refuses a source URL on one of 20 known directories; the check matches host labels, not substrings of the URL. The tool refuses an email whose corporate domain shares nothing with the vendor's name or website; free mail passes untouched. The tool refuses a source page that returns a definitive 404 or 410. Each refusal returns a note that names the next action. The tool also applies the counter-lesson: a required drive time, which no tool in the system can produce, became an optional field. The instructions tell the scout never to search for a drive time. When the prose rule lost its effect under measurement, the radius returned as arithmetic. record_vendor geocodes the vendor's town and the couple's town. The tool refuses a vendor beyond the straight-line miles that the stated drive covers, and it passes each vendor that it cannot judge.",
+    "outcome": "The guards have unit tests that use real rows from a production run and no model. The findings that the scout eval caught get a rejection. Each legitimate finding from the same run continues to pass, which includes gmail addresses and contact-form-only vendors. After the removal of the unreachable drive-time requirement, the eval read 52/53, with the radius judge at 100% on the day of the measurement. A later settled run measured the failure of the prose rule. The distance guard's first runs read five refusals, with each recorded vendor within 38 straight-line miles, then 49/54 (91%) with 13 of 14 within 40."
   },
   "prerequisites": [
     "Node 24 — package.json pins \"node\": \"24.x\"",

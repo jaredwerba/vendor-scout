@@ -4,7 +4,7 @@
   "order": 5,
   "eyebrow": "Governance",
   "title": "Budget the Retrieval",
-  "tagline": "A cap counted in queries, where hitting it is a normal outcome rather than an error.",
+  "tagline": "The cap counts queries, and a run that reaches the cap is a normal outcome, not an error.",
   "difficulty": "intermediate",
   "estimatedReadingTime": "11 min",
   "estimatedRunTime": "2 min",
@@ -23,9 +23,9 @@
     "observability"
   ],
   "story": {
-    "problem": "An unbounded search loop is how a research specialist burns an afternoon and a budget without converging. Worse, a guard that demanded a fact no tool could reach turned the loop into a death spiral: one catering scout ran seven consecutive searches for a single drive time, spent its entire 25-search budget, and recorded one vendor. Nothing threw, and every surface that counted searches counted the calls it requested rather than the calls that happened, so a scout capped at 25 could report 30.",
-    "solution": "A durable per-session counter in agent/lib/search-budget.ts — 25 for a specialist, 40 for the root, derived from ctx.session.parent rather than a tool argument. The unit is the query, not the tool call, so a four-query batch cannot quietly quadruple the budget. Calls that could never reach the provider return before the counter moves, and the batch is counted once so a retried transient failure is not charged twice. Exhaustion returns status cap_reached with an instruction to finish from what is already found, and the taxonomy in agent/lib/actions.ts classifies that as a refusal so toolRuns() reports searches performed rather than requested.",
-    "outcome": "The guard was moved to a fact the tools can actually reach: the vendor's town stays required, the drive note is optional, and the scout is told never to search for one. Two npm run eval:scout runs over the same brief read 33/37 and 52/53 = 98%, with the radius judge at 100% in all five categories. scripts/test-trace-fold.mjs asserts that a search refused at the cap is not counted as a search, and scripts/test-outcomes.mjs fails if any tool status stops being classified. The radius itself later moved into record_vendor as straight-line distance — measured, not searched — so the death-spiral fix and the hard limit no longer depend on the same sentence of prose."
+    "problem": "An unbounded search loop lets a scout spend hours and a full budget and find nothing. A guard made this worse: it demanded a fact that no tool could supply, so the loop did not end. One catering scout ran seven consecutive searches for a single drive time, spent its full 25-search budget, and recorded one vendor. No error occurred. Also, every surface counted the requested calls, not the performed calls, so a scout with a cap of 25 could report 30 searches.",
+    "solution": "A durable per-session counter lives in agent/lib/search-budget.ts: 25 queries for a scout, 40 for the root agent, and the tool derives the tier from ctx.session.parent. The unit is the query, not the tool call, so a four-query batch cannot quadruple the budget. A call that cannot reach the provider returns before the counter moves. The tool counts the batch one time, so a retried transient failure does not pay twice. Exhaustion returns status cap_reached with an instruction to finish from the found results. The taxonomy in agent/lib/actions.ts classes cap_reached as a refusal, so toolRuns() reports the performed searches, not the requested searches.",
+    "outcome": "The fix moved the guard to a fact that the tools can reach. The vendor's town stays required, the drive note is optional, and the scout never searches for one. Two npm run eval:scout runs over the same brief read 33/37 and 52/53 = 98%, with the radius judge at 100% in all five categories. scripts/test-trace-fold.mjs asserts that a refused search is not a search, and scripts/test-outcomes.mjs fails when any tool status loses its classification. The radius later moved into record_vendor as straight-line distance, which the tool measures and does not search. Thus the fix for the endless loop and the hard limit no longer depend on the same sentence of prose."
   },
   "prerequisites": [
     "Node 24 (engines in package.json)",

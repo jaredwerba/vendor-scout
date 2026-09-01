@@ -4,7 +4,7 @@
   "order": 1,
   "eyebrow": "Foundation",
   "title": "Route a Model per Job",
-  "tagline": "One model per role, each swap a line of configuration an eval can veto.",
+  "tagline": "Each role has one model. Each swap is one line of configuration, and an eval can veto it.",
   "difficulty": "beginner",
   "estimatedReadingTime": "9 min",
   "estimatedRunTime": "12 min",
@@ -30,9 +30,9 @@
     "cost"
   ],
   "story": {
-    "problem": "One model served every job, so the question of which model should do which job was never written down anywhere a reviewer could argue with. When it finally got asked, a single sweep over fifteen labelled vendor replies ranked a cheaper model first and the classifier was switched to it \u2014 and the very next run of the same fifteen cases scored 11/15 with six schema failures.",
-    "solution": "A per-role registry in agent/lib/models.ts: four roles (planner, scout, classifier, judge), each with a default id, an env override, a context window and a written rationale that the app renders. Resolution runs through one function, and assertKnownModel turns the Token Factory price snapshot into an allowlist so a typo'd id stops the process instead of silently benchmarking a different model.",
-    "outcome": "Two cheap swaps were measured and refused. The classifier stayed on Qwen after probe:schema recorded 0/30 structured-output failures against the cheaper candidate's 4/30, and the scout role was reverted after every specialist session failed with not one vendor recorded against a 46/50 baseline. models:compare now runs three rounds and ranks on the worst one."
+    "problem": "One model served every job, so nobody wrote down which model does which job where a reviewer could examine it. When the question came up, one sweep over fifteen labelled vendor replies ranked a cheaper model first. The team switched the classifier to that model. The next run of the same fifteen cases scored 11/15 with six schema failures.",
+    "solution": "A per-role registry lives in agent/lib/models.ts. It has four roles: planner, scout, classifier, and judge. Each role has a default id, an override, a context window, and a written rationale that the app renders. One function resolves every id. assertKnownModel turns the Token Factory price table into an allowlist, so a mistyped id stops the process and cannot benchmark a different model.",
+    "outcome": "The team measured two cheap swaps and refused them. The classifier stayed on Qwen after probe:schema recorded 0/30 structured-output failures against the cheaper candidate's 4/30. The team reverted the scout role after every scout session failed with not one vendor recorded, against a 46/50 baseline. models:compare now runs three rounds and ranks on the worst round."
   },
   "prerequisites": [
     "Node 24.x (pinned in package.json engines)",

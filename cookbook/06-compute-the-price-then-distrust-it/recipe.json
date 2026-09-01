@@ -4,7 +4,7 @@
   "order": 6,
   "eyebrow": "Cost",
   "title": "Compute the Price, Then Distrust It",
-  "tagline": "A plausible number nobody cross-checks is indistinguishable from a correct one.",
+  "tagline": "A plausible number that nobody cross-checks looks the same as a correct number.",
   "difficulty": "advanced",
   "estimatedReadingTime": "12 min",
   "estimatedRunTime": "5 min",
@@ -29,9 +29,9 @@
     "silent-failure"
   ],
   "story": {
-    "problem": "Token Factory returns token counts and no price, so every dollar figure has to be computed locally — and a locally computed figure can be wrong without anything failing. Two faults landed in sequence: the model id was read from a field the runtime does not populate, so every cost was $0; then, once the id was fixed, prompt_tokens turned out to already contain cached_tokens, and both were being billed, so every cost was plausible and wrong.",
-    "solution": "Generate the price table from GET /v1/models?verbose=true instead of typing it, and refuse to route to a model the snapshot cannot price. Read RuntimeIdentity.modelId and peel provider prefixes until one matches the catalog id. Request usage on streamed turns. Bill inputTokens once, because it is already the whole prompt. Recompute cost from stored tokens on read through one shared function, so a pricing fix corrects the history rather than only the future.",
-    "outcome": "One traced plan reads back at $1.50 stored against $0.800 recomputed from its own tokens, with 3,486,160 of 3,938,369 input tokens served from cache; across 33 agents the prefix cache carried 90.7% of all input. The fleet report, captured 2026-08-30, prices 16 spending runs at a median of $0.800 and a maximum of $9.36, a tail 11.7x the median. No figure here has been checked against an invoice, and cached reads are charged at the full prompt rate on purpose, so all of them err high."
+    "problem": "Token Factory returns token counts and no price, so this project computes every dollar figure locally. A locally computed figure can be wrong while nothing fails. Two faults landed in sequence. First, the fold read the model id from a field that the runtime does not populate, so every cost was $0. Then, after the id fix, prompt_tokens already contained cached_tokens, and costFor billed both values, so every cost was plausible and wrong.",
+    "solution": "Generate the price table from GET /v1/models?verbose=true, and do not type it by hand. Refuse to route to a model that the price table cannot price. Read RuntimeIdentity.modelId, and remove provider prefixes until an id matches the catalog id. Request usage on streamed turns. Bill inputTokens once, because it is already the whole prompt. Recompute the cost from stored tokens on read, through one shared function. Then a pricing fix corrects the history, not only the future.",
+    "outcome": "One traced plan reads back at $1.50 stored against $0.800 recomputed from its own tokens. The cache served 3,486,160 of the 3,938,369 input tokens of that plan. Across 33 agents, the prefix cache carried 90.7% of all input. The fleet report, captured 2026-08-30, prices 16 spending runs at a median of $0.800 and a maximum of $9.36. That tail is 11.7x the median. Nobody has checked a figure against an invoice. The report charges cached reads at the full prompt rate on purpose, so all figures estimate high, never low."
   },
   "prerequisites": [
     "NEBIUS_API_KEY — the Token Factory catalog endpoint is authenticated",

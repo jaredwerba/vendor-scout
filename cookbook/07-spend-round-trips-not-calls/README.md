@@ -1,22 +1,22 @@
 # Latency — Spend Round Trips, Not Calls
 
-> Batching is part of the tool signature, because a request in a prompt is one a model can stop honouring.
+> Batching is part of the tool signature, because the model can ignore a request in a prompt.
 
-Recipe **07 of 10** in the Venus Blueprint Recipes arc:
+This is recipe **07 of 10** in the Venus Blueprint Recipes arc:
 
 > Foundation → Delegation → Durability → Guards → Governance → Cost → **Latency** → Observability → Evaluation → Verification
 
-A couple watching a specialist work sees a lane that keeps moving and a plan that takes minutes, and the natural suspect is the search provider. One traced scout run says otherwise:
+A couple watches a scout work. They see a lane that moves and a plan that takes minutes. The search provider is the natural suspect. One traced scout run shows a different cause:
 
 ```text
 Scout run: 220s wall clock | 166s deciding what to call next | 27s running tools
 ```
 
-The remaining seconds are unattributed in the source and are left that way rather than folded into the larger bucket. What matters is which of the two named numbers you can move. Tavily answers in the time Tavily answers in. The model's turn is the part that belongs to you, and there is one of them for every tool call the model decides to make.
+The source does not attribute the remaining seconds. We keep them unattributed and do not add them to the larger number. The important question is which of the two named numbers you can decrease. You cannot control the response time of Tavily. You control the model's turn, and the model makes one turn for each tool call.
 
-It also gets worse as the run goes on. A tool-calling transcript re-sends every prior turn, so step twenty re-reads everything steps one through nineteen produced. An extra round trip is not a fixed cost — it is a cost that grows with how many round trips you have already spent.
+The problem increases as the run continues. A tool-calling transcript sends every previous turn again, so step twenty reads all the output of steps one through nineteen again. An extra round trip is not a fixed cost. The cost of an extra round trip increases with the number of round trips you already spent.
 
-[`agent/subagents/scout/instructions.md`](../../agent/subagents/scout/instructions.md) asked for batched searches before [`agent/tools/web_search.ts`](../../agent/tools/web_search.ts) could express one. That made it a request, and a request is something a model can quietly stop honouring. The tool now takes an array.
+[`agent/subagents/scout/instructions.md`](../../agent/subagents/scout/instructions.md) asked for batched searches before [`agent/tools/web_search.ts`](../../agent/tools/web_search.ts) could accept one. That made batching a request, and the model can ignore a request without a signal. The tool now accepts an array.
 
 ## What you'll build
 
@@ -43,7 +43,7 @@ runs/
 - Node 24 (`engines` in [`package.json`](../../package.json)).
 - An `eve` install with declared subagents and `defineState` — `^0.24.4` here.
 - `TAVILY_API_KEY` for live search and `NEBIUS_API_KEY` for the model. The command below needs neither.
-- Recipe 05 (Governance) — the query counter this tool reserves against before it dials out.
+- Recipe 05 (Governance) — the query counter that this tool reserves against before it sends a request.
 - More than one traced run, if you want to know whether a change moved anything.
 
 ## Run it
@@ -73,13 +73,13 @@ florals      12 steps | 4 web_search calls | 54.7s
 specialist time 335.8s | slowest 75.5s | run 114.0s
 ```
 
-Twenty search calls across seventy-nine steps. The searches are not the run. That is a committed `RunResult` out of [`runs/`](../../runs/), kept in the repository on the stated principle that a benchmark you cannot re-read is an assertion. Regenerate it against the live deployment with `npm run run:eve -- boston-boho`, which needs the KV credentials in `.env.local` to read the trace back; the model and search keys live on the deployment it drives.
+The output shows twenty search calls across seventy-nine steps. The searches are a small part of the run. The output comes from a committed `RunResult` file in [`runs/`](../../runs/). We keep the file in the repository because a benchmark that you cannot read again is only a claim. Run `npm run run:eve -- boston-boho` to make the file again against the live deployment. The command needs the KV credentials in `.env.local` to read the trace. The model keys and the search keys stay on the deployment.
 
 ## Walk-through
 
 ### Batching lives in the signature, not in the prompt
 
-[`agent/tools/web_search.ts`](../../agent/tools/web_search.ts) makes the plural the primary field:
+[`agent/tools/web_search.ts`](../../agent/tools/web_search.ts) makes the plural field the primary field:
 
 ```ts
 /** Beyond four, a batch is guessing rather than covering angles. */
@@ -96,11 +96,11 @@ queries: z
   ),
 ```
 
-**A shape the model must fill is not a rule the model can drop.** The anti-pattern is the one this replaced: a paragraph of instruction asking for batching, sitting above a tool that accepts a single string. Nothing about that arrangement is enforceable, and the failure is silent — a run that batches and a run that does not emit the same trace, only more of it.
+**A shape that the model must fill is not a rule that the model can ignore.** This design replaced the anti-pattern: a paragraph of instructions that asks for batching, above a tool that accepts one string. The system cannot enforce that arrangement, and the failure is silent. A run that batches and a run that does not batch make the same trace. The second run only makes more of it.
 
-The cap is four, and four is a judgement rather than a limit anyone measured. Past that a batch stops covering angles and starts guessing, so the model would be spending real searches out of a bounded budget on queries it has not thought about. Deciding how many angles the category needs *before* committing is the research habit you wanted anyway.
+The cap is four. Four is a judgement, not a measured limit. Above four queries, a batch does not cover angles and only guesses. The model then spends real searches from a limited budget on queries it did not think about. The model must decide how many angles the category needs *before* it commits. That decision is the correct research habit.
 
-Both fields are optional, and that is the second half of the design:
+Both fields are optional. That choice is the second half of the design:
 
 ```ts
 // Both fields are optional so that neither shape can ever be a SCHEMA
@@ -110,7 +110,9 @@ Both fields are optional, and that is the second half of the design:
 const wanted = (queries?.length ? queries : query ? [query] : []) // …
 ```
 
-An unsatisfiable schema does not degrade, it terminates — and on a declared subagent it takes the child session with it, which is what the child's `outputSchema` did to ten of ten specialists in the run recorded in the [engineering log](../../docs/engineering-log.md), and what the commit that made both fields optional was guarding against. So the singular `query` stays, marked in its own description as the lesser option, and a call that arrives with neither returns `no_query` with an instruction instead of throwing. **State the choice, then name the failure the choice avoids:** a strict schema buys enforcement at the price of a fatal edge, and a tolerant schema plus an honest status buys the same enforcement with a recoverable one.
+A schema that the model cannot satisfy does not degrade. It stops the call, and on a declared subagent it also stops the child session. The child's `outputSchema` stopped ten of ten scouts in the run that the [engineering log](../../docs/engineering-log.md) records. The commit that made both fields optional guards against that failure. Thus the singular `query` field stays, and its description marks it as the weaker option. A call that has neither field returns `no_query` with an instruction and does not throw an error.
+
+**State the choice, then name the failure that the choice prevents.** A strict schema gives enforcement with a fatal edge case. A tolerant schema with an honest status gives the same enforcement with a recoverable edge case.
 
 ### The description is the part the model reads before it decides
 
@@ -122,9 +124,9 @@ description:
   "Use focused queries (vendor type + location + style) and refine based on results.",
 ```
 
-**Put the latency argument where the decision is made.** A tool description is read at the moment the model chooses a call; the system prompt was read a long transcript ago and is competing with everything since. Naming the consequence — *how long the couple waits* — rather than the mechanic gives the model something to weigh, and that sentence appears verbatim in [`agent/subagents/scout/instructions.md`](../../agent/subagents/scout/instructions.md), so the model meets the same argument in both places.
+**Put the latency argument at the point of decision.** The model reads a tool description at the moment it selects a call. The model read the system prompt much earlier, and all the text after it competes for attention. The description names the consequence — *how long the couple waits* — not the mechanism. The consequence gives the model a fact to weigh. The same sentence appears in [`agent/subagents/scout/instructions.md`](../../agent/subagents/scout/instructions.md), so the model sees the same argument in two places.
 
-The queries run through one `Promise.all`, which is where the round trip actually gets amortised:
+The tool runs the queries through one `Promise.all`. This call is the point where one round trip covers all the queries:
 
 ```ts
 const outcomes = await Promise.all(
@@ -132,11 +134,11 @@ const outcomes = await Promise.all(
 );
 ```
 
-Results come back grouped by query, so the model can still tell which angle produced what. Four sequential calls and one batch of four spend the same searches against the budget — Recipe 05 counts the query, not the call, precisely so this shape cannot quietly quadruple the retrieval budget.
+The tool returns the results grouped by query, so the model can see which angle produced which results. Four sequential calls and one batch of four spend the same number of searches against the budget. Recipe 05 counts the query, not the call. Thus this shape cannot silently multiply the retrieval budget by four.
 
 ### A page returned twice is billed for the rest of the run
 
-Overlapping queries are the normal case for a batch, not an accident of one. [`agent/lib/search-budget.ts`](../../agent/lib/search-budget.ts) suppresses what this session has already been shown:
+Overlapping queries are the normal case for a batch, not an accident. [`agent/lib/search-budget.ts`](../../agent/lib/search-budget.ts) suppresses the results that this session already received:
 
 ```ts
 export function filterSeen<T extends { url?: string }>(results: T[]): {
@@ -156,19 +158,19 @@ export function filterSeen<T extends { url?: string }>(results: T[]): {
 }
 ```
 
-**A duplicate result is not redundant, it is recurring.** The transcript re-sends it on every subsequent model call for the rest of the session, so a page returned at step four is paid for again at step five, and at step six, and at step twenty. The mechanism is the same one that makes round trips expensive, which is why the two fixes belong in the same recipe. Sentinel, the Nebius compliance blueprint, reached the same conclusion and suppresses chunks its sub-agent has already seen.
+**A duplicate result is a recurring cost, not a one-time cost.** The transcript sends the duplicate again on each later model call in the session. You pay for a page from step four again at step five, at step six, and at step twenty. The same mechanism makes round trips expensive, so the two fixes belong in the same recipe. Sentinel, the Nebius compliance blueprint, found the same conclusion and suppresses the chunks that its subagent already saw.
 
-Dedupe runs across the whole batch rather than per query, because otherwise the most common overlap — two angles on the same category returning the same vendor page — is exactly the one it would miss. The seen-set is bounded at the last 400 URLs so a long session cannot grow durable state without limit — the oldest entries fall out first, which means suppression is best-effort rather than total. The count comes back only when it is non-zero:
+The function suppresses duplicates across the whole batch, not per query. A per-query check misses the most common overlap: two angles on the same category that return the same vendor page. The seen-set keeps the last 400 URLs, so a long session cannot grow the durable state without limit. The oldest entries leave the set first, so the suppression is partial, not total. The tool returns the count only when the count is more than zero:
 
 ```ts
 ...(suppressed > 0 ? { already_seen: suppressed } : {}),
 ```
 
-**A field that is always present stops being read.** Surfacing `already_seen` only when something was actually suppressed keeps it as a signal to the model about how much its angles overlap, rather than a constant in every payload.
+**A model does not read a field that is always present.** The tool shows `already_seen` only when it suppressed a result. Thus the field stays a signal that tells the model how much its angles overlap. The field is not a constant in each payload.
 
 ### The cheapest round trip is the one you delete
 
-[`agent/subagents/scout/tools/todo.ts`](../../agent/subagents/scout/tools/todo.ts) is a comment and one call:
+[`agent/subagents/scout/tools/todo.ts`](../../agent/subagents/scout/tools/todo.ts) contains a comment and one call:
 
 ```ts
 // A scout has one category and a search budget. It used two round trips per
@@ -178,22 +180,26 @@ Dedupe runs across the whole batch rather than per query, because otherwise the 
 export default disableTool();
 ```
 
-**Audit the tool surface for round trips, not just for capability.** Recipe 02 removed tools a researcher had no business holding; this is the same cut made on a different axis. A planning tool on an agent with one category and a hard search cap is bookkeeping the run does not need, and every call to it is a full model turn over a transcript that has grown since the last one. `agent.ts` in the same directory carries the other deletion — the `outputSchema` is gone, so the closing turn is prose the model can produce rather than a shape it might not.
+**Examine the tool surface for round trips, not only for capability.** Recipe 02 removed the tools that a researcher must not hold. This deletion makes the same cut on a different axis.
+
+A scout has one category and a hard search cap, so a planning tool on it is bookkeeping that the run does not need. Each call to that tool is a full model turn over a transcript that grew since the last turn. `agent.ts` in the same directory contains the other deletion: the `outputSchema` is removed. Thus the closing turn is prose that the model can produce, not a shape that the model can fail to satisfy.
 
 ### Not every round trip is worth removing
 
-The scout's instructions are emphatic in the opposite direction about recording:
+The scout's instructions give the opposite rule for recording:
 
 ```md
 4. **Record each vendor the moment you have verified it** — call `record_vendor` *before* you
    start researching the next one. Never batch them up to the end.
 ```
 
-**Batch what is idempotent; never batch what must survive a truncation.** A search is a read, so folding four into one costs nothing if the run dies afterwards. A recorded vendor is the only durable trace that a finding ever existed, and Recipe 03 exists because an end-of-context array made every finding hostage to the last token. The catering scout in the run above took twenty-three steps and twenty-two tool calls to record three vendors, and every one of those recordings was a round trip spent on purpose. Latency work that touches the write path is how you trade a slow plan for an empty one.
+**Batch the idempotent operations. Do not batch the operations that must survive a truncation.** A search is a read operation, so a batch of four searches loses nothing if the run stops afterwards. A recorded vendor is the only durable proof that a finding existed. Recipe 03 exists because an end-of-context array tied every finding to the last token.
+
+The catering scout in the run above used twenty-three steps and twenty-two tool calls to record three vendors. Each recording was an intentional round trip. Latency work on the write path changes a slow plan into an empty plan.
 
 ### The same trick, one level up
 
-[`agent/instructions.md`](../../agent/instructions.md) applies the identical reasoning to delegation:
+[`agent/instructions.md`](../../agent/instructions.md) applies the same reasoning to delegation:
 
 ```md
 Then **immediately, in that same response**, fan out the research: one **`scout`** call per
@@ -201,17 +207,21 @@ category, all in a SINGLE response, **at most five** — venue (always), photogr
 florals, music.
 ```
 
-eve runs the batch concurrently and returns every result before the root continues, so the turn costs the slowest specialist rather than their sum. The strip from **Run it** is that property, measured: five specialists, `335.8s` of specialist time inside a `114.0s` run. The same artifact records the planner at `5 steps` and `102,781ms`, a duration that spans the fan-out it was waiting on. Its lane looks idle because it is; the couple is waiting on catering.
+eve runs the batch concurrently and returns every result before the root continues. Thus the turn costs the time of the slowest scout, not the sum. The output in **Run it** measures that property: five scouts, and `335.8s` of scout time inside a `114.0s` run. The same artifact records the planner at `5 steps` and `102,781ms`, and that duration includes the fan-out that the planner waited for. The planner's lane looks idle because it is idle. The couple waits for catering.
 
-The same instruction file batches the recovery path too. When several venues are missing photos, it tells the planner to put them in one call — `queries: ["<venue A> wedding venue", "<venue B> wedding venue"]` — so the couple waits once rather than three times.
+The same instruction file also batches the recovery path. When several venues have no photos, the file tells the planner to put the venues in one call — `queries: ["<venue A> wedding venue", "<venue B> wedding venue"]`. Thus the couple waits one time, not three times.
 
 ### What this does not fix
 
-The traced scout's `220` seconds do not fully decompose — `166` deciding and `27` running tools leaves a remainder the source does not attribute, and it is published that way rather than rounded into either bucket. No per-step latency histogram exists either — the trace records duration per agent, so the distribution *within* a specialist is inferred rather than measured. The batch cap means a category genuinely needing eight angles still pays two round trips. And `filterSeen` is per session by design, so five specialists researching overlapping towns each pay separately for the same page; a shared seen-set across a fan-out would cut that, and is not built. Most of that re-sent input is served from a prefix cache — `90.7%` of all input tokens across 33 agents, per the [engineering log](../../docs/engineering-log.md) — and cached reads are charged at the full prompt rate here, so growth in the transcript is paid for either way. The token count is not the thing to optimise. The wait is.
+The traced scout's `220` seconds do not fully decompose. The values `166` for decisions and `27` for tools leave a remainder that the source does not attribute. The recipe publishes the remainder as it is and does not round it into either number. No per-step latency histogram exists, because the trace records one duration for each agent. Thus you can only estimate the distribution *within* a scout; you cannot measure it.
+
+The batch cap has a cost: a category that needs eight angles still pays two round trips. `filterSeen` operates per session by design, so five scouts that examine the same towns each pay for the same page. A seen-set that the whole fan-out shares would remove that cost, but the project did not build one. A prefix cache serves most of that repeated input — `90.7%` of all input tokens across 33 agents, per the [engineering log](../../docs/engineering-log.md). The system charges cached reads at the full prompt rate, so you pay for transcript growth in each case. Do not optimise the token count; optimise the wait.
 
 ### Where this goes that is not weddings
 
-The point is not weddings specifically. This pattern transfers to any domain where an agent runs a long tool loop over a growing transcript and the tool itself is fast: security triage enriching indicators against threat-intel feeds, procurement sourcing across supplier catalogues, clinical literature review over a licensed index, log investigation where each query is milliseconds and each decision about what to query next is not. In every one of them the arithmetic is the same — the provider's latency is a constant you rent, the number of model turns is a variable you design — and the four moves are the same: make the batch a required shape rather than a requested habit, put the consequence in the tool description where the choice is made, suppress what the transcript already carries, and delete the tools whose only output is another turn.
+The point is not only weddings. The pattern applies to each domain where an agent runs a long tool loop over a growing transcript and the tool itself is fast. Examples are security triage that enriches indicators against threat-intel feeds, procurement that examines supplier catalogues, and clinical literature review over a licensed index. Another example is log investigation, where each query takes milliseconds and each decision about the next query does not. In each domain, the arithmetic is the same. The provider's latency is a constant that you rent, and the number of model turns is a variable that you design.
+
+The four moves are also the same in each domain. Make the batch a required shape, not a requested habit. Put the consequence in the tool description, at the point of decision. Suppress the results that the transcript already contains. Delete the tools whose only output is another turn.
 
 ## Failure modes
 
@@ -247,17 +257,19 @@ npm run test:outcomes
 1 runtime-assembled status site(s), all vetted
 ```
 
-It reads every `status:` literal back out of the tool sources and fails on any the taxonomy does not classify, which is what keeps the tolerant schema honest: an empty batch returns `no_query`, and `no_query` has to stay a refusal rather than drifting into the successes, or a call that searched nothing would be counted as a search that found nothing. Nothing in the suite asserts a latency figure — wall clock here is measured and published, never gated.
+The test reads each `status:` literal from the tool sources. The test fails on each literal that the taxonomy does not classify. This check keeps the tolerant schema honest. An empty batch returns `no_query`, and `no_query` must stay a refusal. If `no_query` moves into the successes, the system counts a call that searched nothing as a search that found nothing.
+
+The suite does not assert a latency figure. The recipe measures and publishes the wall clock and does not gate on it.
 
 ## Going further
 
-- **Measure the decision time before you optimise the tool.** The number that started this recipe is a split of one traced run into thinking and doing. Until you have that split, "the agent is slow" points at whichever component is easiest to blame.
-- **Cap the batch on judgement, then leave the cap alone.** Four is not an optimum anyone measured; it is where covering angles turns into guessing. Raising it is cheap in latency and expensive in a bounded search budget, so it needs an eval and not an intuition.
-- **Share the seen-set across a fan-out.** `venus.seen-results` is per session, which is correct for isolation and wasteful for five specialists working overlapping towns. A parent-scoped slot would suppress across the whole run; nothing here has built or measured one.
-- **Read the artifacts rather than the summary.** [`runs/`](../../runs/) holds one `RunResult` per system per brief, and [`evals/data/v1-v2.json`](../../evals/data/v1-v2.json) records the round-trip split with its source file named, including the seconds it does not account for.
-- **Next:** every number in this recipe came out of a trace that had to be built before it could be trusted — including a period when it reported zero specialists while five were running. [Recipe 08 — A Dashboard That Cannot Lie](../08-a-dashboard-that-cannot-lie/README.md) is how that trace was made honest.
+- **Measure the decision time before you optimise the tool.** The number that started this recipe is a split of one traced run into decision time and tool time. Without that split, "the agent is slow" points at the component that is easiest to blame.
+- **Cap the batch on judgement, then do not change the cap.** Four is not a measured optimum. Four is the point where angle coverage changes into guessing. A higher cap costs little latency and much of a limited search budget. Thus a change to the cap needs an eval, not an intuition.
+- **Share the seen-set across a fan-out.** `venus.seen-results` operates per session. That scope is correct for isolation and wasteful for five scouts that examine the same towns. A parent-scoped slot would suppress duplicates across the whole run. The project did not build or measure one.
+- **Read the artifacts, not the summary.** [`runs/`](../../runs/) holds one `RunResult` for each system and each brief. [`evals/data/v1-v2.json`](../../evals/data/v1-v2.json) records the round-trip split and names its source file. The record includes the seconds that the split does not attribute.
+- **Next:** each number in this recipe came from a trace, and we built the trace before we could trust it. For a period, the trace reported zero scouts while five scouts ran. [Recipe 08 — A Dashboard That Cannot Lie](../08-a-dashboard-that-cannot-lie/README.md) shows how we made that trace honest.
 
 ## License
 
 
-Part of the [Venus](../../README.md) repository, which carries no LICENSE file — no reuse rights are granted by default.
+This recipe is part of the [Venus](../../README.md) repository. The repository has no LICENSE file, so it grants no reuse rights by default.

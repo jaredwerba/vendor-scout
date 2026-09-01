@@ -1,21 +1,16 @@
 # Durability — Record Findings as You Find Them
 
-> Partial progress survives a truncation; an end-of-context array does not.
+> Partial progress survives a truncation. An array at the end of the context does not.
 
 Recipe **03 of 10** in the Venus Blueprint Recipes arc:
 
 > Foundation → Delegation → **Durability** → Guards → Governance → Cost → Latency → Observability → Evaluation → Verification
 
-A research specialist works one category for twenty to forty steps: search in batches, open each vendor's
-own site, read the pricing page, decide, search again. The obvious way to get that work back is to have the
-child end with a structured array of everything it found, and to read the array off its return value.
+A research specialist works on one category for twenty to forty steps. It searches in batches, opens each vendor's own site, reads the pricing page, decides, and searches again. An obvious design lets the specialist end with a structured array of all its findings. The planner then reads the array from the return value of the specialist.
 
-That makes every finding hostage to the last token. One step that hits the output cap, one provider hiccup,
-one cancelled turn, and a specialist that researched its category correctly hands back nothing. It hands
-back nothing *silently* — the planner sees an empty result, and an empty result from a research agent reads
-exactly like a category where nothing good exists.
+That design makes every finding depend on the last token. One step that hits the output cap, one provider error, or one cancelled turn removes all of the work. A specialist that researched its category correctly then returns nothing. It returns nothing *silently*: the planner sees an empty result. An empty result from a research specialist looks the same as a category where no good vendor exists.
 
-Four measured configurations, each scored by `npm run eval:scout` and recorded in the decision log:
+We measured four configurations. The command `npm run eval:scout` scored each configuration, and the decision log records the results:
 
 ```text
 scout Qwen3-235B-A22B · outputSchema on the subagent    | 46/50
@@ -24,12 +19,9 @@ scout Qwen3-235B-A22B · no outputSchema                 | 33/37
 scout Qwen3-235B-A22B · no outputSchema · drive-time guard rewritten | 3-4 vendors per specialist | 0 truncations | 52/53
 ```
 
-The third row moves two things at once — the model went back and the schema went away — so it is not
-a clean attribution and should not be read as one; the traces are what separated them, and every failed
-child ended in `OUTPUT_SCHEMA_NOT_FULFILLED`, several before their first search. The fourth row adds a fix that belongs to
-[Budget the Retrieval](../05-budget-the-retrieval/README.md), not to this recipe. The score is also the least
-informative column. `0 vendors recorded` is the one to read: ten specialists left nothing behind, which is
-the state an incremental design exists to prevent — and it could not, because nothing reached the store.
+The third row changes two things at the same time: the model changed back, and the schema went away. Thus the row is not a clean attribution, and you must not read it as one. The traces separated the two causes. Every failed child session ended in `OUTPUT_SCHEMA_NOT_FULFILLED`, and several ended before their first search. The fourth row adds a fix that belongs to [Budget the Retrieval](../05-budget-the-retrieval/README.md), not to this recipe.
+
+The score is also the least informative column. Read the `0 vendors recorded` value instead. Ten specialists recorded nothing. An incremental design exists to prevent that state. Here the design could not prevent it, because no finding reached the store.
 
 ## What you'll build
 
@@ -48,10 +40,10 @@ app/api/observe/session/[id]/route.ts # live per-category counts, polled while t
 
 - Node 24 (`engines` in [`package.json`](../../package.json)) and npm.
 - An Upstash Redis REST endpoint — `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`, or the
-  `KV_REST_API_*` pair the Vercel integration injects. Without it the store reports `not_configured`.
+  `KV_REST_API_*` pair that the Vercel integration injects. Without the endpoint, the store reports `not_configured`.
 - `NEBIUS_API_KEY` for Token Factory, `TAVILY_API_KEY` for the specialist's search tool, and a brief in
   [`evals/data/briefs.json`](../../evals/data/briefs.json) to drive an end-to-end run.
-- The declared subagent from the previous recipe — a child whose entire tool surface you chose.
+- The declared subagent from the previous recipe — a child session with a tool surface that you selected fully.
 
 ## Run it
 
@@ -60,7 +52,7 @@ npm run test:fold                 # what counts as a recorded vendor — no keys
 npm run run:eve -- boston-boho    # one brief end to end, then dump the store to runs/
 ```
 
-The first command prints six groups of assertions. Two of them, and the verdict line:
+The first command prints six groups of assertions. Here are two of the groups and the verdict line:
 
 ```text
 refusals are not failures
@@ -76,17 +68,13 @@ counters survive a summary that predates them
 trace fold: correct
 ```
 
-The second is the real system: [`scripts/run-eve.ts`](../../scripts/run-eve.ts) drives a brief against the
-deployment, waits for the fan-out to settle, reads the findings with `listAllFindings`, and writes a
-`RunResult` into [`runs/`](../../runs). What lands in that file is what the specialists wrote down as they
-went — never a message any of them returned.
+The second command runs the real system. [`scripts/run-eve.ts`](../../scripts/run-eve.ts) sends one brief to the deployment and waits until the fan-out settles. The script then reads the findings with `listAllFindings` and writes a `RunResult` into [`runs/`](../../runs). The file contains only the findings that the specialists recorded during the run. The file never contains a message that a specialist returned.
 
 ## Walk-through
 
 ### One call per finding
 
-The unit of durability is the tool call, so the tool takes exactly one vendor and says so in the sentence
-the model reads — [`record_vendor.ts`](../../agent/subagents/scout/tools/record_vendor.ts):
+The tool call is the unit of durability. Thus the tool accepts exactly one vendor and states that rule in the description that the model reads — [`record_vendor.ts`](../../agent/subagents/scout/tools/record_vendor.ts):
 
 ```ts
 description:
@@ -95,12 +83,9 @@ description:
   "same name twice updates that entry rather than duplicating it.",
 ```
 
-**Name the anti-pattern next to the setting.** Batching is what a model reaches for unprompted: it writes
-the report first and treats recording as bookkeeping afterwards. The [specialist's
-instructions](../../agent/subagents/scout/instructions.md) close the same gap from the other side —
-*"Never let a long final write-up substitute for recording as you go."*
+**Name the anti-pattern next to the setting.** A model batches by default: it writes the report first, and then it records the findings afterwards. The [specialist's instructions](../../agent/subagents/scout/instructions.md) state the same rule from the other side — *"Never let a long final write-up substitute for recording as you go."*
 
-The success return is a nudge rather than an acknowledgement, carrying the stopping rule for the category:
+The success return is more than an acknowledgement. It carries the stopping rule for the category:
 
 ```ts
 note:
@@ -109,15 +94,11 @@ note:
     : "Recorded. Research the next vendor.",
 ```
 
-Four is delivered at the one moment the model is guaranteed to be reading — the result of the call it just
-made. A stopping rule stated once in a system prompt competes with thirty steps of transcript; one returned
-by the tool does not.
+The tool delivers the number four at the one moment when the model reads with certainty: the result of its last call. A stopping rule in a system prompt competes with thirty steps of transcript. A stopping rule in a tool result does not.
 
 ### Where a finding lands
 
-[`research.ts`](../../agent/lib/research.ts) keeps two kinds of key per wedding — `research:<rootSessionId>`, a
-set of category slugs, and `record:<rootSessionId>:<category>`, a hash of vendor slug to JSON finding. The
-write is one pipeline, and it returns the new count so the tool can nudge:
+[`research.ts`](../../agent/lib/research.ts) keeps two kinds of key for each wedding. The key `research:<rootSessionId>` holds a set of category slugs. The key `record:<rootSessionId>:<category>` holds a hash from vendor slug to JSON finding. The write is one pipeline, and the pipeline returns the new count, so the tool can send the stopping rule:
 
 ```ts
 const [, , , total] = await redis([
@@ -128,27 +109,22 @@ const [, , , total] = await redis([
 ]);
 ```
 
-**Idempotency is by vendor name, not by call.** The hash field is a slug of the business name, so a model
-that re-records a vendor after a refusal updates it in place. A list would have grown a second copy on
-every retry, and the eval's distinct-vendors check would have started failing on a system that was working
-correctly. `TTL_SECONDS` is thirty days on both keys — long enough for a couple to leave mid-plan and come
-back — and the hash's `EXPIRE` rides in the same pipeline as the write, the set's in a second call behind it, so
-activity refreshes the lifetime.
+**Idempotency is by vendor name, not by call.** The hash field is a slug of the business name. Thus a model that records a vendor again after a refusal updates the entry in place. A list would grow a second copy on each retry. The eval's check for distinct vendors would then fail on a correct system.
 
-One line decides who a finding belongs to:
+`TTL_SECONDS` is thirty days on both keys. Thirty days lets a couple leave in the middle of a plan and come back. The hash's `EXPIRE` goes in the same pipeline as the write. The set's `EXPIRE` follows in a second call. Thus each write refreshes the lifetime.
+
+One line decides the owner of a finding:
 
 ```ts
 // Findings belong to the wedding, not to this child session.
 const rootSessionId = ctx.session.parent?.rootSessionId ?? ctx.session.id;
 ```
 
-Key by the child's own session id and every specialist writes into a private bucket the planner never
-reads. The fallback keeps the tool usable when it runs under no parent at all.
+If you key by the session id of the child, each specialist writes into a private bucket. The planner never reads that bucket. The fallback keeps the tool usable when the tool runs with no parent session.
 
 ### Reading it back with a health report
 
-The read is not a `SELECT`. [`get_research.ts`](../../agent/tools/get_research.ts) joins the findings to
-the live trace, so the planner receives a verdict per specialist rather than a count to interpret:
+The read is not a `SELECT`. [`get_research.ts`](../../agent/tools/get_research.ts) joins the findings to the live trace. Thus the planner receives a verdict for each specialist, not a count that it must interpret:
 
 ```ts
 note: stalled
@@ -164,18 +140,13 @@ note: stalled
         : undefined,
 ```
 
-**The order of that ladder is load-bearing.** A stalled specialist must hear "do not wait" even when it
-also had refusals, and `settled` means `completed || failed` rather than "not running" — a child parked on
-an input gate is `waiting`, and telling the planner it gave up is how a duplicate gets fanned out for a
-scout that is merely paused. Each branch also implies a different repair: truncated means re-run this
-category with a narrower brief, all-refused means re-run with different instructions, recorded-nothing
-means re-run once or tell the couple it is still open. A bare `0` cannot choose between those three, which
-is the whole argument for joining the two stores at read time.
+**The order of the branches is important.** A stalled specialist must cause the message "do not wait", even when it also had refusals. The value `settled` means `completed || failed`, not "not running". A child session that waits on an input gate is `waiting`. If the read reports a paused specialist as failed, the planner starts a duplicate specialist.
+
+Each branch also points to a different repair. For a truncated specialist, re-run the category with a narrower brief. For an all-refused specialist, re-run the category with different instructions. For a specialist that recorded nothing, re-run once, or tell the couple that the category is still open. A bare `0` cannot select between those three repairs. That is the full argument for the join of the two stores at read time.
 
 ### The counter that makes zero legible
 
-`vendorsRecorded` and `truncations` are folded out of the durable event stream in
-[`trace.ts`](../../agent/lib/trace.ts), not reported by an agent about itself:
+The fold in [`trace.ts`](../../agent/lib/trace.ts) computes `vendorsRecorded` and `truncations` from the durable event stream. No agent reports these counters about itself:
 
 ```ts
 if (name === "record_vendor" && ok && (!soft || isSuccessStatus(soft))) {
@@ -183,44 +154,29 @@ if (name === "record_vendor" && ok && (!soft || isSuccessStatus(soft))) {
 }
 ```
 
-The soft-status check is deliberate. `actionOutcome` reads an unrecognised status as success so a newly
-added tool does not render red on arrival, and that default is exactly wrong here — an unknown status
-inflates the number `get_research` decides re-runs on, and a silent gap in the plan is worse than a visible
-duplicate. Every counter is read through `readCount`: a summary deserialized from KV predates whichever
-field was added last, and `undefined + 1` is `NaN`, which persists as null and stops the metric for good.
+The soft-status check is deliberate. `actionOutcome` reads an unrecognised status as a success, so a new tool does not show as an error on arrival. That default is exactly wrong here. An unknown status inflates the number that `get_research` uses for re-run decisions. A silent gap in the plan is worse than a visible duplicate.
 
-Truncation comes from the model's own finish reason, at both the step and the message —
-`const truncated = d.finishReason === "length"`. That is what turns "cut off" from a guess into a fact: the
-event log gets the row `TRUNCATED (hit the output cap)`, and `get_research` gets a boolean it can route on.
+Every counter goes through `readCount`. A summary read back from KV can predate the newest field. Then `undefined + 1` is `NaN`, `NaN` persists as null, and the metric stops permanently.
+
+The truncation signal comes from the model's own finish reason, at both the step and the message — `const truncated = d.finishReason === "length"`. That signal makes "cut off" a fact, not a guess. The event log gets the row `TRUNCATED (hit the output cap)`. `get_research` gets a boolean value that it can route on.
 
 ### The return value you do not need
 
-The companion lesson lives in [`agent.ts`](../../agent/subagents/scout/agent.ts), where the important line
-is a comment: `// NO outputSchema, deliberately.`
+[`agent.ts`](../../agent/subagents/scout/agent.ts) holds the companion lesson. The important line is a comment: `// NO outputSchema, deliberately.`
 
-An `outputSchema` on a long-running child looks like the responsible choice — it guarantees the shape of
-the answer. What it does is escalate a formatting failure into a session failure: eve raises
-`OUTPUT_SCHEMA_NOT_FULFILLED` and the whole child dies, discarding a run that may have been good until its
-final message.
+An `outputSchema` on a long-running child session looks like the safe choice, because it guarantees the shape of the answer. In fact the schema changes a format failure into a session failure. eve raises `OUTPUT_SCHEMA_NOT_FULFILLED`, and the whole child session fails. The failure discards a run that possibly was correct until its final message.
 
-**State the choice, then name the failure it avoids.** The schema is gone because it was redundant *and*
-fatal: findings reach the planner through `record_vendor` and the research store, never through the child's
-return value, so the guarantee bought nothing and could cost everything. Deleting it did expose one field
-that had been riding along — venue photos — which `get_research` now surfaces explicitly as `venue_images`
-rather than leaving buried on one of forty objects.
+**State the choice, then name the failure it avoids.** The schema is gone because the schema was unnecessary *and* fatal. Findings reach the planner through `record_vendor` and the research store, never through the child session's return value. Thus the guarantee gave no benefit, and its failure mode could remove a full run. The deletion also exposed one field that only traveled in the return value: venue photos. `get_research` now shows that field explicitly as `venue_images`, instead of hidden on one of forty objects.
 
-Recording stays best-effort per vendor: when the store is unreachable the tool returns `record_failed` and
-tells the scout to keep that vendor in its final report and carry on — the one place a closing report earns
-its keep, as the fallback for a failed write and never as the primary channel.
+The record of each vendor stays best-effort. When the store is not reachable, the tool returns `record_failed`. The tool then tells the specialist to keep that vendor in its final report and to continue. That is the one correct use of a closing report: a fallback for a failed write, never the primary channel.
 
 ### Where this transfers
 
-The point is not weddings specifically. This pattern transfers to any domain where a sub-agent does long,
-expensive, interruptible work and something downstream must tell "found nothing" apart from "died trying":
-a procurement assistant collecting supplier quotes, a security triage agent working a queue of alerts, a
-citation checker verifying references one at a time, a compliance crawler sampling documents against a rule
-set. The unit of work is a finding, the failure is silent, and losing a specialist's whole run of tool calls costs
-twice — once in credits, once in the wrong conclusion drawn from an empty list.
+The point is not weddings specifically. The pattern applies to each domain where a subagent does long, expensive work that an interruption can stop. In such a domain, a downstream reader must know the difference between "found nothing" and "failed during the work".
+
+Examples: a procurement assistant collects supplier quotes. A security triage agent works a queue of alerts. A citation checker verifies references one at a time. A compliance crawler samples documents against a rule set.
+
+In each example, the unit of work is a finding, and the failure is silent. The loss of a specialist's full run of tool calls has two costs: the credits, and the wrong conclusion from an empty list.
 
 ## Failure modes
 
@@ -240,30 +196,26 @@ npm run test:fold      # the fold, against events shaped the way eve actually de
 npm run eval:scout     # research quality end to end, against a running deployment
 ```
 
-`test:fold` asserts the properties the recording design depends on: a refusal never counts as a recorded
-vendor, an unrecognised status never inflates the count, a capped search never counts as a search, and a
-summary written before a field existed keeps counting instead of going `NaN`. Bugs of exactly that kind
-were live in `trace.ts` under a green suite, because nothing ever called the fold.
+`test:fold` asserts the properties that the recording design depends on. A refusal never counts as a recorded vendor. An unrecognised status never inflates the count. A capped search never counts as a search. A summary written before a field existed continues to count and does not become `NaN`. `trace.ts` contained live bugs of exactly that kind under a green suite, because no test called the fold.
 
-`eval:scout` grades every specialist on `vendorsRecorded >= 3` and `truncations === 0` for its category,
-then judges the vendors with a model pinned away from the one under test — a model swap can move the score
-but never the bar.
+`eval:scout` grades each specialist on `vendorsRecorded >= 3` and `truncations === 0` for its category. It then judges the vendors with a model that is pinned away from the model under test. Thus a model swap can move the score, but the swap can never move the criteria.
 
 ## Going further
 
-- **Poll the store, not the agent.** `countByCategory` is one `HLEN` per category, cheap enough to serve on
-  every refresh of [`/api/observe/session/[id]`](../../app/api/observe/session/%5Bid%5D/route.ts) — and watching
-  vendors appear one at a time is the fastest way to spot a specialist that has gone quiet.
-- **Decide what counts as success at the fold, not at the tool.** The tool returns a status string;
-  `trace.ts` decides which strings mean a finding exists. Keeping that judgement in one place is what lets
-  a new guard ship without silently moving every number downstream.
-- **Give the store a lifetime on purpose.** Thirty days is a decision about how long a user may wander off
-  mid-task, refreshed on every write. Pick yours from that question, not from a default.
-- **Next: Guards.** Durable recording keeps whatever the specialist wrote down, including the wrong things.
-  The next recipe in [the arc](../README.md) moves correctness into the tool, where a rule the model can
-  ignore becomes a refusal it cannot.
+- **Poll the store, not the agent.** `countByCategory` is one `HLEN` per category. That cost is small enough to serve on
+  every refresh of [`/api/observe/session/[id]`](../../app/api/observe/session/%5Bid%5D/route.ts). Watch the
+  vendors appear one at a time — that view is the fastest way to find a specialist that stopped.
+- **Decide what counts as success at the fold, not at the tool.** The tool returns a status string.
+  `trace.ts` decides which strings mean that a finding exists. Keep that judgement in one place. Then you
+  can add a new guard without a silent change to every number downstream.
+- **Give the store a lifetime on purpose.** Thirty days is a decision about the maximum time a user can be
+  away in the middle of a task. Each write refreshes the lifetime. Select your lifetime from that question,
+  not from a default.
+- **Next: Guards.** Durable recording keeps what the specialist wrote, and this includes the wrong things.
+  The next recipe in [the arc](../README.md) moves correctness into the tool. There, a rule that the model
+  can ignore becomes a refusal that the model cannot ignore.
 
 ## License
 
 
-Part of the [Venus](../../README.md) repository, which carries no LICENSE file — no reuse rights are granted by default.
+This recipe is a part of the [Venus](../../README.md) repository. The repository has no LICENSE file, so it grants no reuse rights by default.

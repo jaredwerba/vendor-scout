@@ -1,22 +1,22 @@
 # Guards — Refuse in the Tool, Not in the Prompt
 
-> Move a broken rule into the tool — but only where the tool can actually check it.
+> Move a broken rule into the tool. Do this only where the tool can check the rule.
 
 Recipe **04 of 10** in the Venus Blueprint Recipes arc:
 
 > Foundation → Delegation → Durability → **Guards** → Governance → Cost → Latency → Observability → Evaluation → Verification
 
-A caterer was recorded with the inquiry address `inquiries@hideseekmedia.com`, taken from a WeddingWire page for a different business. Venus sends vendor outreach for real, with the couple as reply-to, so that address was one plan away from putting a wedding inquiry in a media company's inbox.
+A scout recorded a caterer with the inquiry address `inquiries@hideseekmedia.com`. The scout took the address from a WeddingWire page for a different business. Venus sends real outreach email to vendors, with the couple as the reply-to address. Thus one more plan could put a wedding inquiry in the inbox of a media company.
 
-Both halves of that were already forbidden in writing. The scout's instructions ban directory sources and require a published address on the vendor's own contact page. The model read them and did it anyway.
+The written instructions already forbid both errors. The scout's instructions forbid directory sources. The instructions also require a published address from the vendor's own contact page. The model read the instructions and broke them.
 
-The fix is to move the rule from the prompt into `record_vendor`, the tool that writes a finding into the research store. The instinct is right and it generalizes — and applied one day later to a different rule, it drained a specialist's entire search budget to produce one vendor. The decision record reads:
+The correction moves the rule from the prompt into `record_vendor`. That tool writes a finding into the research store. This method is correct, and it applies to other rules. But one day later, the same method, applied to a different rule, used the full search budget of a scout to produce one vendor. The decision record reads:
 
 ```text
 Searches spent on one drive time: 7 | Search budget: 25 of 25 | Vendors recorded: 1
 ```
 
-That specialist was not confused. It was obedient. It had been told to state a drive time for every vendor, and it had no tool that could produce one.
+That scout was not confused. It obeyed its instructions. The instructions told it to state a drive time for each vendor. But no tool of the scout can produce a drive time.
 
 ## What you'll build
 
@@ -36,9 +36,9 @@ scripts/
 
 - Node 24 — `package.json` pins `"node": "24.x"`.
 - This repository cloned, and `npm install` run once.
-- Network access: the liveness guard issues one real `GET` per recorded vendor, and the suite fetches live URLs.
-- No model key is needed for the guard suite. The guards are pure functions plus one `fetch`, so they run without an LLM.
-- Nothing else for the guard suite. `npm run eval:scout` drives real planning turns against the deployed Venus, or a local one you point it at, so the model and search keys live on that deployment rather than in `.env.local`.
+- Network access: the liveness guard sends one real `GET` for each recorded vendor, and the suite fetches live URLs.
+- The guard suite needs no model key. The guards are pure functions plus one `fetch`, so they run without an LLM.
+- The guard suite needs nothing else. `npm run eval:scout` sends real planning turns to the deployed Venus, or to a local Venus that you select. The model keys and the search keys stay on that deployment, not in `.env.local`.
 
 ## Run it
 
@@ -82,7 +82,7 @@ vendor guards: all cases behave as intended
 
 ### The rule was already written down
 
-[`agent/subagents/scout/instructions.md`](../../agent/subagents/scout/instructions.md) is not vague about this:
+[`agent/subagents/scout/instructions.md`](../../agent/subagents/scout/instructions.md) states this rule clearly:
 
 ```md
 **The email must belong to that business.** Take it from their own contact page. An address
@@ -91,11 +91,11 @@ through, a directory) is not their address — record `contact form only` instea
 stranger receives whatever you record here.
 ```
 
-**Repeating a rule the model has already broken is not a control.** The instruction is still there, and it still helps — it shapes what the scout looks for while it is searching. What it cannot do is decide whether a particular finding obeys it. Only something downstream of the model can do that, and there is exactly one place downstream: the tool that writes.
+**A repeated rule that the model already broke is not a control.** The instruction stays in place, and it helps. It shapes what the scout looks for during a search. But the instruction cannot decide if a specific finding obeys it. Only a component downstream of the model can decide that. There is exactly one place downstream: the tool that writes.
 
 ### The guard runs at the write, not at the read
 
-[`agent/subagents/scout/tools/record_vendor.ts`](../../agent/subagents/scout/tools/record_vendor.ts) checks before it stores. The directory case:
+[`agent/subagents/scout/tools/record_vendor.ts`](../../agent/subagents/scout/tools/record_vendor.ts) checks each finding before it stores the finding. The directory case follows:
 
 ```ts
 const source = input.source_url ?? "";
@@ -112,15 +112,15 @@ if (dir) {
 }
 ```
 
-**A rejection is an instruction, not an error.** The tool returns a machine-readable `status` and a `note` addressed to the model, and the note says what to do next: open their real site, take the email from there, record it again. A refusal that only says *no* costs the scout a step and teaches it nothing.
+**A rejection is an instruction, not an error.** The tool returns a machine-readable `status` and a `note` for the model. The note tells the model the next steps: open the vendor's real site, take the email from that site, and record the vendor again. A refusal that only says *no* costs the scout a step and teaches the scout nothing.
 
-**Ordering is partly load-bearing and partly not.** The two cheapest checks — is this URL a directory, is it a URL at all — run before `sourceIsMissing`, which costs a network round trip, so a WeddingWire listing never pays for a `GET`. The email check is equally free but runs last, after the fetch, so a vendor with a foreign address still pays for one request before being turned away. Nothing depends on that today; it is worth knowing before you copy the order.
+**One part of the check order is necessary, and one part is not.** The two checks with the lowest cost run first: is the URL a directory, and is the value a URL. They run before `sourceIsMissing`, which costs one network request. Thus a WeddingWire listing never causes a `GET`. The email check also has no cost, but it runs last, after the fetch. Thus a vendor with a foreign address causes one request before the tool refuses it. No code depends on this order today. Know this before you copy the order.
 
-Two statuses in the same tool are deliberately *not* refusals. When the research store is unavailable the tool returns `not_configured`, and a failed write returns `record_failed` — both telling the scout to carry the vendor in its final report instead. A guard rejects a bad finding. An outage must not.
+Two statuses in the same tool are intentionally *not* refusals. When the research store is not available, the tool returns `not_configured`. When a write fails, the tool returns `record_failed`. Both statuses tell the scout to keep the vendor in its final report. A guard rejects a bad finding. An outage must not reject a finding.
 
 ### Match on host labels, not on substrings
 
-The first implementation of the directory check asked whether the URL string contained any of twenty known listing hosts. From the docblock in [`agent/lib/vendor-guards.ts`](../../agent/lib/vendor-guards.ts):
+The first version of the directory check examined the URL string for each of twenty known listing hosts. The docblock in [`agent/lib/vendor-guards.ts`](../../agent/lib/vendor-guards.ts) says:
 
 ```
  * Matched on HOST LABELS, not as a substring of the URL. Plain `includes`
@@ -131,7 +131,7 @@ The first implementation of the directory check asked whether the URL string con
  * same to a legitimate gallery page.
 ```
 
-`url.includes("wedding.com")` is the anti-pattern, and its consequence is the expensive direction of failure: a real vendor vanishes from the plan with no message and no way for the model to argue. The replacement parses the host and matches three declared pattern shapes — a single label anywhere in the host, a domain suffix on a label boundary, and a host-plus-path for `google.com/maps`.
+`url.includes("wedding.com")` is the incorrect pattern. Its result is the costly type of failure: a real vendor disappears from the plan with no message, and the model cannot object. The replacement parses the host and matches three declared pattern shapes. The three shapes are a label in the host, a domain suffix on a label boundary, and a host plus a path for `google.com/maps`.
 
 ```
 directoryHost("https://www.weddingwire.com/biz/barn-at-bradstreet-farm-rowley/db2f55d")  "weddingwire."
@@ -139,48 +139,48 @@ directoryHost("https://luxewedding.com/portfolio")                              
 directoryHost("https://www.barnatgibbethill.com/gallery?share=facebook.com/x")          null
 ```
 
-Three `PASS` rows in the suite — `Luxe Wedding Co`, `Sarah Brides Bridal` and `Notyelp Studio` — exist only because of that bug. **A guard with no appeal path has to be more careful than the model it constrains.**
+Three `PASS` rows in the suite exist only because of that defect: `Luxe Wedding Co`, `Sarah Brides Bridal`, and `Notyelp Studio`. **A guard with no appeal path must be more careful than the model it limits.**
 
 ### An address that plausibly belongs to the business
 
-`emailLooksForeign` compares the mail domain against the vendor's website and the words of its name, and returns `false` — passes — for free mail:
+`emailLooksForeign` compares the mail domain with the vendor's website and with the words of the vendor's name. The check returns `false`, a pass, for free mail:
 
 ```ts
 const FREE_MAIL = /^(gmail|yahoo|hotmail|outlook|aol|icloud|comcast|verizon|me)\./;
 ```
 
-**Rejecting free mail is the obvious rule and the wrong one.** A gmail address on a two-person florist is normal and proves nothing either way; a corporate domain sharing nothing with the vendor's name or website is the signature of an address lifted off a directory page. So the check fires on the second and never on the first.
+**A rule that rejects free mail is the obvious rule and the wrong rule.** A gmail address for a two-person florist is normal and proves nothing. A corporate domain that shares nothing with the vendor's name or website shows an address copied from a directory page. Thus the check operates on the second case and never on the first case.
 
 ```
 emailLooksForeign("inquiries@hideseekmedia.com", null, "Vinwood Caterers")                      true
 emailLooksForeign("silverandsaltphoto@gmail.com", "https://www.silverandsaltphoto.com", …)   false
 ```
 
-The escape hatch matters as much as the check. `record_vendor` accepts the literal string `contact form only`, recognised by `isContactFormOnly`, so a scout that cannot find a published address has somewhere honest to go and never has to invent one.
+The permitted alternative is as important as the check. `record_vendor` accepts the literal string `contact form only`, which `isContactFormOnly` identifies. Thus a scout that cannot find a published address has an honest option, and it does not invent an address.
 
 ### A source that is not there
 
-The liveness guard fetches the source URL. It is deliberately hard to fail:
+The liveness guard fetches the source URL. The guard is intentionally difficult to fail:
 
 ```ts
 return res.status === 404 || res.status === 410;
 ```
 
-Only a definitive 404 or 410 rejects. A 403 is bot blocking, a timeout is the network, and a thrown request returns `false` — the mechanism. The consequence is that some dead pages get through. The verdict is in the file: rejecting on 403 or timeout would throw away real vendors, *which is the more expensive mistake*. The eval still reports reachability across the whole set, so what the guard lets pass is still measured somewhere.
+Only a definitive 404 or 410 status causes a rejection. A 403 status shows bot blocking, and a timeout shows a network fault. A request that throws returns `false`. The result is that some dead pages pass. The file states the decision: a rejection on a 403 status or on a timeout removes real vendors, and that error costs more. The eval still reports reachability for the full set, so a measurement exists for what the guard passes.
 
 ### The guard that asked for a fact no tool could reach
 
-The same instinct — take the rule out of the prompt and make it structural — was applied the next day to the couple's travel radius. Every vendor was required to state its drive time from the couple.
+One day later, the same method — remove the rule from the prompt, make it structural — got a second use: the couple's travel radius. A required field made the scout state a drive time for each vendor.
 
-There is no geocoder in this system, and a web search cannot answer *how long is the drive from A to B*. The scout did the only thing left: it searched, read nothing usable, refined the query, and searched again.
+The system contains no geocoder, and a web search cannot answer *how long is the drive from A to B*. The scout did the only possible action: it searched, found no usable text, adjusted the query, and searched again.
 
 ```text
 Searches spent on one drive time: 7 | Search budget: 25 of 25 | Vendors recorded: 1
 ```
 
-That is one specialist's entire retrieval budget, and three specialists under-recorded in that run. The budget is not the interesting number here. The question is.
+That is the full search budget of one scout, and three scouts recorded too few vendors in that run. The budget is not the important number here. The question is the important part.
 
-**Why is the town still required and the drive time not?** Because the town is printed on a page the scout has already opened, and the drive is on no page at all. That is the whole test, and it is the line the recipe title is about. [`record_vendor.ts`](../../agent/subagents/scout/tools/record_vendor.ts) now encodes both sides of it:
+**Why does the tool require the town but not the drive time?** The town is printed on a page that the scout already opened. The drive time is on no page. That is the full test, and the recipe title states this rule. [`record_vendor.ts`](../../agent/subagents/scout/tools/record_vendor.ts) now encodes both sides of the test:
 
 ```ts
 location: z
@@ -198,56 +198,57 @@ distance_note: z
   ),
 ```
 
-The instructions carry the matching sentence, including the reason, so the model is not merely forbidden but told why: *"Never search for drive times or distances. Search cannot answer "how long is the drive from A to B", and trying burns the budget you need for finding vendors — one scout spent seven straight searches on a single drive time and came back with one vendor."* The radius itself stays a hard limit — the scout places the town from what it already knows, or skips the vendor.
+The instructions contain the related sentence, with the reason. Thus the model gets the reason, not only the ban: *"Never search for drive times or distances. Search cannot answer "how long is the drive from A to B", and trying burns the budget you need for finding vendors — one scout spent seven straight searches on a single drive time and came back with one vendor."* The radius stays a hard limit. The scout places the town from its own knowledge, or it skips the vendor.
 
-With the drive note optional and the rule moved into prose, the decision record for `npm run eval:scout` reads:
+With the drive note optional and the rule in prose, the decision record for `npm run eval:scout` reads:
 
 ```text
 scout quality: 52/53 (98%) | radius judge: 100% across all five categories
 ```
 
-The volume is the obvious number and the less interesting one. What the second line says is that the radius discipline survived the relaxation — on the day it was measured.
+The volume is the obvious number and the less important number. The second line says that the radius rule held after the change, on the day of the measurement.
 
 ### The prompt held for a day
 
-A settled run the following day read differently:
+A settled run on the next day gave a different result:
 
 ```text
 scout quality: 46/53 (87%) | radius judge: 10/18 in region
 recorded for a stated hour: Jackson NH ~98 straight-line mi | Tamworth NH ~79 | Keene NH ~57
 ```
 
-The model was honest about every town — that is how the judge caught it. What it cannot do is the
-arithmetic between them, and "you know roughly where towns are" decays the way any rule that lives
-only in prose decays. Which sends the question this recipe asked back for a better answer. *Why is
-the town still required and the drive time not?* Because the town is on a page and the drive is on
-none — but the **distance** between two towns is a third thing: not producible by the model, and
-checkable by the tool. Two coordinates and a formula.
+The model was honest about each town, and thus the judge caught it. But the model cannot do the
+arithmetic between towns. A rule that lives only in prose loses its effect with time. Thus the
+question of this recipe needs a better answer. *Why does the tool require the town but not the
+drive time?* The town is on a page, and the drive time is on no page. But the **distance** between
+two towns is a third item. The model cannot produce it, and the tool can check it. Two coordinates
+and a formula are sufficient.
 
-So the rule came back at the write boundary as [`outsideRadius`](../../agent/lib/vendor-guards.ts).
-The scout echoes the couple's town and radius from its brief, both towns geocode through Nominatim
-(one cached lookup per town), and a vendor beyond ~0.75 straight-line miles per stated drive minute
-is refused as `rejected_outside_radius` — nothing searches, nothing asks a model, and every failure
-to judge falls open, the liveness check's rule.
+Thus the rule returned at the write boundary as [`outsideRadius`](../../agent/lib/vendor-guards.ts).
+The scout echoes the couple's town and radius from its brief. Nominatim geocodes both towns, with
+one cached lookup for each town. The tool refuses a vendor beyond ~0.75 straight-line miles per
+stated drive minute, with the status `rejected_outside_radius`. The check does no search and asks
+no model. Each failure to judge causes a pass, which is also the rule of the liveness check.
 
 ```text
 first guarded run:  rejected_outside_radius x5 | 12 of 12 recorded within 38 straight-line mi
 next settled run:   scout quality: 49/54 (91%) | 13 of 14 recorded within 40 mi
 ```
 
-One 55-mile caterer still recorded, on purpose: the brief echoes are optional, because a schema a
-model cannot satisfy kills a whole child session, and a scout that omits them gets the old
-behaviour. **A guard with a deliberate hole is honest about the hole.** The radius judge — which
-reasons in drive time, the way the couple will — stays as the second instrument, and where the two
-disagree, the trace shows which one did arithmetic.
+The tool still recorded one caterer at 55 miles, and this is intentional. The brief echoes are
+optional, because a schema that a model cannot satisfy stops a full child session. A scout that
+omits the echoes gets the old behavior. **A guard with an intentional gap is honest about the
+gap.** The radius judge stays as the second instrument. The judge reasons in drive time, the same
+way as the couple. Where the two instruments disagree, the trace shows which one did the
+arithmetic.
 
 ### Where this transfers
 
-The point is not weddings. The pattern is: an agent produces findings that a human will act on irreversibly, and the correctness of a finding is checkable by code even though the finding itself is not producible by code. Any such domain gets the same two rules.
+The point is not weddings. The pattern is this: an agent produces findings, and a human acts on the findings with permanent effects. Code can check the correctness of a finding, but code cannot produce the finding. Each such field of work gets the same two rules.
 
-A procurement assistant reading a supplier quote off an aggregator instead of the supplier. A legal research agent citing a case reference that resolves to nothing. A recruiting sourcer attaching a contact address scraped from a data broker to a candidate's name. A literature-review agent recording a DOI that 404s. In each one, the tool that writes the record can check host, domain plausibility and liveness without knowing anything about the domain — and in each one, the temptation the day after is to also demand a field the tools cannot reach: a delivery lead time with no logistics API, a customer's contract tier with no CRM tool, a compound's toxicity with no assay.
+A procurement assistant reads a supplier quote from an aggregator, not from the supplier. A legal research agent cites a case reference that points to nothing. A recruiting agent attaches a contact address from a data broker to a candidate's name. A literature-review agent records a DOI that returns a 404 status. In each example, the tool that writes the record can check the host, the domain match, and the liveness. The tool needs no knowledge of the field of work. And in each example, the temptation on the next day is the same: demand a field that the tools cannot reach. Examples are a delivery lead time with no logistics API, a contract tier with no CRM tool, and a compound's toxicity with no assay.
 
-**Guard what is checkable from what the agent already has open. Everything else is a request, not a control.**
+**Guard the facts that the tool can check from pages the agent already opened. All other demands are requests, not controls.**
 
 ## Failure modes
 
@@ -266,17 +267,17 @@ A procurement assistant reading a supplier quote off an aggregator instead of th
 npm run test:guards
 ```
 
-The suite is built from rows of a real production run — the findings the scout eval caught, the legitimate findings from the same run that must keep passing, the vendor-owned domains that merely resemble directories, and a page on a real florist's own site that does not exist. It runs with no model and no API key, so a guard change is verified without a research run.
+The suite contains rows from a real production run. The rows include the findings that the scout eval caught, and the legitimate findings from the same run that must continue to pass. The rows also include vendor-owned domains that only look like directories, and a page on a real florist's own site that does not exist. The suite runs with no model and no API key. Thus you can verify a guard change without a research run.
 
 ## Going further
 
-- **Give a guard an appeal path before you make it strict.** A scout cannot argue with a rejection; it can only try again or give up. The liveness check is written to fail toward *let it through*; every status that does reject — directory source, missing source, missing location, dead source, foreign email — returns a note naming what to do instead.
-- **Look at what your rejections cost.** The liveness check spends one request per recorded vendor and runs before the email check, which is free — so a vendor with a foreign address pays for a fetch nothing needed. Reordering is a small change; knowing which of your guards are cheap is the part worth doing first.
-- **Audit your prompt for facts your tools cannot reach.** Read the instructions as a list of demands and ask, for each one, which tool call would answer it. The ones with no answer are the death spirals.
-- **Check the guard against the eval, not against itself.** The unit suite proves the arithmetic; only the separately-pinned judge caught the day the prose rule decayed, and only the eval shows what the guard's deliberate fail-open lets through.
-- **Next: [Governance — Budget the Retrieval](../05-budget-the-retrieval/README.md)**, which is the cap this recipe's counter-lesson exhausted, and what a specialist does when it runs out.
+- **Give a guard an appeal path before you make the guard strict.** A scout cannot object to a rejection. The scout can only try again or stop. The liveness check fails toward a pass. Each status that rejects — directory source, missing source, missing location, dead source, foreign email — returns a note that names the next action.
+- **Examine the cost of your rejections.** The liveness check spends one request for each recorded vendor. It runs before the email check, which has no cost. Thus a vendor with a foreign address causes one fetch that no check needed. A change to the order is small. First, learn which of your guards have a low cost.
+- **Examine your prompt for facts that your tools cannot reach.** Read the instructions as a list of demands. For each demand, find the tool call that answers it. A demand with no answer makes the scout search without end and use all of its budget.
+- **Check the guard against the eval, not against itself.** The unit suite proves the arithmetic. Only the separately pinned judge caught the day when the prose rule lost its effect. Only the eval shows what the guard's intentional gap passes.
+- **Next: [Governance — Budget the Retrieval](../05-budget-the-retrieval/README.md)**. That recipe covers the cap that this recipe's counter-lesson used fully, and what a scout does when the budget is empty.
 
 ## License
 
 
-Part of the [Venus](../../README.md) repository, which carries no LICENSE file — no reuse rights are granted by default.
+This recipe is part of the [Venus](../../README.md) repository. The repository has no LICENSE file, and thus it grants no reuse rights by default.

@@ -4,7 +4,7 @@
   "order": 3,
   "eyebrow": "Durability",
   "title": "Record Findings as You Find Them",
-  "tagline": "Partial progress survives a truncation; an end-of-context array does not.",
+  "tagline": "Partial progress survives a truncation. An array at the end of the context does not.",
   "difficulty": "intermediate",
   "estimatedReadingTime": "9 min",
   "estimatedRunTime": "10 min",
@@ -22,9 +22,9 @@
     "observability"
   ],
   "story": {
-    "problem": "A research specialist returned every vendor it found in one closing JSON blob, which made each finding hostage to the last token. A truncated reply, a transient provider error or a cancelled turn lost the whole category — and lost it silently, because an empty result from a specialist is indistinguishable from a market with nothing in it.",
-    "solution": "Each vendor is written to the KV research store the moment it is verified, through a record_vendor tool that takes exactly one finding. The planner reads them back with get_research, which joins the findings to the live trace so a truncated specialist, a stalled one, an all-refused one and a genuinely empty category each produce a different instruction. The subagent's outputSchema was deleted outright: a structured return on a long-running child escalates a formatting miss to OUTPUT_SCHEMA_NOT_FULFILLED and kills the session, and it guarantees nothing the durable store does not already hold.",
-    "outcome": "Partial progress survives an interruption and 'recorded 0' became a detectable failure the planner can act on, re-running only the specialist that was cut off. Deleting the schema alone scored 33/37 on npm run eval:scout; the run that measured 3-4 vendors per specialist with zero truncations scored 52/53 and carried a later guardrail fix as well. The cheaper model that carried the schema had failed 10 of 10 child sessions with no vendor recorded."
+    "problem": "A research specialist returned every vendor that it found in one closing JSON blob. That design made each finding depend on the last token. A truncated reply, a transient provider error, or a cancelled turn lost the whole category. The loss was silent, because an empty result from a specialist looks the same as a market with no vendors.",
+    "solution": "The record_vendor tool writes each vendor to the KV research store at the moment of verification, and the tool accepts exactly one finding. The planner reads the findings back with get_research, which joins the findings to the live trace. Thus a truncated specialist, a stalled specialist, an all-refused specialist, and a genuinely empty category each produce a different instruction. We deleted the subagent's outputSchema. A structured return on a long-running child session changes a format miss into OUTPUT_SCHEMA_NOT_FULFILLED and stops the session. The schema also guarantees nothing that the durable store does not already hold.",
+    "outcome": "Partial progress now survives an interruption. A count of zero recorded vendors became a detectable failure, and the planner re-runs only the truncated specialist. The schema deletion alone scored 33/37 on npm run eval:scout. The run that measured 3-4 vendors per specialist with zero truncations scored 52/53, and that run also carried a later guardrail fix. The cheaper model that carried the schema failed 10 of 10 child sessions and recorded no vendor."
   },
   "prerequisites": [
     "Node 24 and npm",

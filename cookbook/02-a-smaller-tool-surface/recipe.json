@@ -4,7 +4,7 @@
   "order": 2,
   "eyebrow": "Delegation",
   "title": "Give the Specialist a Smaller Tool Surface",
-  "tagline": "The capability a sub-agent must not have is the one it should not be given.",
+  "tagline": "Do not give a subagent a capability that it must not use.",
   "difficulty": "intermediate",
   "estimatedReadingTime": "9 min",
   "estimatedRunTime": "5 min",
@@ -21,9 +21,9 @@
     "agent-safety"
   ],
   "story": {
-    "problem": "Research was delegated with eve's built-in `agent` tool, which runs a copy of the ROOT agent — same instructions, same tools, including `send_outreach`. Nothing looked wrong and the plans were good, but the capability to email a stranger was inherited rather than granted, so a research child was one bad inference away from using it.",
-    "solution": "Move research into a declared subagent at `agent/subagents/scout`, whose entire tool surface is web search plus `record_vendor`. Declared subagents inherit nothing, so the disabled shell tools and the observability hook are re-authored under that directory. Then shadow eve's built-in `agent` tool with an authored refusal, because `disableTool()` does not cover a built-in and a rule in a prompt is not a control.",
-    "outcome": "The capability is absent rather than forbidden: research and outreach never share a context. A later production session showed the planner still reaching for both delegation paths — 10 `scout` calls and 3 `agent` calls in one session — which is why the built-in is shadowed rather than merely discouraged."
+    "problem": "The first version delegated research with eve's built-in `agent` tool. That tool runs a copy of the ROOT agent, with the same instructions and the same tools, which include `send_outreach`. Nothing looked wrong, and the plans were good. But the child agent inherited the capability to email a stranger; nobody granted it. One bad inference was sufficient for the child agent to use that capability.",
+    "solution": "Move the research into a declared subagent at `agent/subagents/scout`. Its full tool surface is web search plus `record_vendor`. Declared subagents inherit nothing, so you author the disabled shell tools and the observability hook again under that directory. Then shadow eve's built-in `agent` tool with an authored refusal. `disableTool()` does not cover a built-in tool, and a rule in a prompt is not a control.",
+    "outcome": "The capability is absent, not forbidden: research and outreach never share a context. In a later production session, the planner still tried both delegation paths — 10 `scout` calls and 3 `agent` calls in one session. That behavior is the reason to shadow the built-in tool and not only to warn against it."
   },
   "prerequisites": [
     "Node 24.x and this repository checked out — the commands inspect the real agent, not a sample",

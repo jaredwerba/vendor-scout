@@ -1,25 +1,25 @@
 # Cost — Compute the Price, Then Distrust It
 
-> A plausible number nobody cross-checks is indistinguishable from a correct one.
+> A plausible number that nobody cross-checks looks the same as a correct number.
 
 Recipe **06 of 10** in the Venus Blueprint Recipes arc:
 
 > Foundation → Delegation → Durability → Guards → Governance → **Cost** → Latency → Observability → Evaluation → Verification
 
-Nebius Token Factory returns token counts and no price. eve's `step.completed.usage.costUsd` arrives undefined
-on every step, so every dollar figure this project has ever shown is a number it computed itself — which makes
-every one of them a number that can be wrong while nothing fails. Two of them were. First every cost was `$0`.
-Then, for a day, every cost was plausible.
+Nebius Token Factory returns token counts and no price. eve's `step.completed.usage.costUsd` is undefined on
+every step. Thus this project computes each dollar figure that it shows. A computed figure can be wrong while
+nothing fails. Two figures were wrong. First, every cost was `$0`. Then, for one day, every cost was plausible.
 
-One traced plan, read back out of the store and priced twice — once as it was stored, once from its own tokens:
+The report reads one traced plan back from the store and prices it two times. One price is the stored value.
+The other price comes from the stored tokens of the plan:
 
 ```text
 Run: wrun_41M16NZKKB0GJNG65GT0HQ5BGW | agents: 6 | in: 3,938,369 | out: 20,089 | cached: 3,486,160
 stored $1.50 | recomputed $0.800
 ```
 
-Same run, same tokens, same model, same price table. Only the arithmetic changed. The dollar figures are not
-the interesting part — the interesting part is that nothing in the system could tell the two apart.
+The run, the tokens, the model, and the price table are the same. Only the arithmetic changed. The dollar
+figures are not the important part. The important part is that the system cannot tell the two figures apart.
 
 ## What you'll build
 
@@ -37,11 +37,11 @@ scripts/
 
 ## Prerequisites
 
-- `NEBIUS_API_KEY` — the Token Factory catalog endpoint is authenticated, and the generator calls it.
-- `KV_REST_API_URL` / `KV_REST_API_TOKEN` — the trace store holds the tokens that cost is derived from.
-- Node 24 — `package.json` declares `engines.node: "24.x"` — and `npm install` at the repo root.
-- Recipe 03 (Durability) first: tokens must be recorded per agent before cost can be recomputed from them.
-- More than one traced session. A single run cannot show you a tail, and the tail is the whole point.
+- `NEBIUS_API_KEY` — the generator calls the Token Factory catalog endpoint, and the endpoint requires this key.
+- `KV_REST_API_URL` / `KV_REST_API_TOKEN` — the trace store holds the tokens, and the report derives the cost from them.
+- Node 24 — `package.json` declares `engines.node: "24.x"`. Run `npm install` at the repository root.
+- Complete Recipe 03 (Durability) first. The trace must record the tokens for each agent before the report can recompute the cost.
+- Use more than one traced session. A single run cannot show a tail, and the tail is the main lesson.
 
 ## Run it
 
@@ -68,19 +68,20 @@ VENUS — EVIDENCE PACK
    reported per agent in the app rather than per plan.
 ```
 
-(Captured 2026-08-30. Sections 1, 3 and 4 are reliability, evals and generations; elided here.)
+(Captured 2026-08-30. Sections 1, 3 and 4 cover reliability, evals, and generations. This recipe omits them.)
 
-Sixteen of the thirty-six traced sessions carry spend at all, and [`report.ts`](../../agent/lib/report.ts) drops
-the rest before taking quantiles — a session with no priced step is not a cheap run, and leaving it in only drags
-the median toward zero. The ratio is the line worth reading, not the max. A tail that far above the median is not
-a model being expensive; it is an agent that would not stop.
+Sixteen of the thirty-six traced sessions have spend. [`report.ts`](../../agent/lib/report.ts) drops the other
+sessions before it computes the quantiles. A session with no priced step is not a cheap run, and it pulls the
+median toward zero if the report keeps it. Read the ratio, not the maximum. A tail that is far above the median
+does not show a costly model. It shows an agent that did not stop.
 
 ## Walk-through
 
 ### The price table is generated, never typed
 
-[`scripts/refresh-pricing.ts`](../../scripts/refresh-pricing.ts) reads `GET /v1/models?verbose=true`, where
-`pricing.prompt` and `pricing.completion` are dollars *per token*, and writes a module of dollars per million:
+[`scripts/refresh-pricing.ts`](../../scripts/refresh-pricing.ts) reads `GET /v1/models?verbose=true`. In that
+response, `pricing.prompt` and `pricing.completion` are dollars *per token*. The script writes a module with
+dollars per million tokens:
 
 ```ts
 const rows = body.data
@@ -89,12 +90,14 @@ const rows = body.data
   .map((m) => { /* → `"<id>": { in, out, context },` */ });
 ```
 
-**The anti-pattern is a hand-typed price table.** Rates copied off a pricing page go stale silently and no
-test notices, because a wrong constant is still a number. [`pricing.generated.ts`](../../agent/lib/pricing.generated.ts)
-carries its generation date on the first line and sorts by model id, so a refresh produces a diff a reviewer
-can read rather than a reshuffle. Models the catalog will not price are dropped rather than defaulted.
+**The anti-pattern is a price table that a person types by hand.** Rates that a person copies from a pricing
+page become stale. No test detects the stale rates, because a wrong constant is still a number.
+[`pricing.generated.ts`](../../agent/lib/pricing.generated.ts)
+shows its generation date on the first line and sorts the rows by model id. Thus a refresh produces a diff that
+a reviewer can read, not a reshuffle. The script drops each model that the catalog does not price, and it does
+not apply a default rate.
 
-The snapshot is also the allow-list — [`models.ts`](../../agent/lib/models.ts) refuses to route to an id absent from it:
+The price table is also the allow-list. [`models.ts`](../../agent/lib/models.ts) refuses to route to an id that is not in the table:
 
 ```ts
 throw new Error(
@@ -105,15 +108,17 @@ throw new Error(
 );
 ```
 
-**State the choice, then name the failure it avoids.** The choice is to stop the process on an unknown id. The
-failure is a typo'd env var falling back to another model, and every number in the comparison being attributed to
-a name that never ran. The escape hatch exists, and its own message says what taking it costs you.
+**State the choice, then name the failure that the choice prevents.** The choice is to stop the process on an
+unknown id. The failure occurs when an environment variable with a typing error falls back to a different
+model. Then the comparison attributes every number to a model that never ran. The override exists, and its
+message tells you the cost of the override.
 
 ### The model id is not in the field the shape suggests
 
-Every cost was `$0` for a stretch, with token counts recorded correctly the whole time. eve reports the running
-model as `RuntimeIdentity.modelId`; the fold was reading `runtime.model`, which is not there — so `s.model`
-stayed null, `priceFor` returned null, and `costFor` returned `0`. In [`trace.ts`](../../agent/lib/trace.ts):
+For a period, every cost was `$0`, and the trace recorded the token counts correctly the full time. eve reports
+the running model as `RuntimeIdentity.modelId`. The fold read `runtime.model`, and that field is not present.
+Thus `s.model` stayed null, `priceFor` returned null, and `costFor` returned `0`. In
+[`trace.ts`](../../agent/lib/trace.ts):
 
 ```ts
 // RuntimeIdentity.modelId is the authoritative field; the older
@@ -122,26 +127,27 @@ stayed null, `priceFor` returned null, and `costFor` returned `0`. In [`trace.ts
 const m = d?.runtime?.modelId ?? d?.runtime?.model;
 ```
 
-**A metric pinned at zero reads as a quiet system, not a broken one.** Every other counter on the same
-summary — steps, tools, tokens — kept moving, which made the dashboard look alive. Nothing alerts on a
-gauge that is calm.
+**A metric that stays at zero looks like a quiet system, not a broken system.** Each other counter on the same
+summary — steps, tools, tokens — continued to move. Thus the dashboard looked healthy. No alert monitors a
+gauge that does not move.
 
-The same symptom has a second entrance, in [`nebius.ts`](../../agent/lib/nebius.ts): streaming is the default
-path for a chat agent, and on the OpenAI-compatible wire usage rides the final chunk only if you ask for it.
-Without `includeUsage: true` the tokens never arrive at all, so cost is zero for a completely different
-reason and looks identical.
+The same symptom has a second cause, in [`nebius.ts`](../../agent/lib/nebius.ts). Streaming is the default
+path for a chat agent. On the OpenAI-compatible wire, the final chunk holds the usage only when you request it.
+Without `includeUsage: true`, the tokens do not arrive. Then the cost is zero for a different reason, but the
+symptom looks the same.
 
 ### The id you receive is not the id the table keys on
 
-eve prefixes the model with the provider it routed through. Read straight out of the trace store for
-the run at the top of this recipe:
+eve adds the prefix of the provider to the model id. This record comes from the trace store, for the run at
+the top of this recipe:
 
 ```text
 root  token-factory/Qwen/Qwen3-235B-A22B-Instruct-2507  in=603754 | out=8777 | cached=536672
 ```
 
-The catalog — and so the price table — knows that model as `Qwen/Qwen3-235B-A22B-Instruct-2507`. A plain map lookup
-misses, and a missed lookup is a zero. [`pricing.ts`](../../agent/lib/pricing.ts) peels rather than matching:
+The catalog, and thus the price table, holds that model as `Qwen/Qwen3-235B-A22B-Instruct-2507`. A plain map
+lookup does not match, and a missed lookup gives a zero. [`pricing.ts`](../../agent/lib/pricing.ts) removes
+prefixes one at a time:
 
 ```ts
 let id = (modelId ?? "").trim().replace(/^dynamic:/, "");
@@ -155,15 +161,16 @@ for (let i = 0; i < 3; i += 1) {
 }
 ```
 
-The bound of three is the id as given plus two peels — enough for a provider prefix in front of a
-`vendor/model` catalog id, and a hard stop rather than an unbounded walk over something malformed. It returns
-`null`, never a guessed rate. A fabricated price is worse than a gap, because a gap is visible.
+The limit of three permits the id as given plus two removals. That is sufficient for a provider prefix in
+front of a `vendor/model` catalog id. The limit also gives a hard stop on a malformed id. The function returns
+`null`, never a guessed rate. An invented price is worse than a gap, because a gap is visible.
 
 ### `prompt_tokens` already contains `cached_tokens`
 
-With the id fixed the numbers turned plausible, which is a worse state than zero. Token Factory serves a repeated
-prompt prefix from cache, and on the OpenAI-compatible wire `prompt_tokens` is the *whole* prompt while
-`prompt_tokens_details.cached_tokens` is a subset of it. `costFor` was adding the two. It now bills it once:
+After the id fix, the numbers became plausible, and that state is worse than zero. Token Factory serves a
+repeated prompt prefix from the cache. On the OpenAI-compatible wire, `prompt_tokens` is the *whole* prompt,
+and `prompt_tokens_details.cached_tokens` is a subset of it. `costFor` added the two values. Now it bills the
+input once:
 
 ```ts
 const input = Number(usage.inputTokens ?? 0) || 0;
@@ -171,58 +178,65 @@ const output = Number(usage.outputTokens ?? 0) || 0;
 return (input * price.in + output * price.out) / 1e6;
 ```
 
-The check that settled it is recorded in the comment above that function: a 2,024-token prompt reported 2,016
-cached. Not a ratio, not a sample — one request, read off the wire. That is the cross-check the tagline is
-about, and it took a minute. How much it mattered depends entirely on the cache:
+The comment above that function records the check that settled the question: a 2,024-token prompt reported
+2,016 cached tokens. This was not a ratio and not a sample. It was one request, read from the wire. That is the
+cross-check that the tagline describes, and the check took one minute. The size of the effect depends on the
+cache:
 
 ```text
 Run wrun_41M16NZKKB0GJNG65GT0HQ5BGW | in: 3,938,369 | cached: 3,486,160 | hit: 88.5%
 Recorded 2026-08-29 | 90.7% of all input tokens across 33 agents
 ```
 
-**The hit rate is the number that explains the bill, so the app shows it.** A specialist re-sends a growing
-transcript at every step, exactly the shape a prefix cache is built for, so almost all billed input is
-cache-served. Cached reads are still charged here at the full prompt rate, deliberately: if Nebius discounts them
-this over-estimates, and a cost report should err high rather than flatter itself.
+**The hit rate is the number that explains the bill, so the app shows it.** A specialist sends a transcript
+that grows at every step, and a prefix cache serves exactly that shape. Thus the cache serves almost all billed
+input. This project charges cached reads at the full prompt rate, and that choice is deliberate. If Nebius
+discounts cached reads, this estimate is too high. A cost report must estimate high, not low.
 
 ### Recompute on read, so the history is corrected too
 
-A cost written once at write time stays wrong forever. `agentCost` prefers the recomputation and keeps the
-stored figure only as a fallback for a summary whose model is missing from the table:
+If the system computes a cost only at write time, that cost stays wrong permanently. `agentCost` prefers the
+recomputed cost. It uses the stored figure only when the price table does not hold the model of the summary:
 
 ```ts
 const recomputed = costFor(summary?.model, summary ?? {});
 return recomputed > 0 ? recomputed : Number(summary?.costUsd) || 0;
 ```
 
-**One function, or every surface disagrees.** Five call sites used to spell this arithmetic out — three one way,
-two by trusting `costUsd` raw — so the observability rail and the mobile strip could print two different dollar
-figures for the same run. Today [`report.ts`](../../agent/lib/report.ts) and
+**Use one function, or every surface disagrees.** In the past, five call sites each wrote this arithmetic.
+Three call sites used one method, and two call sites used the raw `costUsd`. Thus the observability rail and
+the mobile strip could show two different dollar figures for the same run. Today
+[`report.ts`](../../agent/lib/report.ts) and
 [`observability-rail.tsx`](../../app/_components/observability-rail.tsx) both call `agentCost`.
 
-The last trap is the formatter. Two decimal places is the reflex, and it renders a real classifier call —
-measured at fractions of a cent by `npm run models:compare` — as `$0.00`, reproducing pixel for pixel the bug
-the rest of this recipe is about. `formatUsd` widens precision as the amount shrinks instead.
+The last trap is the formatter. Two decimal places is the usual choice, but that choice shows a real
+classifier call as `$0.00`. `npm run models:compare` measures such a call at a fraction of a cent. The `$0.00`
+output shows the same defect that the rest of this recipe describes. `formatUsd` increases the precision when
+the amount decreases.
 
 ### What the number still is not
 
-No figure here has ever been checked against an invoice. Every one is a list price from a dated snapshot
-multiplied by measured tokens. The claim in [`models.ts`](../../agent/lib/models.ts) that the planner is roughly
-15% of a plan and the specialists roughly 80% is asserted in a comment and measured nowhere — no script here
-computes cost share per role. And the fleet `cacheHitRate` that [`report.ts`](../../agent/lib/report.ts) computes
-is not printed by `npm run report`; it reaches a reader only through the `/compare` dashboard, from a recorded
-figure in [`v1-v2.json`](../../evals/data/v1-v2.json). Those gaps are listed rather than closed, because a cost
-recipe that ends in confidence has missed its own lesson.
+Nobody has checked a figure here against an invoice. Each figure is a list price from a dated price table,
+multiplied by measured tokens. A comment in [`models.ts`](../../agent/lib/models.ts) asserts that the planner
+is approximately 15% of a plan and the specialists approximately 80%. No script here measures the cost share
+for each role.
+
+Also, `npm run report` does not print the fleet `cacheHitRate` that [`report.ts`](../../agent/lib/report.ts)
+computes. That figure reaches a reader only through the `/compare` dashboard, from a recorded figure
+in [`v1-v2.json`](../../evals/data/v1-v2.json). This recipe lists those gaps and does not close them, because a
+cost recipe that ends in confidence has missed its own lesson.
 
 ### Taking it somewhere that is not a wedding
 
-The point is not weddings specifically. This pattern transfers to any domain where the provider meters usage and
-leaves the money to you: a claims pipeline priced per document, a legal-research assistant billed back to a matter
-number, an internal support-triage bot charged to the team that triggered it, a batch extraction job over a
-supplier catalog. In all of them the vendor returns counts, somebody multiplies, and the product ends up on a
-slide. Generate the rate table rather than typing it; derive cost on read rather than freezing it at write time;
-and compare one real call against the wire before anyone quotes a total. The domain changes what the tokens are
-spent on. It does not change that an unverified figure and a correct one look the same.
+The point is not weddings. This pattern transfers to each domain where the provider meters the usage and
+leaves the money calculation to you. Examples: a claims pipeline priced per document, a legal-research
+assistant billed to a matter number, and a support-triage bot charged to a team. Another example is a batch
+extraction job over a supplier catalog. In each of them, the vendor returns counts, a person multiplies, and
+the product appears on a slide.
+
+Generate the price table, and do not type it. Derive the cost on read, and do not freeze it at write time.
+Compare one real call against the wire before a person quotes a total. The domain changes what the tokens buy.
+The domain does not change one fact: an unverified figure and a correct figure look the same.
 
 ## Failure modes
 
@@ -243,34 +257,37 @@ spent on. It does not change that an unverified figure and a correct one look th
 npm run verify   # typecheck · next build · eve build · test:guards · test:outcomes · test:fold · cookbook:check
 ```
 
-That suite guarantees the *shape* of the pipeline, not the price: `test:fold` drives
-[`trace.ts`](../../agent/lib/trace.ts) with events in the form eve actually delivers them, so a refusal is never
-counted as a failure and a capped search is never counted as a search. No case in it asserts a dollar amount,
-and there is no unit test over `costFor`. What stands in for one is that cost is derived rather than stored —
-`npm run report` reprices every session in the store against the current table on each run, so a wrong rate
-moves a median across the whole fleet instead of hiding in one row — and, in the end, one call compared against
-the provider's own response.
+That suite makes sure of the *shape* of the pipeline, not the price. `test:fold` drives
+[`trace.ts`](../../agent/lib/trace.ts) with events in the form that eve delivers. Thus the fold does not count
+a refusal as a failure, and it does not count a capped search as a search. No case in the suite asserts a
+dollar amount, and no unit test covers `costFor`.
+
+Two checks replace such a test. First, the report derives the cost and does not store it. `npm run report`
+reprices every session in the store against the current price table on each run. Thus a wrong rate moves the
+median of the whole fleet and does not hide in one row. Second, a person compared one call against the response
+of the provider.
 
 ## Going further
 
-- **Refresh the snapshot before you trust a comparison.** `npm run pricing:refresh` rewrites
-  [`pricing.generated.ts`](../../agent/lib/pricing.generated.ts) from the live catalog and stamps it with the
-  date. A month-old table plus a newly routed model is enough to make a fair benchmark unfair.
-- **Split the cached rate at the table, not at the call sites.** `ModelPrice` carries one input rate today
-  because Token Factory charges cached reads at the prompt rate. If that changes, one field on one type keeps
-  every surface honest; a conditional at each call site is how the five-way disagreement happened.
-- **Measure cost per role before arguing about models.** The 15%/80% split between planner and specialists
-  underwrites every swap this project has considered, and it is currently a comment. `fleetStats` already
-  reads model and tokens per agent, so the number is one aggregation away.
-- **Read the record this was built from.** [`decisions.json`](../../evals/data/decisions.json) and the
-  generated [engineering log](../../docs/engineering-log.md) carry both faults with dates, commits and run
-  ids — including the figures published before the fix, which stand in the record as they were reported
-  rather than quietly divided; the date on each entry is the marker.
+- **Refresh the price table before you trust a comparison.** `npm run pricing:refresh` rewrites
+  [`pricing.generated.ts`](../../agent/lib/pricing.generated.ts) from the live catalog and adds the date. A
+  price table that is one month old, plus a newly routed model, can make a fair benchmark unfair.
+- **Split the cached rate in the price table, not at the call sites.** `ModelPrice` holds one input rate
+  today, because Token Factory charges cached reads at the prompt rate. If that changes, add one field to one
+  type, and every surface stays correct. A conditional at each call site caused the earlier five-way
+  disagreement.
+- **Measure the cost for each role before you compare models.** The 15%/80% split between the planner and the
+  specialists supports every model swap that this project considered. Today that split is only a comment.
+  `fleetStats` already reads the model and the tokens for each agent, so one aggregation gives the number.
+- **Read the record that this recipe comes from.** [`decisions.json`](../../evals/data/decisions.json) and the
+  generated [engineering log](../../docs/engineering-log.md) hold both faults with dates, commits, and run
+  ids. The record also holds the figures from before the fix. The record keeps those figures in their original
+  form, without a later correction. The date on each entry is the marker.
 - **Next: [Latency — Spend Round Trips, Not Calls](../07-spend-round-trips-not-calls/).** Cost and wall clock
-  come out of the same place, the round trip. The next recipe takes these same traced runs and asks where the
+  come from the same source: the round trip. The next recipe uses the same traced runs and finds where the
   seconds went.
 
 ## License
 
 
-Part of the [Venus](../../README.md) repository, which carries no LICENSE file — no reuse rights are granted by default.
+This recipe is part of the [Venus](../../README.md) repository. The repository has no LICENSE file, and thus it grants no reuse rights by default.

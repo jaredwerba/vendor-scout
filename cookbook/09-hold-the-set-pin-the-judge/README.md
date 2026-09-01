@@ -1,13 +1,14 @@
 # Evaluation — Hold the Set, Pin the Judge
 
-> Correctness of the content and reliability of the shape are different axes. Measure both.
+> The correctness of the content and the reliability of the shape are two different measurements. Measure both.
 
 Recipe **09 of 10** in the Venus Blueprint Recipes arc:
 
 > Foundation → Delegation → Durability → Guards → Governance → Cost → Latency → Observability → **Evaluation** → Verification
 
-Five candidates for the vendor-reply classifier, swept over the same fifteen human-labelled replies
-on 2026-08-29, one pass each. Recorded in [`models.ts`](../../agent/lib/models.ts):
+On 2026-08-29 the sweep ran five candidates for the vendor-reply classifier. Each candidate made
+one pass over the same fifteen human-labelled replies. [`models.ts`](../../agent/lib/models.ts)
+records the results:
 
 ```text
 deepseek-ai/DeepSeek-V4-Flash        100%   $0.0020   1570ms
@@ -17,13 +18,14 @@ nvidia/Nemotron-3_5-Lightning         80%   $0.0077   6613ms
 Qwen/Qwen3-30B-A3B-Instruct-2507      73%   $0.0013   1851ms
 ```
 
-The classifier was switched to the model at the top of that table. The very next run of the same
-fifteen cases scored 11/15, six of them because no object came back at all.
+The team switched the classifier to the model at the top of that table. The next run of the same
+fifteen cases scored 11/15. In six of those cases, the model returned no object.
 
-The prices are not the interesting column. The interesting fact is that a sweep with a ground-truth
-label on every case, run correctly, over a dataset that did not move, still recommended the wrong
-model — because it was answering a narrower question than the one being asked of it. Both faults
-below are dated entries in [`decisions.json`](../../evals/data/decisions.json), which generates the
+The prices are not the important column. The important fact is different. The sweep had a
+ground-truth label on every case, ran correctly, and used a set that did not change. The sweep
+still recommended the wrong model, because the sweep answered a narrower question than the
+intended question. Both faults below are dated entries in
+[`decisions.json`](../../evals/data/decisions.json), which generates the
 [engineering log](../../docs/engineering-log.md).
 
 ## What you'll build
@@ -47,13 +49,14 @@ runs/                          # one committed RunResult per system per brief
 
 ## Prerequisites
 
-- `NEBIUS_API_KEY` — every script here makes real Token Factory calls; none of them mock a model.
-- Node 24 — `package.json` declares `engines.node: "24.x"` — and `npm install` at the repo root.
-- `KV_REST_API_URL` / `KV_REST_API_TOKEN`, optional: without them the scripts print and skip the
-  `/observe` summary rather than failing.
-- `LANGSMITH_API_KEY`, optional: `eval:replies` files the same run as a LangSmith experiment.
-- Recipe 01 (Foundation) first. The judge is a role in the registry, and pinning it is only
-  meaningful once roles exist.
+- `NEBIUS_API_KEY` — every script here makes real Token Factory calls. No script mocks a model.
+- Node 24 — `package.json` declares `engines.node: "24.x"`. Run `npm install` at the repo root.
+- `KV_REST_API_URL` / `KV_REST_API_TOKEN` — these are optional. Without them, the scripts print a
+  note, skip the `/observe` summary, and do not fail.
+- `LANGSMITH_API_KEY` — this is optional. With it, `eval:replies` also files the same run as a
+  LangSmith experiment.
+- Complete Recipe 01 (Foundation) first. The judge is a role in the registry. The pin has meaning
+  only after roles exist.
 
 ## Run it
 
@@ -63,7 +66,8 @@ PROBE_ROUNDS=1 npm run probe:schema -- \
   Qwen/Qwen3-235B-A22B-Instruct-2507 deepseek-ai/DeepSeek-V4-Flash
 ```
 
-One character per call — `.` for an object, `x` for nothing. Captured 2026-08-30:
+The probe prints one character per call: `.` for an object, and `x` for nothing. The output below
+is from 2026-08-30:
 
 ```text
 ...............
@@ -76,45 +80,46 @@ deepseek-ai/DeepSeek-V4-Flash
    3× AI_NoObjectGeneratedError: No object generated: could not parse the response.
 ```
 
-One round on one day, and the same script measured the same model at 4 failures in 30 the day
-before. The number moving is the finding. Twelve of those fifteen calls produced no object for
-anything downstream to be right or wrong about, and an accuracy sweep that credits whatever the
-production fallback returns instead scores that as a tie with the line above it.
+This is one round on one day. On the day before, the same script measured the same model at 4
+failures in 30. The movement of the number is the finding. Twelve of those fifteen calls returned
+no object, so no downstream check has an answer to grade. An accuracy sweep that credits the
+production fallback scores that result as a tie with the line above it.
 
-`probe:schema` with no arguments measures the registry defaults for the classifier, scout and
-judge roles, not an env override. `PROBE_ROUNDS` defaults to 2 and `COMPARE_ROUNDS` to 3, for the reason above.
+`probe:schema` with no arguments measures the registry defaults for the classifier, scout, and
+judge roles. It does not measure an env override. `PROBE_ROUNDS` defaults to 2, and
+`COMPARE_ROUNDS` defaults to 3, for the reason above.
 
 ## Walk-through
 
 ### The set does not move
 
-[`evals/data/vendor-replies.json`](../../evals/data/vendor-replies.json) is fifteen replies with a
-hand-written `expected` intent on each, across the seven intents the classifier can return, named
-for what they test: `conditional-not-decline`, `quoted-reply-thread`, `malformed-html-reply`,
-`injection-in-reply`, `other-auto-reply`. Three scripts read that one file —
-[`eval-replies.ts`](../../scripts/eval-replies.ts) scores the production classifier on it,
-[`compare-models.ts`](../../scripts/compare-models.ts) runs the same cases with `modelId`
-overridden per candidate, and
-[`probe-structured-output.ts`](../../scripts/probe-structured-output.ts) reuses the reply texts and
-throws the labels away.
+[`evals/data/vendor-replies.json`](../../evals/data/vendor-replies.json) contains fifteen replies.
+Each reply has a human-labelled `expected` intent, from the seven intents that the classifier can
+return. The case names show what each case tests: `conditional-not-decline`,
+`quoted-reply-thread`, `malformed-html-reply`, `injection-in-reply`, `other-auto-reply`. Three
+scripts read that one file. [`eval-replies.ts`](../../scripts/eval-replies.ts) scores the
+production classifier on it. [`compare-models.ts`](../../scripts/compare-models.ts) runs the same
+cases and overrides `modelId` for each candidate.
+[`probe-structured-output.ts`](../../scripts/probe-structured-output.ts) reuses the reply texts
+and ignores the labels.
 
 **The eval calls the shipped function, not a copy of it.** `eval-replies.ts` imports `classifyReply`
-from [`classify.ts`](../../agent/lib/classify.ts) — the same function
-[`inbound-email.ts`](../../agent/channels/inbound-email.ts) calls when a real vendor replies, with
-the same prompt, the same precedence rules and the same injection warning. An eval that
-reimplements the thing it measures grades a second implementation, and the two drift the first time
-somebody edits one prompt.
+from [`classify.ts`](../../agent/lib/classify.ts).
+[`inbound-email.ts`](../../agent/channels/inbound-email.ts) calls the same function when a real
+vendor replies. Both use the same prompt, the same precedence rules, and the same injection
+warning. An eval that reimplements the measured function grades a second implementation. The two
+implementations drift when somebody edits one prompt.
 
-**Fifteen cases is small, and the source says so rather than hiding it.** The comment above `ROUNDS`
-in `compare-models.ts` states the ceiling — one pass over fifteen cases can only rule out the
-clearly worse — and everything below follows from taking that sentence literally.
+**Fifteen cases is a small set, and the source code says so.** The comment above `ROUNDS`
+in `compare-models.ts` states the limit: one pass over fifteen cases can only remove the clearly
+worse candidates. Everything below follows from that sentence.
 
 ### Count the fallback as a loss, then rank on the worst round
 
-`classifyReply` degrades to a keyword heuristic when the model is unreachable, because in production
-a vendor's reply must never be lost over a classification failure. In a sweep that same behaviour
-lies: `DECLINE_HINTS` matches, among others, `unavailable|already booked|unsubscribe|not interested`, so a model
-returning nothing at all still gets cases right by accident.
+`classifyReply` uses a keyword heuristic when the model is not reachable, because in production a
+classification failure must never lose a vendor's reply. In a sweep, that same behaviour gives a
+false result. `DECLINE_HINTS` matches, among others, `unavailable|already booked|unsubscribe|not interested`. A
+model that returns nothing can then get cases correct by accident.
 
 ```ts
 // A heuristic fallback means the model failed to return the schema —
@@ -123,8 +128,8 @@ if (via === "heuristic") fallbacks += 1;
 const ok = intent === c.expected && via === "model";
 ```
 
-`via === "model"` is the load-bearing half of that condition. Without it the score measures the
-union of the model and its fallback — the right thing to ship, and the wrong thing to compare.
+`via === "model"` is the necessary half of that condition. Without it, the score measures the
+model together with its fallback. That combination is correct to ship and incorrect to compare.
 
 ```ts
 const ROUNDS = Number(process.env.COMPARE_ROUNDS ?? 3);
@@ -136,17 +141,17 @@ rows.sort((a, b) => b.worstScore - a.worstScore || b.score - a.score || a.costUs
 const cheapestPerfect = rows.filter((r) => r.worstScore === 1).sort((a, b) => a.costUsd - b.costUsd)[0];
 ```
 
-**The anti-pattern is ranking on the mean.** A mean averages a bad round into a good one and reports
-a number no run ever produced, then names a model that has already failed in front of you. The
-primary key is `worstScore`, and cost is only the third tiebreak, so a cheaper candidate cannot buy
-its way past one bad round. Even so the script refuses to close the argument: its recommendation
-line tells you to run the sweep once more, because a model that wins one sweep and fails the next is
-the failure mode the harness exists to catch.
+**The incorrect method is a rank on the mean.** A mean mixes a bad round into a good round,
+reports a number that no run produced, and recommends a model that already failed. The primary
+sort key is `worstScore`, and cost is only the third tiebreak, so a cheap candidate cannot pass a
+bad round. The script also does not close the argument. Its recommendation line tells you to run
+the sweep one more time. A model that wins one sweep and fails the next is the exact failure that
+the harness must catch.
 
 ### The probe asks a question accuracy cannot
 
-[`probe-structured-output.ts`](../../scripts/probe-structured-output.ts) is seventy-five lines and
-the one that settled it:
+[`probe-structured-output.ts`](../../scripts/probe-structured-output.ts) has seventy-five lines,
+and this script settled the question:
 
 ```ts
 try {
@@ -161,9 +166,8 @@ try {
 }
 ```
 
-There is no `expected` anywhere in it. The only question is whether an object comes back, and the
-error text is counted per distinct message rather than collapsed into a rate — two different
-problems otherwise wear one number. Over thirty structured-output calls each:
+The script contains no `expected` field. The only question is whether an object comes back. The script counts the error text for each distinct message. It does not collapse the errors into one rate, because one rate hides two different problems in one number. Each model then ran thirty
+structured-output calls:
 
 ```text
 Qwen/Qwen3-235B-A22B-Instruct-2507    0/30 failed
@@ -172,18 +176,18 @@ deepseek-ai/DeepSeek-V4-Flash         4/30 failed (13%)
   2× "could not parse the response"
 ```
 
-**A call that never returns an object is not a wrong answer, it is no answer.** Averaged into an
-accuracy score it reads as a tie, because there is nothing there to be wrong. Downstream it is worse
-than a wrong answer: the classifier falls back to keywords, a reply is filed on a regex, and a
-follow-up chases a vendor who already said yes. The failure rate is not the interesting number. The
-interesting number is the zero beside it that the accuracy sweep also reported.
+**A call that returns no object is not a wrong answer; it is no answer.** An accuracy score
+averages that call as a tie, because no content exists to be wrong. Downstream, the result is
+worse than a wrong answer. The classifier falls back to keywords and files the reply with a regex
+match. The agent then sends a follow-up to a vendor who already agreed. The important number is
+not the failure rate but the zero beside it, which the accuracy sweep also reported.
 
 ### The judge gets its own env var
 
-[`evals.config.ts`](../../evals/evals.config.ts) is twenty lines and the whole point is one field —
-`judge: { model: modelFor("judge") }`, the shared default for every eve eval. It resolves through
-the registry in [`models.ts`](../../agent/lib/models.ts), where the judge is a role like any other
-and, unlike any other, is never the model under test:
+[`evals.config.ts`](../../evals/evals.config.ts) has twenty lines, and one field is the point:
+`judge: { model: modelFor("judge") }`, the shared default for every eve eval. The field resolves
+through the registry in [`models.ts`](../../agent/lib/models.ts). There the judge is a role like
+the other roles, but the judge is never the model under test:
 
 ```ts
 judge: {
@@ -196,26 +200,24 @@ judge: {
 },
 ```
 
-**Why its own env var rather than inheriting the agent's?** Because the entire purpose of a sweep is
-to change the agent's model, and a judge that follows it moves the measuring instrument in the same
-command that moves the thing being measured. Were the judge to inherit `NEBIUS_MODEL`, pointing that
-at a stronger model would lift every score at once, including the parts of the system nobody
-touched. `NEBIUS_JUDGE_MODEL` exists so the bar moves deliberately, in its own commit, as its own
-decision.
+**Why does the judge get its own env var and not the agent's env var?** The purpose of a sweep is
+a change to the agent's model. A judge that follows the agent's model moves the measuring
+instrument in the same command that moves the measured system. If the judge inherited
+`NEBIUS_MODEL`, a stronger model would lift every score at once, including untouched parts of the
+system. `NEBIUS_JUDGE_MODEL` exists so that the grading standard changes deliberately, in its own
+commit, as its own decision.
 
-The pin holds at every other judgement. [`eval-scout.ts`](../../scripts/eval-scout.ts) and
-[`grade.ts`](../../scripts/grade.ts) both call `modelFor("judge")` for the vendor verdict, and
-[`simulate.ts`](../../scripts/simulate.ts) uses it twice — once to write the adversarial emails
-(`// The attacker is deliberately not the model under test.`) and once to decide whether the defence
-held. Its summary line records both sides: `attacker ${modelIdFor("judge")} · defender
+The pin applies at every other judgement. [`eval-scout.ts`](../../scripts/eval-scout.ts) and
+[`grade.ts`](../../scripts/grade.ts) both call `modelFor("judge")` for the vendor verdict.
+[`simulate.ts`](../../scripts/simulate.ts) uses the judge twice. The judge writes the adversarial
+emails (`// The attacker is deliberately not the model under test.`), and the judge decides
+whether the defence held. Its summary line records both sides: `attacker ${modelIdFor("judge")} · defender
 ${modelIdFor("classifier")}`.
 
-Simulation is also where the limits of a judge are said out loud. The attacker labels its own emails
-with a `true_intent`, and `simulate.ts` reports agreement with those labels as *advisory only* —
-they are generated, not ground truth. A suite whose cases are invented fresh every run is not a
-fixed set, however good the score looks.
+The simulation also states the limits of a judge. The attacker labels its own emails with a `true_intent`. `simulate.ts` reports agreement with those labels as *advisory only*, because the labels are generated and are not ground truth. A suite that invents fresh cases on every run
+is not a fixed set, even when the score looks good.
 
-Ask a pinned judge two questions, not one. Both graders hand it a single finding and two booleans; this is the schema in [`grade.ts`](../../scripts/grade.ts), and `eval-scout.ts` carries a near-identical one:
+Ask a pinned judge two questions, not one. Both graders give the judge one finding and two booleans. This is the schema in [`grade.ts`](../../scripts/grade.ts), and `eval-scout.ts` carries an almost identical schema:
 
 ```ts
 const verdictSchema = z.object({
@@ -225,92 +227,100 @@ const verdictSchema = z.object({
 });
 ```
 
-**A blended score is a score you cannot act on.** The comment above the call site in `eval-scout.ts`
-gives the reason: an invented vendor is a fabrication, a vendor twenty minutes past the radius is a
-judgement call, and scoring them as one number hid which was happening. The fix for each is a
-different change to a different file. Neither script judges everything either — both take
-`list.slice(0, 4)` per category to keep the eval affordable, a sampling bias declared in the source
-rather than buried in a methodology note.
+**A blended score is a score that you cannot act on.** The comment above the call site in
+`eval-scout.ts` gives the reason. An invented vendor is a fabrication. A vendor twenty minutes
+past the radius is a judgement call. One blended number hid which fault occurred. The fix for
+each fault is a different change to a different file.
+
+Neither script judges everything. Both take `list.slice(0, 4)` per category to keep the eval
+affordable. The source code declares this sampling bias and does not hide it in a methodology
+note.
 
 ### One grader, two architectures
 
-[`evals/harness/types.ts`](../../evals/harness/types.ts) defines a `RunResult`: status, wall clock,
-one `AgentFacts` per agent, findings by category. Both implementations write it, and
-[`grade.ts`](../../scripts/grade.ts) is the only thing that turns one into a score. It reads
-`run.system` to print a label and never branches on it. Two committed runs of the same fixed brief,
-read out of [`runs/`](../../runs/):
+[`evals/harness/types.ts`](../../evals/harness/types.ts) defines a `RunResult`: status, wall
+clock, one `AgentFacts` per agent, and findings by category. Both implementations write a
+`RunResult`, and [`grade.ts`](../../scripts/grade.ts) is the only code that turns one into a
+score. The grader reads `run.system` to print a label and never branches on it. These are two
+committed runs of the same fixed brief, read from [`runs/`](../../runs/):
 
 ```text
 runs/eve-boston-boho.json   | eve-vercel v18         | 6 agents | 113955ms | waiting   | 14 vendors
 runs/graph-boston-boho.json | langgraph-nebius 0.1.0 | 7 agents |  55571ms | completed | 19 vendors
 ```
 
-Neither line is a result. They are inputs, and the collectors that write them do no grading at all —
-which is the property that matters, because a collector that scores its own stack is a collector
-with an opinion. **Two graders that "do the same thing" is how a comparison quietly becomes
-marketing.** One contract, one grader, one set of briefs; the stack is a string.
+Neither line is a result. The lines are inputs, and the collectors that write them do no grading.
+That property matters, because a collector that scores its own stack has an opinion. **Two graders
+that "do the same thing" turn a comparison into marketing.** The system uses one contract, one
+grader, and one set of briefs. The stack is only a string.
 
 ### The eval that spends money is a different kind of eval
 
-The three above are fixed sets against one function call.
-[`eval-scout.ts`](../../scripts/eval-scout.ts) drives real planning turns against a running Venus,
-and the hard part is knowing *when* to read the result. Two of its own bugs are recorded in its
-comments: Venus parks the moment she dispatches her scouts, so an early read scored `0 recorded`
-against specialists that were still searching, and the nudge loop counted `subagent.called` — which
-eve 0.24.4 never delivers on the parent stream — concluded nothing had been delegated, and bought a
-whole extra fan-out per re-prompt. **An eval that measures the system wrong costs more than no
-eval.** Neither threw.
+The three evals above run fixed sets against one function call.
+[`eval-scout.ts`](../../scripts/eval-scout.ts) drives real planning turns against a running
+Venus. The hard part is to know *when* to read the result. The comments in the script record two
+of its own bugs.
 
-What it caught is the second decision this recipe is built on. The specialist tier was moved to a
-cheaper model, and the decision record for that run reads:
+First, Venus parks at the moment she dispatches her scouts. An early read then scored `0 recorded`
+against scouts that were still searching. Second, the nudge loop counted `subagent.called`, which
+eve 0.24.4 never delivers on the parent stream. The loop concluded that no delegation occurred and
+caused one extra full fan-out per re-prompt. **An eval that measures the system incorrectly costs
+more than no eval.** Neither bug caused an exception.
+
+The script caught the second decision that this recipe is built on. A commit moved the scout tier
+to a cheaper model, and the decision record for that run reads:
 
 ```text
 eval:scout · boston-boho | DeepSeek-V4-Flash in the scout role: 10/22 (45%)
 10/10 specialist sessions failed · not one recorded a vendor
 ```
 
-The model was not the whole cause. The subagent carried an `outputSchema` added to guarantee a
-structured return, and eve escalates a schema the model cannot produce to
-`OUTPUT_SCHEMA_NOT_FULFILLED`, failing the entire child session — several specialists died before
-searching once. Reverting the model and deleting the schema gave 33/37, then 52/53 after the next
-fix. The schema was redundant anyway: findings reach the planner through the research store, never
-through the child's return value.
+The model was not the whole cause. The scout carried an `outputSchema`, added to guarantee a
+structured return. When the model cannot produce the schema, eve escalates the fault to
+`OUTPUT_SCHEMA_NOT_FULFILLED` and fails the full child session, so several scouts failed before
+one search. A revert of the model and a deletion of the schema gave 33/37, then 52/53 after the
+next fix. The schema was also redundant. Findings reach the planner through the research store,
+never through the child's return value.
 
-**Two changes landed in that run, and one number could not tell them apart.** The score said the
-candidate failed; the decision record names two causes, and only one of them was the model. That is
-the argument for keeping failure text beside the score, which is why `probe:schema` counts error
-strings and `grade.ts` carries the judge's `reason` into the failing case note.
+**Two changes landed in that run, and one number could not separate them.** The score said that
+the candidate failed. The decision record names two causes, and only one cause was the model.
+This is the argument for failure text beside the score. For that reason, `probe:schema` counts
+error strings, and `grade.ts` carries the judge's `reason` into the note for the failing case.
 
 ### What this suite still cannot tell you
 
-The planner — the role that writes every word the couple reads — has no eval that measures its prose
-or its orchestration. [`models.ts`](../../agent/lib/models.ts) says as much in the role itself: held
-constant until an eval can measure the swap. The one role where quality outranks price is the one
-role chosen without a measurement.
+The planner writes every word that the couple reads. No eval measures its prose or its
+orchestration. [`models.ts`](../../agent/lib/models.ts) says this in the role itself: the model
+stays constant until an eval can measure the swap. Quality outranks price for this one role, and
+this one role has no measurement behind its selection.
 
-The scout role was not selected by a sweep either. It was argued for on input price and context
-length, then *vetoed* by `eval:scout`. A veto is a weaker instrument than a comparison, and the
-rationale says what to do about it: re-test any candidate with `npm run eval:scout` before it takes
-the role.
+A sweep did not select the scout role either. The arguments for it were input price and context
+length, and then `eval:scout` *vetoed* it. A veto is a weaker instrument than a comparison. The
+rationale gives the correction: test each candidate with `npm run eval:scout` before it takes the
+role.
 
-Three briefs, fifteen replies, four sampled vendors per category, both `RunResult` files committed
-and no scorecard over them. The radius judge reasons about a drive it cannot measure — though since
-the write boundary began measuring straight-line distance itself, the judge is the second opinion on
-that question rather than the only one. Those are the real ceilings on every number here, and
-listing them costs less than defending a figure that was never that strong.
+The suite has three briefs, fifteen replies, and four sampled vendors per category. The
+repository holds both `RunResult` files, and no scorecard covers them. The radius judge reasons
+about a drive that it cannot measure. The write boundary now measures the straight-line distance
+itself, so the judge gives the second opinion on that question. These limits apply to every
+number here. A list of the limits costs less than a defence of a weak figure.
 
 ### Taking it somewhere that is not a wedding
 
-The point is not weddings specifically. This pattern transfers to any domain where a model returns
-structured output over untrusted text and something downstream acts on it: a claims-triage pipeline
-turning adjuster notes into a decision code, a support router assigning tickets to queues, an
-invoice extractor pulling line items out of supplier PDFs, a compliance reader classifying contract
-clauses. All four carry the same two axes and the same trap — accuracy is easy to measure and easy
-to over-trust, while schema reliability stays invisible until a downstream fallback quietly answers
-on the model's behalf. Hold one labelled set constant across every candidate, count a fallback as a
-loss, run more than once and rank on the worst run, and give whatever grades the output a name and
-an env var of its own. The domain decides what the labels mean. It does not change that a model can
-be right every time it answers and still refuse to answer.
+The point is not weddings. This pattern transfers to each domain where a model returns structured
+output from untrusted text and a downstream system acts on the output. Four examples follow. A
+claims-triage pipeline turns adjuster notes into a decision code. A support router assigns
+tickets to queues. An invoice extractor pulls line items from supplier PDFs. A compliance reader
+classifies contract clauses.
+
+All four domains have the same two measurements and the same trap. Accuracy is easy to measure
+and easy to trust too much. Schema reliability stays invisible until a downstream fallback
+answers in place of the model.
+
+Hold one labelled set constant across every candidate. Count a fallback as a loss. Run the sweep
+more than one time. Rank the candidates on the worst run. Give the grader a name and its own env
+var. The domain decides what the labels mean. The domain does not change one fact: a model can be
+correct each time it answers and can still refuse to answer.
 
 ## Failure modes
 
@@ -333,35 +343,37 @@ be right every time it answers and still refuse to answer.
 npm run eval:all   # test:guards · eval:replies · simulate · eval:scout · eve eval --tag fast
 ```
 
-That chain ends by driving real planning turns against the deployed agent, so it spends research
-credits and takes minutes — `npm run eval:replies` alone is the fast half.
+That chain ends with real planning turns against the deployed agent. The chain spends research
+credits and takes minutes. `npm run eval:replies` alone is the fast half.
 
-What the suite guarantees is a property, not a score. Every eval script that prints a score also prints
-the model that produced it and, where a judgement was involved, the model that graded it, and by
-default those two are never the same id; `grade.ts` writes its judge to the summary rather than stdout. The labelled set is committed, so a score is reproducible against the
-exact cases that produced it; the adversarial set is not, and says so in its own output. There is no
-badge and no pass threshold — the suite exists to make a swap arguable, not to declare one safe.
+The suite guarantees a property, not a score. Every eval script that prints a score also prints
+the model that produced the score. Where a judgement was involved, the script also prints the
+model that graded it. By default, those two ids are never the same. `grade.ts` writes its judge
+to the summary and not to stdout. The repository holds the labelled set, so you can reproduce a
+score against the exact cases that produced it.
+
+The adversarial set is not in the repository, and its own output says so. There is no badge and
+no pass threshold. The suite exists to make a swap arguable, not to declare a swap safe.
 
 ## Going further
 
-- **Raise the rounds before you trust a winner.** `COMPARE_ROUNDS` and `PROBE_ROUNDS` are env vars
-  precisely so the cost of certainty is a dial. The default of three carries its reason in the
-  comment directly above it: a model that won a single-pass sweep at 15/15, then scored 11/15 on the
-  very next run of the same cases.
+- **Raise the rounds before you trust a winner.** `COMPARE_ROUNDS` and `PROBE_ROUNDS` are env
+  vars, so you can adjust the cost of certainty. The comment directly above the default of three gives its reason. A model won a single-pass sweep at 15/15, then scored 11/15 on the next run of the same cases.
 - **Probe the incumbent, not only the suspect.** `probe:schema` with no arguments measures the
-  registry defaults for the classifier, scout and judge roles. An incumbent nobody re-measures is
-  an assumption wearing a measurement's clothes.
-- **Give the planner an eval before you swap it.** The registry comment puts it at 15% of a plan's cost — a share
-  nothing measures — and it is 100% of what the couple reads. [`synthesis.eval.ts`](../../evals/synthesis.eval.ts) is the nearest model
-  for one: a full turn, a hard assertion that every presented total fits the budget, and a judged
-  rubric over that.
-- **Publish the scorecard, not only the runs.** [`runs/`](../../runs/) holds a `RunResult` per
-  system per brief and `npm run grade` scores them with identical code. Until that output is
-  committed, the fairness of the comparison is a design property rather than a published one.
+  registry defaults for the classifier, scout and judge roles. An incumbent that nobody measures
+  again is an assumption, not a measurement.
+- **Give the planner an eval before you swap it.** The registry comment puts the planner at 15%
+  of a plan's cost, and no eval measures that share. The planner also produces 100% of what the
+  couple reads. [`synthesis.eval.ts`](../../evals/synthesis.eval.ts) is the nearest example of
+  such an eval: a full turn, a hard assertion that every presented total fits the budget, and a
+  judged rubric over that.
+- **Publish the scorecard, not only the runs.** [`runs/`](../../runs/) holds one `RunResult` for
+  each system and brief, and `npm run grade` scores them with identical code. Until you commit
+  that output, the fairness of the comparison is a design property and not a published property.
 - **Next: [Verification — Assert Against the Deployed Artifact](../10-assert-against-the-deployed-artifact/).**
-  A score is only as true as the artifact it was taken from. The last recipe is about the gap
-  between a check that passes locally and a build that behaves in production.
+  A score is only as true as the artifact that produced it. The last recipe covers the gap
+  between a check that passes locally and a build that behaves correctly in production.
 
 ## License
 
-Unset — this repository carries no LICENSE file, so no reuse rights are granted by default.
+Unset — this repository has no LICENSE file, so the default grants no reuse rights.

@@ -214,7 +214,7 @@ export default function ComparePage() {
             <span>
               <b className="font-medium">Open the V2 system map</b>
               <span className="block text-muted-foreground text-xs">
-                Interactive — trace a route from the couple&rsquo;s brief to a vendor&rsquo;s inbox
+                The map is interactive. Trace a route from the couple&rsquo;s brief to a vendor&rsquo;s inbox
               </span>
             </span>
           </a>
@@ -281,7 +281,7 @@ export default function ComparePage() {
           <h2 className="venus-serif mb-1 text-lg">The changes</h2>
           <p className="mb-4 text-muted-foreground text-sm leading-relaxed">
             Each item shows the old approach and the new approach. It gives the reason for the
-            change and the measured result. Four items use STAR, because they are complex.
+            change and the measured result. Four items are complex, so they use the STAR format.
           </p>
           <div className="space-y-4">
             {changes.map((c, i) => (
@@ -328,10 +328,10 @@ export default function ComparePage() {
         <section className="mb-10 rounded-2xl border bg-card/60 p-5 vsection" id="faults">
           <h2 className="venus-serif mb-2 text-lg">What the faults have in common</h2>
           <p className="text-sm leading-relaxed">
-            No fault in this list stopped the system. There was no crash and no failed build. The
-            costs showed zero. An event in the documentation was never sent. A page was correct in
-            development and absent in production. Ten agents of ten failed inside a build that
-            passed.
+            No fault in this list stopped the system. The system did not crash, and the build did
+            not fail. The cost report showed zero. The system did not send an event that the
+            documentation describes. A page was correct in development, but the page was absent in
+            production. All ten agents failed inside a build that passed.
           </p>
           <p className="mt-2 text-sm leading-relaxed">
             A fault that looks like success is the most expensive kind. Each change above adds a
