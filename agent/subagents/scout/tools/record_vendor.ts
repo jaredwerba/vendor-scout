@@ -5,7 +5,6 @@ import {
   directoryHost,
   emailLooksForeign,
   isContactFormOnly,
-  outsideRadius,
   sourceIsMissing,
 } from "../../../lib/vendor-guards";
 
@@ -49,25 +48,6 @@ export default defineTool({
         "Optional, from your own knowledge of the area, e.g. '~35 min from Methuen'. " +
           "NEVER search for a drive time to fill this in — leave it blank instead.",
       ),
-    couple_location: z
-      .string()
-      .max(80)
-      .optional()
-      .describe(
-        "The couple's town and state EXACTLY as your brief states it, e.g. 'Methuen, MA'. " +
-          "Copy it from the brief — do not search for it.",
-      ),
-    max_drive_minutes: z
-      .number()
-      .int()
-      .min(10)
-      .max(600)
-      .optional()
-      .describe(
-        "The travel radius from your brief, in minutes — 'within ~1 hour' is 60. " +
-          "Copy it from the brief; omit only if the brief states no radius. Values under 45 " +
-          "are tested against 45 — a too-tight radius starves the couple's plan.",
-      ),
     image_urls: z
       .array(z.string().max(500))
       .max(8)
@@ -106,41 +86,13 @@ export default defineTool({
       };
     }
 
-    // A vendor in the wrong state is the failure the couple never catches
-    // until an email is already out. The model cannot be asked to "remember"
-    // the radius — it is asked to state the drive, in writing, per vendor,
-    // which makes the violation visible here and in the trace.
+    // A vendor with no stated town cannot be placed by the couple, the
+    // planner, or the eval — the town is read off the vendor's own site.
     if (!input.location.trim()) {
       return {
         status: "rejected_missing_location",
         note:
-          "Record the vendor's actual town and state — you read it on their site. If that town " +
-          "is outside the radius the couple gave you, do not record them at all; find someone " +
-          "closer. Do not search for a drive time.",
-      };
-    }
-
-    // The distance rule used to live only in the prompt — "you know roughly
-    // where towns are" — and an eval measured what that is worth: 10 of 18
-    // sampled vendors out of region, White Mountains venues for a stated
-    // hour. The model states the towns (it always did, honestly — that is
-    // how the judge caught it); the arithmetic it cannot do happens here.
-    // Straight-line miles, not drive time: nothing searches, and every
-    // failure to judge falls open. See outsideRadius in lib/vendor-guards.
-    const radius = await outsideRadius(
-      input.location,
-      input.couple_location,
-      input.max_drive_minutes,
-    );
-    if (radius) {
-      return {
-        status: "rejected_outside_radius",
-        note:
-          `${input.location.trim()} is ~${radius.miles} miles straight-line from ` +
-          `${(input.couple_location ?? "").trim()} — beyond the ~${radius.limitMiles} miles a ` +
-          `${radius.minutes}-minute drive covers. The radius is a hard limit: do not ` +
-          "record this vendor. Find someone closer, and do not search for drive times. If the " +
-          "category is genuinely thin nearby, say so in your report instead.",
+          "Record the vendor's actual town and state — you read it on their site.",
       };
     }
 

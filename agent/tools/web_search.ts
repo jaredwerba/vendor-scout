@@ -150,8 +150,8 @@ async function searchOne(
 export default defineTool({
   description:
     "Search the web. Pass THREE OR FOUR queries in `queries` and they run at the same time for " +
-    "the price of one round trip — different angles on the same category, or different towns in " +
-    "the radius. This is the single biggest thing you control about how long the couple waits. " +
+    "the price of one round trip — different angles on the same category, or different towns " +
+    "near the couple. This is the single biggest thing you control about how long the couple waits. " +
     "Use focused queries (vendor type + location + style) and refine based on results.",
   inputSchema: z.object({
     queries: z

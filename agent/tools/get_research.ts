@@ -138,9 +138,9 @@ export default defineTool({
                 "a venue without photos cannot carry an option. Fetch the missing ones FIRST — one " +
                 `web_search with include_images: true for: ${photolessVenues.join(", ")} — then ` +
                 "present three DIFFERENT venues."
-              : `Only ${venueFindings.length} in-radius venue(s) recorded — three options need ` +
-                "three venues. Delegate ONE more venue scout now (same radius, different towns " +
-                "inside it) before presenting.",
+              : `Only ${venueFindings.length} venue(s) recorded — three options need ` +
+                "three venues. Delegate ONE more venue scout now (different towns near the " +
+                "couple) before presenting.",
       },
       findings,
       stalled_specialists: stalledCount,
