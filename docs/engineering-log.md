@@ -310,6 +310,22 @@ The failures that cost the most are the ones that look like success.
 
 <sub>commits `59f753f`, `8408943`, `54af506` · runs `wrun_41M1D0SJDA0GM9TQ35Q2NAGCQQ` · tests `scripts/test-research-clock.mjs`</sub>
 
+## 2026-09-01
+
+### The prompt converged, the model was the ceiling, and the picker was the fix
+
+**Wrong.** With every juncture anchored, runs still diverged one from the next: one run streamed options and skipped the gate, one ran scouts sequentially across every category in phase 1, and one sent nothing on the go-ahead and told the couple '4 personalized emails written & sent' — reproducing the instructions' own example message word-for-word instead of doing the work.
+
+**Why.** Qwen3-235B samples a different subset of a long instruction file on every run; past a point, prompt engineering redistributes failures instead of removing them. And an example written as a finished announcement is a fabrication script under weak compliance.
+
+**Changed.** The parrotable example was deleted and close-outs became receipt-bound: any summary that mentions email counts from check_outreach_status rows called in the same turn, and the value table renders rows, never intentions. Then the planner itself was escalated through the product's own model picker — one localStorage key, one per-request header — to DeepSeek-V4-Pro, the model already pinned as every eval's judge.
+
+**Outcome.** First V4-Pro run was the clean sweep: venue gate with three priced options at 2:33, tap, availability email to On The River Inn, every service scout productive (catering 3, florals 3, music 3), plan saved AND streamed (7,922 chars, 20 photos, the table) AND gated, and on the go-ahead two more real sends — Flower Moon Farm and Kerry Rosenthal — with the contact-form-only caterer given a paste-ready draft instead of an invented address. The scorecard claimed 3 emails; the roster shows exactly 3. 'Brief to plan' 4:45, $0.204 — cheaper than the wandering Qwen runs at a ninth the unit price. Demo recipe: flip the picker to DeepSeek V4 Pro.
+
+> Anchor the junctures until the prompt converges, then stop: run-to-run divergence after that is the model's ceiling, and the honest fix is a stronger model — which this product could demonstrate with its own picker.
+
+<sub>commits `b36e576` · runs `wrun_41M1D4S12N0GGFTMW81GWYAXCQ`, `wrun_41M1D2P9PQ0GV339PX6GCNKB3C`</sub>
+
 ---
 
 ## How to read the outcomes
